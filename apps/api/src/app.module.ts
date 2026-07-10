@@ -7,6 +7,7 @@ import { TenantsModule } from './modules/tenants/tenants.module';
 import { AtsModule } from './modules/ats/ats.module';
 import { CareersModule } from './modules/careers/careers.module';
 import { FilesModule } from './modules/files/files.module';
+import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { EmployeesModule } from './modules/employees/employees.module';
 import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { ApprovalsModule } from './modules/approvals/approvals.module';
@@ -28,6 +29,7 @@ import { HealthController } from './health.controller';
     AtsModule,
     CareersModule,
     FilesModule,
+    IntegrationsModule,
     EmployeesModule,
     OnboardingModule,
     ApprovalsModule,

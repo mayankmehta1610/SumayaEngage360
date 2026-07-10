@@ -50,12 +50,12 @@ export class FilesController {
 
   @Get(':id/download')
   async download(@Param('id') id: string, @Res() res: Response) {
-    const { path, meta } = await this.files.getPath(id);
+    const { stream, meta } = await this.files.getStream(id);
     res.setHeader('Content-Type', meta.contentType);
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="${meta.fileName.replace(/"/g, '')}"`,
     );
-    res.sendFile(path);
+    stream.pipe(res);
   }
 }

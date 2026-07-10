@@ -5,11 +5,15 @@ import {
 } from '@nestjs/common';
 import { ApplicationStatus, JobStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ResumeParserService } from '../integrations/resume-parser.service';
 import { ApplyDto, UpdateApplicationStatusDto } from './ats.dto';
 
 @Injectable()
 export class ApplicationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly resumeParser: ResumeParserService,
+  ) {}
 
   // Public apply flow: creates/updates the candidate profile, tags skills
   // (mandatory at application time), records experience, links the resume.
@@ -19,7 +23,7 @@ export class ApplicationsService {
     });
     if (!job) throw new NotFoundException('Job not open for applications');
 
-    return this.prisma.$transaction(async (tx) => {
+    const application = await this.prisma.$transaction(async (tx) => {
       const email = dto.email.toLowerCase();
       const candidate = await tx.candidate.upsert({
         where: { tenantId_email: { tenantId, email } },
@@ -87,6 +91,24 @@ export class ApplicationsService {
         include: { job: { select: { title: true } } },
       });
     });
+
+    // LLM resume parsing runs in the background — the application is already
+    // accepted; the structured profile enriches the candidate when it lands.
+    if (dto.resumeFileId && this.resumeParser.enabled) {
+      const candidateEmail = dto.email.toLowerCase();
+      this.resumeParser
+        .parse(dto.resumeFileId)
+        .then(async (parsed) => {
+          if (!parsed) return;
+          await this.prisma.candidate.update({
+            where: { tenantId_email: { tenantId, email: candidateEmail } },
+            data: { parsedResume: parsed as any },
+          });
+        })
+        .catch(() => undefined);
+    }
+
+    return application;
   }
 
   findAll(tenantId: string, jobId?: string, status?: ApplicationStatus) {

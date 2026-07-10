@@ -12,6 +12,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalsService } from '../approvals/approvals.service';
+import { PdfService } from '../integrations/pdf.service';
 import {
   AcceptResignationDto,
   ClearanceActionDto,
@@ -25,6 +26,7 @@ export class ExitService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly approvals: ApprovalsService,
+    private readonly pdf: PdfService,
   ) {}
 
   // 1. Employee submits resignation → designation-based approval chain starts.
@@ -320,6 +322,31 @@ export class ExitService {
     if (resignation.status !== ResignationStatus.FNF || !settlement) {
       throw new BadRequestException('Full & final settlement must be recorded first');
     }
+
+    // Generate the relieving letter when one wasn't supplied.
+    if (!releaseLetterFileId) {
+      const [tenant, employee] = await Promise.all([
+        this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
+        this.prisma.employee.findUniqueOrThrow({
+          where: { id: resignation.employeeId },
+          include: { user: true },
+        }),
+      ]);
+      releaseLetterFileId = await this.pdf.generateLetter(
+        {
+          companyName: tenant.name,
+          title: 'Relieving Letter',
+          recipientName: `${employee.user.firstName} ${employee.user.lastName}`,
+          paragraphs: [
+            `This is to certify that ${employee.user.firstName} ${employee.user.lastName} (Employee Code: ${employee.employeeCode}) was employed with ${tenant.name} as ${employee.designation}.`,
+            `Their resignation has been accepted and they have been relieved from the services of the company effective ${(resignation.agreedLastDay ?? new Date()).toDateString()}, after completing all departmental clearances.`,
+            'We thank them for their contributions and wish them success in their future endeavours.',
+          ],
+        },
+        tenantId,
+      );
+    }
+
     await this.prisma.$transaction([
       this.prisma.fullFinalSettlement.update({
         where: { resignationId: id },
