@@ -16,6 +16,15 @@
                                        (resumes, docs, recordings, screenshots, letters)
 ```
 
+## Database placement — shared Postgres, project schema
+
+All of this project's tables live in the **`engage360` Postgres schema** (never `public`),
+set via the `?schema=engage360` param on `DATABASE_URL`. This lets the app share a
+database with other projects (e.g. Render's shared Postgres) without any table
+collisions. Moving to a dedicated database later requires only pointing
+`DATABASE_URL` at it — the same migrations recreate identical tables there.
+Deployment is defined in [render.yaml](../render.yaml).
+
 ## Multi-tenancy
 
 - **Shared database, `tenantId` discriminator column** on every tenant-owned table.

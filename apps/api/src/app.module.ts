@@ -6,6 +6,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { AtsModule } from './modules/ats/ats.module';
 import { CareersModule } from './modules/careers/careers.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { CareersModule } from './modules/careers/careers.module';
     AtsModule,
     CareersModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

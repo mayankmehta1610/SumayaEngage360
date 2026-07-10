@@ -1,0 +1,53 @@
+# Render Blueprint — deploy from the dashboard: New + → Blueprint → select this repo.
+#
+# DATABASE: uses your EXISTING shared Render Postgres. All tables for this project
+# are created inside the project-specific "engage360" Postgres schema (not "public"),
+# so they cannot collide with other projects sharing the database.
+#
+# When creating the blueprint, Render will prompt you for DATABASE_URL. Paste the
+# shared database's internal connection string and APPEND the schema param:
+#   postgresql://user:pass@host/dbname?schema=engage360
+#
+# Later, to move to a dedicated database: create it, point DATABASE_URL at it
+# (keeping ?schema=engage360), and redeploy — the same migrations recreate the
+# identical tables there.
+
+services:
+  - type: web
+    name: engage360-api
+    runtime: node
+    plan: free # bump to starter+ for production (free spins down when idle)
+    rootDir: apps/api
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && node dist/main.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: DATABASE_URL
+        sync: false # prompted on first deploy — shared DB URL + ?schema=engage360
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+
+  # Phase 1+: uncomment once the Angular app is generated in apps/web.
+  # - type: web
+  #   name: engage360-web
+  #   runtime: static
+  #   rootDir: apps/web
+  #   buildCommand: npm install && npm run build
+  #   staticPublishPath: dist/engage360/browser
+  #   routes:
+  #     - type: rewrite
+  #       source: /*
+  #       destination: /index.html
+
+# When moving off the shared database, uncomment to provision a dedicated one and
+# switch the DATABASE_URL env var above to fromDatabase (plus ?schema=engage360
+# via a dashboard override, or keep sync: false and paste the new URL).
+# databases:
+#   - name: engage360-db
+#     databaseName: engage360
+#     user: engage360
+#     plan: starter
