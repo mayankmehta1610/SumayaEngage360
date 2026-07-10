@@ -6,6 +6,17 @@ import { AuthModule } from './modules/auth/auth.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { AtsModule } from './modules/ats/ats.module';
 import { CareersModule } from './modules/careers/careers.module';
+import { FilesModule } from './modules/files/files.module';
+import { EmployeesModule } from './modules/employees/employees.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
+import { ApprovalsModule } from './modules/approvals/approvals.module';
+import { ProjectsModule } from './modules/projects/projects.module';
+import { TimesheetsModule } from './modules/timesheets/timesheets.module';
+import { AppraisalsModule } from './modules/appraisals/appraisals.module';
+import { EngagementModule } from './modules/engagement/engagement.module';
+import { AssetsModule } from './modules/assets/assets.module';
+import { TrainingsModule } from './modules/trainings/trainings.module';
+import { ExitModule } from './modules/exit/exit.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -16,6 +27,17 @@ import { HealthController } from './health.controller';
     TenantsModule,
     AtsModule,
     CareersModule,
+    FilesModule,
+    EmployeesModule,
+    OnboardingModule,
+    ApprovalsModule,
+    ProjectsModule,
+    TimesheetsModule,
+    AppraisalsModule,
+    EngagementModule,
+    AssetsModule,
+    TrainingsModule,
+    ExitModule,
   ],
   controllers: [HealthController],
 })

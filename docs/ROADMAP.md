@@ -1,5 +1,9 @@
 # Delivery Roadmap
 
+> **Status:** the complete backend (Phases 0–6 API scope) is implemented and deployed
+> to Render. Remaining work is marked ⏳: document/letter PDF generation, email
+> delivery, LLM resume parsing, S3 file storage, and the Angular/Flutter frontends.
+
 ## Phase 0 — Foundation ✅ (this scaffold)
 - Monorepo, docs, full domain data model (Prisma schema — every module modeled).
 - NestJS API: multi-tenant context, JWT auth + RBAC, tenants module.

@@ -3,7 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ApplicationStatus, OfferStatus } from '@prisma/client';
+import { ApplicationStatus, OfferStatus, Role } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOfferDto } from './ats.dto';
@@ -80,21 +81,82 @@ export class OffersService {
     }
 
     const onboardingToken = randomBytes(32).toString('hex');
-    await this.prisma.$transaction([
-      this.prisma.offer.update({
+    await this.prisma.$transaction(async (tx) => {
+      await tx.offer.update({
         where: { id: offerId },
         data: {
           status: OfferStatus.ACCEPTED,
           respondedAt: new Date(),
           onboardingToken,
         },
-      }),
-      this.prisma.application.update({
+      });
+      await tx.application.update({
         where: { id: offer.applicationId },
-        data: { status: ApplicationStatus.OFFER_ACCEPTED },
-      }),
-    ]);
-    // TODO Phase 2: create Employee + OnboardingCase and email the secure URL.
+        data: { status: ApplicationStatus.ONBOARDING },
+      });
+
+      // Acceptance starts the employee lifecycle: login + employee record +
+      // onboarding case, skills carried over from application-time tagging,
+      // and the offered salary structure preserved for offered-vs-current.
+      const { tenantId } = offer;
+      const candidate = await tx.candidate.findUniqueOrThrow({
+        where: { id: offer.application.candidateId },
+        include: { skills: true },
+      });
+      const email = candidate.email.toLowerCase();
+      const user = await tx.users.upsert({
+        where: { tenantId_email: { tenantId, email } },
+        create: {
+          tenantId,
+          email,
+          passwordHash: await bcrypt.hash(randomBytes(16).toString('hex'), 10),
+          firstName: candidate.firstName,
+          lastName: candidate.lastName,
+          phone: candidate.phone,
+          roles: [Role.EMPLOYEE],
+        },
+        update: {},
+      });
+
+      const count = await tx.employee.count({ where: { tenantId } });
+      const employee = await tx.employee.create({
+        data: {
+          tenantId,
+          userId: user.id,
+          employeeCode: `EMP-${String(count + 1).padStart(4, '0')}`,
+          designation: offer.designation,
+          joinDate: offer.joiningDate,
+          location: offer.location,
+        },
+      });
+
+      if (candidate.skills.length) {
+        await tx.employeeSkill.createMany({
+          data: candidate.skills.map((s) => ({
+            employeeId: employee.id,
+            skillId: s.skillId,
+            yearsOfExp: s.yearsOfExp,
+            fromApplication: true,
+          })),
+        });
+      }
+
+      await tx.salaryStructure.create({
+        data: {
+          tenantId,
+          employeeId: employee.id,
+          annualCtc: offer.annualCtc,
+          components: offer.salaryBreakup as any,
+          isOffered: true,
+          effectiveFrom: offer.joiningDate,
+        },
+      });
+
+      await tx.onboardingCase.create({
+        data: { tenantId, employeeId: employee.id },
+      });
+    });
+    // The onboarding URL (carrying this token) is emailed to the candidate.
     return { status: 'ACCEPTED', onboardingToken };
   }
 
