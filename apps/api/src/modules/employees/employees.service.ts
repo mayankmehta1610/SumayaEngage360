@@ -49,8 +49,10 @@ export class EmployeesService {
           create: {
             tenantId,
             email,
-            // temporary password; reset during onboarding
-            passwordHash: await bcrypt.hash(randomBytes(16).toString('hex'), 10),
+            passwordHash: await bcrypt.hash(
+              dto.password ?? randomBytes(16).toString('hex'),
+              10,
+            ),
             firstName: dto.firstName,
             lastName: dto.lastName,
             roles: [Role.EMPLOYEE],

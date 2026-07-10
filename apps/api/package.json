@@ -8,6 +8,7 @@
     "start": "node dist/main.js",
     "start:dev": "ts-node src/main.ts",
     "typecheck": "tsc --noEmit",
+    "test:e2e": "node test/e2e.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },

@@ -2,12 +2,15 @@ import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, ExportBarComponent],
   template: `
-    <div class="toolbar"><h1>Employees</h1></div>
+    <div class="toolbar"><h1>Employees</h1>
+      <export-bar [rows]="employees" [cols]="exportCols" name="employees" />
+    </div>
     @if (error) { <div class="error">{{ error }}</div> }
     <div class="card">
       <h2>Add employee (direct hire)</h2>
@@ -43,6 +46,16 @@ export class EmployeesComponent implements OnInit {
   employees: any[] = [];
   error = '';
   f: any = {};
+  exportCols = [
+    { key: 'employeeCode', label: 'Code' },
+    { key: 'user.firstName', label: 'First name' },
+    { key: 'user.lastName', label: 'Last name' },
+    { key: 'user.email', label: 'Email' },
+    { key: 'designation', label: 'Designation' },
+    { key: 'department.name', label: 'Department' },
+    { key: 'joinDate', label: 'Joined' },
+    { key: 'status', label: 'Status' },
+  ];
 
   async ngOnInit() { await this.load(); }
   async load() {

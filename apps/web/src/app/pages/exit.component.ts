@@ -2,12 +2,15 @@ import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, ExportBarComponent],
   template: `
-    <div class="toolbar"><h1>Exit management</h1></div>
+    <div class="toolbar"><h1>Exit management</h1>
+      <export-bar [rows]="resignations" [cols]="exportCols" name="resignations" />
+    </div>
     @if (error) { <div class="error">{{ error }}</div> }
 
     <div class="card">
@@ -67,6 +70,15 @@ export class ExitComponent implements OnInit {
   resignations: any[] = [];
   myClearances: any[] = [];
   error = '';
+  exportCols = [
+    { key: 'employee.employeeCode', label: 'Code' },
+    { key: 'employee.user.firstName', label: 'First name' },
+    { key: 'employee.user.lastName', label: 'Last name' },
+    { key: 'employee.designation', label: 'Designation' },
+    { key: 'status', label: 'Status' },
+    { key: 'submittedAt', label: 'Submitted' },
+    { key: 'agreedLastDay', label: 'Last working day' },
+  ];
 
   async ngOnInit() { await this.load(); }
   async load() {

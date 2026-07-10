@@ -1,12 +1,15 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, ExportBarComponent],
   template: `
-    <div class="toolbar"><h1>Departments & designations</h1></div>
+    <div class="toolbar"><h1>Departments & designations</h1>
+      <export-bar [rows]="departments" [cols]="deptCols" name="departments" />
+    </div>
     @if (error) { <div class="error">{{ error }}</div> }
     <div class="row">
       <div class="card">
@@ -58,6 +61,10 @@ export class OrgComponent implements OnInit {
   deptName = '';
   desigName = '';
   desigLevel = 0;
+  deptCols = [
+    { key: 'name', label: 'Department' },
+    { key: '_count.employees', label: 'Employees' },
+  ];
 
   async ngOnInit() { await this.load(); }
   async load() {

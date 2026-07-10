@@ -31,6 +31,12 @@ export class CreateEmployeeDto {
   @IsEmail()
   email: string;
 
+  // Optional initial login password; otherwise a random one is set and the
+  // employee resets it during onboarding.
+  @IsOptional()
+  @IsString()
+  password?: string;
+
   @IsString()
   firstName: string;
 

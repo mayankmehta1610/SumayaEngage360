@@ -2,12 +2,15 @@ import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, ExportBarComponent],
   template: `
-    <div class="toolbar"><h1>Appraisals</h1></div>
+    <div class="toolbar"><h1>Appraisals</h1>
+      <export-bar [rows]="cycles" [cols]="exportCols" name="appraisal-cycles" />
+    </div>
     @if (error) { <div class="error">{{ error }}</div> }
     <div class="card">
       <h2>Create review cycle</h2>
@@ -61,6 +64,13 @@ export class AppraisalsComponent implements OnInit {
   cycles: any[] = [];
   team: any[] = [];
   error = '';
+  exportCols = [
+    { key: 'name', label: 'Cycle' },
+    { key: 'frequency', label: 'Frequency' },
+    { key: 'startDate', label: 'Start' },
+    { key: 'endDate', label: 'End' },
+    { key: '_count.appraisals', label: 'Appraisals' },
+  ];
   f: any = { frequency: 'QUARTERLY' };
   templateText = '';
 

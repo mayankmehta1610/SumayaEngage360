@@ -1,12 +1,15 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, ExportBarComponent],
   template: `
-    <div class="toolbar"><h1>Trainings</h1></div>
+    <div class="toolbar"><h1>Trainings</h1>
+      <export-bar [rows]="courses" [cols]="exportCols" name="training-courses" />
+    </div>
     @if (error) { <div class="error">{{ error }}</div> }
     <div class="card">
       <h2>Create course</h2>
@@ -58,6 +61,12 @@ export class TrainingsComponent implements OnInit {
   courses: any[] = [];
   employees: any[] = [];
   error = '';
+  exportCols = [
+    { key: 'title', label: 'Course' },
+    { key: 'mandatory', label: 'Mandatory' },
+    { key: 'forOnboarding', label: 'Onboarding' },
+    { key: '_count.assignments', label: 'Assigned' },
+  ];
   f: any = { mandatory: true };
   v: any = { durationSeconds: 300 };
 

@@ -2,15 +2,18 @@ import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ExportBarComponent } from '../core/export-bar.component';
 import { environment } from '../../environments/environment';
 
 // Pipeline view: status changes, interview rounds (recording + mandatory
 // screenshot before pass/fail), and offer creation/sending.
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, ExportBarComponent],
   template: `
-    <div class="toolbar"><h1>Applications</h1></div>
+    <div class="toolbar"><h1>Applications</h1>
+      <export-bar [rows]="applications" [cols]="exportCols" name="applications" />
+    </div>
     @if (error) { <div class="error">{{ error }}</div> }
     @for (a of applications; track a.id) {
       <div class="card">
@@ -115,6 +118,14 @@ export class ApplicationsComponent implements OnInit {
   private api = inject(ApiService);
   applications: any[] = [];
   error = '';
+  exportCols = [
+    { key: 'candidate.firstName', label: 'First name' },
+    { key: 'candidate.lastName', label: 'Last name' },
+    { key: 'candidate.email', label: 'Email' },
+    { key: 'job.title', label: 'Role' },
+    { key: 'status', label: 'Status' },
+    { key: 'createdAt', label: 'Applied on' },
+  ];
   statuses = ['APPLIED','SCREENING','INTERVIEW','SELECTED','REJECTED','WITHDRAWN'];
   resultRound: any = null;
   res: any = { result: 'PASSED' };

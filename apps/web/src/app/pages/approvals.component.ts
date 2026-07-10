@@ -1,12 +1,15 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, ExportBarComponent],
   template: `
-    <div class="toolbar"><h1>Approvals</h1></div>
+    <div class="toolbar"><h1>Approvals</h1>
+      <export-bar [rows]="pending" [cols]="exportCols" name="pending-approvals" />
+    </div>
     @if (error) { <div class="error">{{ error }}</div> }
 
     <div class="card">
@@ -68,6 +71,12 @@ export class ApprovalsComponent implements OnInit {
   pending: any[] = [];
   workflows: any[] = [];
   error = '';
+  exportCols = [
+    { key: 'entityType', label: 'Type' },
+    { key: 'workflow.name', label: 'Workflow' },
+    { key: 'currentStep', label: 'Step' },
+    { key: 'createdAt', label: 'Raised' },
+  ];
   wf: any = { entityType: 'RESIGNATION' };
   stepsText = '';
 

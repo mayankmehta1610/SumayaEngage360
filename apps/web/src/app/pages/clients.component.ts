@@ -1,12 +1,15 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, ExportBarComponent],
   template: `
-    <div class="toolbar"><h1>Hiring clients</h1></div>
+    <div class="toolbar"><h1>Hiring clients</h1>
+      <export-bar [rows]="clients" [cols]="exportCols" name="hiring-clients" />
+    </div>
     <div class="card">
       <h2>Add hiring client</h2>
       <div class="row">
@@ -38,6 +41,12 @@ export class ClientsComponent implements OnInit {
   clients: any[] = [];
   error = '';
   f: any = {};
+  exportCols = [
+    { key: 'name', label: 'Name' },
+    { key: 'slug', label: 'Careers slug' },
+    { key: 'isInternal', label: 'Internal' },
+    { key: 'isActive', label: 'Active' },
+  ];
 
   async ngOnInit() {
     await this.load();

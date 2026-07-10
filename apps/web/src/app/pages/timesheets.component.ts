@@ -2,12 +2,15 @@ import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, ExportBarComponent],
   template: `
-    <div class="toolbar"><h1>Timesheets</h1></div>
+    <div class="toolbar"><h1>Timesheets</h1>
+      <export-bar [rows]="mine" [cols]="exportCols" name="my-timesheets" />
+    </div>
     @if (error) { <div class="error">{{ error }}</div> }
 
     <div class="card">
@@ -65,6 +68,14 @@ export class TimesheetsComponent implements OnInit {
   pending: any[] = [];
   mine: any[] = [];
   error = '';
+  exportCols = [
+    { key: 'type', label: 'Type' },
+    { key: 'project.name', label: 'Project' },
+    { key: 'periodStart', label: 'From' },
+    { key: 'periodEnd', label: 'To' },
+    { key: 'status', label: 'Status' },
+    { key: 'actionNote', label: 'Manager note' },
+  ];
   f: any = { type: 'INTERNAL' };
   entry: any = { hours: 8 };
 

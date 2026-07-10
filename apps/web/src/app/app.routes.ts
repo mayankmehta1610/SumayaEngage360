@@ -2,15 +2,18 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
 
 export const routes: Routes = [
+  // Public marketing/landing page
+  { path: '', pathMatch: 'full', loadComponent: () => import('./pages/landing.component').then((m) => m.LandingComponent) },
   { path: 'login', loadComponent: () => import('./pages/login.component').then((m) => m.LoginComponent) },
   // Public, client-branded careers pages
   { path: 'careers/:slug', loadComponent: () => import('./pages/careers.component').then((m) => m.CareersComponent) },
+  // Secure onboarding portal for new joiners (token from offer-acceptance email)
+  { path: 'onboarding/:token', loadComponent: () => import('./pages/onboarding-portal.component').then((m) => m.OnboardingPortalComponent) },
   {
     path: '',
     canActivate: [authGuard],
     loadComponent: () => import('./pages/shell.component').then((m) => m.ShellComponent),
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard', loadComponent: () => import('./pages/dashboard.component').then((m) => m.DashboardComponent) },
       { path: 'clients', loadComponent: () => import('./pages/clients.component').then((m) => m.ClientsComponent) },
       { path: 'jobs', loadComponent: () => import('./pages/jobs.component').then((m) => m.JobsComponent) },

@@ -1,12 +1,15 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, ExportBarComponent],
   template: `
-    <div class="toolbar"><h1>Jobs</h1></div>
+    <div class="toolbar"><h1>Jobs</h1>
+      <export-bar [rows]="jobs" [cols]="exportCols" name="jobs" />
+    </div>
     <div class="card">
       <h2>Create job</h2>
       <div class="row">
@@ -57,6 +60,14 @@ export class JobsComponent implements OnInit {
   jobs: any[] = [];
   clients: any[] = [];
   error = '';
+  exportCols = [
+    { key: 'title', label: 'Title' },
+    { key: 'hiringClient.name', label: 'Client' },
+    { key: 'location', label: 'Location' },
+    { key: 'vacancies', label: 'Vacancies' },
+    { key: '_count.applications', label: 'Applications' },
+    { key: 'status', label: 'Status' },
+  ];
   f: any = { vacancies: 1 };
   skills = '';
   rounds = '';

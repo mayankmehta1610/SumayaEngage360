@@ -1,12 +1,15 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, ExportBarComponent],
   template: `
-    <div class="toolbar"><h1>Onboarding</h1></div>
+    <div class="toolbar"><h1>Onboarding</h1>
+      <export-bar [rows]="cases" [cols]="exportCols" name="onboarding-cases" />
+    </div>
     @if (error) { <div class="error">{{ error }}</div> }
 
     <div class="card">
@@ -61,6 +64,13 @@ export class OnboardingComponent implements OnInit {
   requirements: any[] = [];
   error = '';
   req: any = { country: 'IN' };
+  exportCols = [
+    { key: 'employee.employeeCode', label: 'Code' },
+    { key: 'employee.user.firstName', label: 'First name' },
+    { key: 'employee.user.lastName', label: 'Last name' },
+    { key: 'employee.user.email', label: 'Email' },
+    { key: 'status', label: 'Status' },
+  ];
 
   async ngOnInit() { await this.load(); }
   async load() {
