@@ -1,0 +1,62 @@
+import { Component, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ApiService, errMsg } from '../core/api.service';
+
+@Component({
+  standalone: true,
+  imports: [FormsModule],
+  template: `
+    <div class="toolbar"><h1>Hiring clients</h1></div>
+    <div class="card">
+      <h2>Add hiring client</h2>
+      <div class="row">
+        <div><label>Name</label><input [(ngModel)]="f.name" /></div>
+        <div><label>Careers URL slug</label><input [(ngModel)]="f.slug" placeholder="client-x" /></div>
+        <div><label>Description</label><input [(ngModel)]="f.description" /></div>
+      </div>
+      <label><input type="checkbox" [(ngModel)]="f.isInternal" style="width:auto;margin-right:.4rem" />Internal (our own openings)</label>
+      @if (error) { <div class="error">{{ error }}</div> }
+      <div style="margin-top:.75rem"><button (click)="create()">Add client</button></div>
+    </div>
+    <div class="card">
+      <table>
+        <tr><th>Name</th><th>Careers page</th><th>Type</th><th>Status</th></tr>
+        @for (c of clients; track c.id) {
+          <tr>
+            <td>{{ c.name }}</td>
+            <td><a [href]="'/careers/' + c.slug" target="_blank">/careers/{{ c.slug }}</a></td>
+            <td>{{ c.isInternal ? 'internal' : 'client' }}</td>
+            <td><span class="badge" [class.ok]="c.isActive">{{ c.isActive ? 'active' : 'inactive' }}</span></td>
+          </tr>
+        }
+      </table>
+    </div>
+  `,
+})
+export class ClientsComponent implements OnInit {
+  private api = inject(ApiService);
+  clients: any[] = [];
+  error = '';
+  f: any = {};
+
+  async ngOnInit() {
+    await this.load();
+  }
+  async load() {
+    try {
+      this.clients = await this.api.get<any[]>('/hiring-clients');
+    } catch (e) {
+      this.error = errMsg(e);
+    }
+  }
+  async create() {
+    this.error = '';
+    try {
+      await this.api.post('/hiring-clients', this.f);
+      this.f = {};
+      await this.load();
+    } catch (e) {
+      this.error = errMsg(e);
+    }
+  }
+}
