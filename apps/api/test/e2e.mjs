@@ -286,6 +286,50 @@ const main = async () => {
   const finalEmp = await req('GET', `/employees/${hireEmp.id}`, { ...t });
   check('employee status EXITED', finalEmp.data.status === 'EXITED');
 
+  // ─── Matching engine & offline parser ─────────────────────────────
+  console.log('\n[12] Talent-pool matching & auto-shortlisting');
+  const job2 = await req('POST', '/jobs', { ...t, body: {
+    hiringClientId: client.data.id, title: 'NestJS Developer',
+    description: 'Backend work with NestJS and PostgreSQL', vacancies: 1,
+    location: 'Remote', skills: ['NestJS', 'PostgreSQL'] } });
+  await req('POST', `/jobs/${job2.data.id}/publish`, { ...t });
+
+  const matchRun = await req('POST', `/jobs/${job2.data.id}/match`, { ...t, body: {
+    useAi: false, threshold: 30 } });
+  check('rule-based match run', matchRun.data?.candidatesScored >= 1, JSON.stringify(matchRun.data));
+  const matches = await req('GET', `/jobs/${job2.data.id}/matches`, { ...t });
+  const m = matches.data?.find((x) => x.candidate.email === `cand@${TENANT}.test`);
+  check('past candidate scored against new JD', !!m && m.ruleScore > 0, JSON.stringify(m ?? {}));
+  check('match breakdown recorded', !!m?.breakdown?.rule?.matchedSkills?.length);
+  check('candidate auto-shortlisted', m?.shortlisted === true);
+  const poolApps = await req('GET', `/applications?jobId=${job2.data.id}`, { ...t });
+  const poolApp = poolApps.data?.find((a) => a.candidate.email === `cand@${TENANT}.test`);
+  check('talent-pool application auto-created', poolApp?.source === 'TALENT_POOL' && poolApp?.status === 'SCREENING',
+    JSON.stringify({ source: poolApp?.source, status: poolApp?.status }));
+
+  console.log('\n[13] Offline (scheduled) resume parser');
+  const cvText = [
+    'Priya Sharma', 'priya@example.com  +91 98765 43210',
+    'Senior developer with 6 years experience in NestJS, PostgreSQL and SQL.',
+  ].join('\n');
+  const cvForm = new FormData();
+  cvForm.append('file', new Blob([cvText], { type: 'text/plain' }), 'priya-cv.txt');
+  const cvUp = await req('POST', '/files', { tenant: TENANT, form: cvForm });
+  const apply2 = await req('POST', `/public/careers/jobs/${job2.data.id}/apply`, {
+    tenant: TENANT, body: {
+      email: `priya@${TENANT}.test`, firstName: 'Priya', lastName: 'Sharma',
+      skills: ['NestJS'], resumeFileId: cvUp.data.id } });
+  check('second candidate applied with CV', apply2.status === 201);
+
+  const batch = await req('POST', '/matching/parse-pending', { ...t });
+  check('offline parser batch ran', batch.data?.parsed >= 1, JSON.stringify(batch.data));
+  const app2 = await req('GET', `/applications/${apply2.data.id}`, { ...t });
+  const parsedCv = app2.data?.candidate?.parsedResume;
+  check('offline parser stored structured profile', !!parsedCv?.method,
+    JSON.stringify(parsedCv ?? {}).slice(0, 120));
+  check('offline parser extracted experience/skills',
+    (parsedCv?.skills ?? []).length >= 1 || parsedCv?.totalYearsExperience != null);
+
   console.log(`\n==== ${passed} passed, ${failed} failed ====`);
   process.exit(failed ? 1 : 0);
 };

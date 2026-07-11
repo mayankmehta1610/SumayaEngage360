@@ -123,9 +123,33 @@ model Job {
 
   skills       JobSkill[]
   applications Application[]
+  matches      MatchScore[]
 
   @@index([tenantId, status])
   @@map("jobs")
+}
+
+// Candidate-vs-job matching (talent pool + auto-shortlisting).
+// ruleScore: deterministic skills/experience/title match.
+// aiScore:   LLM assessment of the full profile against the JD.
+model MatchScore {
+  id          String    @id @default(uuid())
+  tenantId    String
+  jobId       String
+  candidateId String
+  job         Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  ruleScore   Int?
+  aiScore     Int?
+  finalScore  Int       @default(0)
+  breakdown   Json? // matched skills, gaps, reasoning
+  shortlisted Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([jobId, candidateId])
+  @@index([tenantId, jobId, finalScore])
+  @@map("match_scores")
 }
 
 model Skill {
@@ -170,6 +194,7 @@ model Candidate {
   skills       CandidateSkill[]
   experiences  CandidateExperience[]
   applications Application[]
+  matches      MatchScore[]
 
   @@unique([tenantId, email])
   @@map("candidates")

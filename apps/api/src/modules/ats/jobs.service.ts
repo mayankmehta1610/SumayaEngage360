@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { JobStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MatchingService } from '../matching/matching.service';
 import { CreateJobDto, UpdateJobDto } from './ats.dto';
 
 @Injectable()
 export class JobsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly matching: MatchingService,
+  ) {}
 
   async create(tenantId: string, dto: CreateJobDto) {
     const { skills = [], interviewPlan, ...data } = dto;
@@ -63,9 +67,15 @@ export class JobsService {
 
   async publish(tenantId: string, id: string) {
     await this.findOne(tenantId, id);
-    return this.prisma.job.update({
+    const job = await this.prisma.job.update({
       where: { id },
       data: { status: JobStatus.PUBLISHED },
     });
+    // New JD published: score the existing talent pool against it in the
+    // background so recruiters immediately see matching past candidates.
+    this.matching
+      .matchJob(tenantId, id, { useAi: false, autoShortlist: false })
+      .catch(() => undefined);
+    return job;
   }
 }

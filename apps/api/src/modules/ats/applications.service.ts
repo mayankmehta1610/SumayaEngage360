@@ -6,6 +6,7 @@ import {
 import { ApplicationStatus, JobStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ResumeParserService } from '../integrations/resume-parser.service';
+import { MatchingService } from '../matching/matching.service';
 import { ApplyDto, UpdateApplicationStatusDto } from './ats.dto';
 
 @Injectable()
@@ -13,6 +14,7 @@ export class ApplicationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly resumeParser: ResumeParserService,
+    private readonly matching: MatchingService,
   ) {}
 
   // Public apply flow: creates/updates the candidate profile, tags skills
@@ -92,10 +94,11 @@ export class ApplicationsService {
       });
     });
 
-    // LLM resume parsing runs in the background — the application is already
-    // accepted; the structured profile enriches the candidate when it lands.
+    // ONLINE pipeline: parse the resume immediately in the background and
+    // refresh match scores against every open job. (The OFFLINE pipeline —
+    // ParserCronService — sweeps anything this misses on a schedule.)
+    const candidateEmail = dto.email.toLowerCase();
     if (dto.resumeFileId && this.resumeParser.enabled) {
-      const candidateEmail = dto.email.toLowerCase();
       this.resumeParser
         .parse(dto.resumeFileId)
         .then(async (parsed) => {
@@ -107,6 +110,9 @@ export class ApplicationsService {
         })
         .catch(() => undefined);
     }
+    this.matching
+      .matchCandidateToOpenJobs(tenantId, application.candidateId)
+      .catch(() => undefined);
 
     return application;
   }

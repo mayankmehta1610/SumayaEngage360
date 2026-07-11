@@ -44,15 +44,51 @@ import { ExportBarComponent } from '../core/export-bar.component';
             <td>{{ j.vacancies }}</td>
             <td>{{ j._count?.applications ?? 0 }}</td>
             <td><span class="badge" [class.ok]="j.status === 'PUBLISHED'">{{ j.status }}</span></td>
-            <td>
+            <td style="white-space:nowrap">
               @if (j.status === 'DRAFT') {
                 <button (click)="publish(j.id)">Publish</button>
               }
+              <button class="secondary" (click)="toggleMatches(j)">
+                {{ matchesFor === j.id ? 'Hide matches' : 'Matches' }}
+              </button>
             </td>
           </tr>
         }
       </table>
     </div>
+
+    @if (matchesFor) {
+      <div class="card">
+        <div class="toolbar">
+          <h2 style="margin:0">Talent-pool matches</h2>
+          <span style="display:inline-flex;gap:.4rem">
+            <button class="secondary" (click)="runMatch(false)" [disabled]="matching">Run rule-based match</button>
+            <button class="secondary" (click)="runMatch(true)" [disabled]="matching">Run AI match</button>
+            <export-bar [rows]="matches" [cols]="matchCols" name="job-matches" />
+          </span>
+        </div>
+        @if (matching) { <p class="muted">Scoring candidates…</p> }
+        <table>
+          <tr><th>Candidate</th><th>Email</th><th>Rule %</th><th>AI %</th><th>Final %</th><th>Matched skills</th><th>Status</th></tr>
+          @for (m of matches; track m.id) {
+            <tr>
+              <td>{{ m.candidate.firstName }} {{ m.candidate.lastName }}</td>
+              <td>{{ m.candidate.email }}</td>
+              <td>{{ m.ruleScore ?? '—' }}</td>
+              <td>{{ m.aiScore ?? '—' }}</td>
+              <td><strong>{{ m.finalScore }}</strong></td>
+              <td class="muted">{{ (m.breakdown?.rule?.matchedSkills ?? []).join(', ') }}</td>
+              <td>
+                @if (m.shortlisted) { <span class="badge ok">shortlisted</span> }
+                @else { <span class="badge">scored</span> }
+              </td>
+            </tr>
+          } @empty { <tr><td colspan="7" class="muted">No scores yet — run a match.</td></tr> }
+        </table>
+        <p class="muted">Shortlisting moves matching applicants to SCREENING and pulls past candidates
+          from the talent pool into this job automatically (source: TALENT_POOL).</p>
+      </div>
+    }
   `,
 })
 export class JobsComponent implements OnInit {
@@ -71,6 +107,18 @@ export class JobsComponent implements OnInit {
   f: any = { vacancies: 1 };
   skills = '';
   rounds = '';
+  matchesFor: string | null = null;
+  matches: any[] = [];
+  matching = false;
+  matchCols = [
+    { key: 'candidate.firstName', label: 'First name' },
+    { key: 'candidate.lastName', label: 'Last name' },
+    { key: 'candidate.email', label: 'Email' },
+    { key: 'ruleScore', label: 'Rule %' },
+    { key: 'aiScore', label: 'AI %' },
+    { key: 'finalScore', label: 'Final %' },
+    { key: 'shortlisted', label: 'Shortlisted' },
+  ];
 
   async ngOnInit() {
     await this.load();
@@ -112,5 +160,25 @@ export class JobsComponent implements OnInit {
     } catch (e) {
       this.error = errMsg(e);
     }
+  }
+
+  async toggleMatches(j: any) {
+    if (this.matchesFor === j.id) { this.matchesFor = null; return; }
+    this.matchesFor = j.id;
+    await this.loadMatches();
+  }
+  async loadMatches() {
+    if (!this.matchesFor) return;
+    try { this.matches = await this.api.get<any[]>(`/jobs/${this.matchesFor}/matches`); }
+    catch (e) { this.error = errMsg(e); }
+  }
+  async runMatch(useAi: boolean) {
+    if (!this.matchesFor) return;
+    this.matching = true;
+    try {
+      await this.api.post(`/jobs/${this.matchesFor}/match`, { useAi });
+      await this.loadMatches();
+    } catch (e) { this.error = errMsg(e); }
+    finally { this.matching = false; }
   }
 }

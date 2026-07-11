@@ -68,6 +68,55 @@ export class ResumeParserService {
     return !!this.client;
   }
 
+  // Non-AI parser: extracts raw text (PDF or plain text) and derives the
+  // profile deterministically — email/phone patterns, known-skill matching,
+  // "N years" experience detection. Used by the offline batch when no LLM is
+  // configured, and available as an explicit non-AI mode.
+  async parseNaive(
+    resumeFileId: string,
+    knownSkills: string[],
+  ): Promise<Record<string, unknown> | null> {
+    try {
+      const { buffer, meta } = await this.files.getBuffer(resumeFileId);
+      let text = '';
+      if (meta.contentType === 'application/pdf') {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (
+          b: Buffer,
+        ) => Promise<{ text: string }>;
+        text = (await pdfParse(buffer)).text;
+      } else {
+        text = buffer.toString('utf8');
+      }
+      if (!text.trim()) return null;
+      const lower = text.toLowerCase();
+
+      const email = text.match(/[\w.+-]+@[\w-]+\.[\w.]+/)?.[0] ?? null;
+      const phone = text.match(/(?:\+?\d[\d\s-]{8,14}\d)/)?.[0]?.trim() ?? null;
+      const years = text.match(/(\d{1,2})\s*\+?\s*(?:years|yrs)/i);
+      const skills = knownSkills.filter((s) =>
+        lower.includes(s.toLowerCase()),
+      );
+      const firstLine =
+        text.split('\n').map((l) => l.trim()).find((l) => l.length > 2) ?? '';
+      const nameParts = firstLine.split(/\s+/).slice(0, 2);
+
+      return {
+        method: 'OFFLINE_RULE',
+        firstName: nameParts[0] ?? null,
+        lastName: nameParts[1] ?? null,
+        email,
+        phone,
+        totalYearsExperience: years ? Number(years[1]) : null,
+        skills,
+        summary: text.slice(0, 400),
+      };
+    } catch (e) {
+      this.logger.error(`Naive resume parse failed: ${(e as Error).message}`);
+      return null;
+    }
+  }
+
   // Returns the structured profile, or null when parsing isn't possible.
   async parse(resumeFileId: string): Promise<Record<string, unknown> | null> {
     if (!this.client) return null;
@@ -112,7 +161,11 @@ export class ResumeParserService {
         return null;
       }
       const text = response.content.find((b) => b.type === 'text');
-      return text ? (JSON.parse((text as any).text) as Record<string, unknown>) : null;
+      if (!text) return null;
+      return {
+        method: 'AI',
+        ...(JSON.parse((text as any).text) as Record<string, unknown>),
+      };
     } catch (e) {
       this.logger.error(`Resume parse failed: ${(e as Error).message}`);
       return null;
