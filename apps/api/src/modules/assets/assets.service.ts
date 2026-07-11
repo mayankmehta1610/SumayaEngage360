@@ -41,6 +41,11 @@ export class AssetsService {
       include: { assignments: { where: { returnedAt: null } } },
     });
     if (!asset) throw new NotFoundException('Asset not found');
+    const employee = await this.prisma.employee.findFirst({
+      where: { id: employeeId, tenantId },
+      select: { id: true },
+    });
+    if (!employee) throw new NotFoundException('Employee not found');
     if (asset.assignments.length > 0) {
       throw new BadRequestException('Asset is already assigned');
     }

@@ -5,6 +5,7 @@ import { ApiService, errMsg } from '../core/api.service';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { environment } from '../../environments/environment';
+import { AuthService } from '../core/auth.service';
 
 // Pipeline view: status changes, interview rounds (recording + mandatory
 // screenshot before pass/fail), and offer creation/sending.
@@ -40,6 +41,7 @@ import { environment } from '../../environments/environment';
                   [class.err]="a.status === 'REJECTED'">{{ a.status }}</span>
           </div>
         </div>
+        @if (isHr) {
         <div class="row" style="align-items:flex-end">
           <div>
             <label>Move to status</label>
@@ -49,6 +51,7 @@ import { environment } from '../../environments/environment';
           </div>
           <div style="flex:0"><button class="secondary" (click)="setStatus(a)">Update</button></div>
         </div>
+        }
 
         <h2>Interview rounds</h2>
         <table>
@@ -91,16 +94,26 @@ import { environment } from '../../environments/environment';
             </div>
           </div>
         }
+        @if (isHr) {
         <div class="row" style="margin-top: .75rem; align-items:flex-end">
           <div><label>Next round name</label><input [(ngModel)]="a._roundName" placeholder="Technical" /></div>
           <div><label>Interview date/time</label><input type="datetime-local" [(ngModel)]="a._roundAt" /></div>
           <div><label>Mode</label>
             <select [(ngModel)]="a._roundMode"><option>TEAMS</option><option>ZOOM</option><option>MEET</option><option>IN_PERSON</option></select>
           </div>
+          <div><label>Interviewer</label>
+            <select [(ngModel)]="a._interviewerId">
+              <option [ngValue]="undefined">choose…</option>
+              @for (i of interviewers; track i.id) {
+                <option [ngValue]="i.id">{{ i.firstName }} {{ i.lastName }}</option>
+              }
+            </select>
+          </div>
           <div style="flex:0"><button class="secondary" (click)="schedule(a)">Schedule round</button></div>
         </div>
+        }
 
-        @if (!a.offer && a.status === 'SELECTED') {
+        @if (isHr && !a.offer && a.status === 'SELECTED') {
           <h2>Create offer</h2>
           <div class="row">
             <div><label>Designation</label><input [(ngModel)]="a._designation" /></div>
@@ -115,7 +128,7 @@ import { environment } from '../../environments/environment';
           <p>
             {{ a.offer.designation }} · CTC {{ a.offer.annualCtc }} · joins {{ a.offer.joiningDate | date }}
             <span class="badge" [class.ok]="a.offer.status==='ACCEPTED'">{{ a.offer.status }}</span>
-            @if (a.offer.status === 'DRAFT') {
+            @if (isHr && a.offer.status === 'DRAFT') {
               <button class="secondary" style="margin-left:.5rem" (click)="sendOffer(a)">Send offer</button>
             }
           </p>
@@ -130,6 +143,7 @@ import { environment } from '../../environments/environment';
 })
 export class ApplicationsComponent implements OnInit, OnChanges {
   private api = inject(ApiService);
+  private auth = inject(AuthService);
   @Input() status?: string;
   applications: any[] = [];
   error = '';
@@ -145,6 +159,9 @@ export class ApplicationsComponent implements OnInit, OnChanges {
   resultRound: any = null;
   res: any = { result: 'PASSED' };
   screenshotFile: File | null = null;
+  interviewers: any[] = [];
+
+  get isHr() { return this.auth.hasRole('TENANT_ADMIN', 'HR'); }
 
   async ngOnInit() { await this.load(); }
   ngOnChanges() { this.load(); }
@@ -157,6 +174,9 @@ export class ApplicationsComponent implements OnInit, OnChanges {
       for (const a of this.applications) {
         a._status = a.status;
         a._roundMode = 'TEAMS';
+      }
+      if (this.isHr) {
+        this.interviewers = await this.api.get<any[]>('/interviewers');
       }
     } catch (e) { this.error = errMsg(e); }
   }
@@ -180,6 +200,7 @@ export class ApplicationsComponent implements OnInit, OnChanges {
         name: a._roundName || `Round ${level}`,
         scheduledAt: a._roundAt ? new Date(a._roundAt).toISOString() : undefined,
         mode: a._roundMode,
+        interviewerId: a._interviewerId,
       });
       await this.load();
     } catch (e) { this.error = errMsg(e); }

@@ -14,7 +14,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
       description="Client accounts and careers page configuration."
       icon="briefcase"
       [showReports]="false"
-      rolesHint="TENANT_ADMIN, HR, INTERVIEWER"
+      rolesHint="TENANT_ADMIN, HR"
       [breadcrumbs]="[{ label: 'Recruitment' }, { label: 'Hiring clients' }]"
     >
       <div actions><export-bar [rows]="clients" [cols]="exportCols" name="hiring-clients" /></div>

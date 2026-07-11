@@ -57,6 +57,7 @@ export class FilesService {
         }),
       );
     } else {
+      mkdirSync(this.dir, { recursive: true });
       writeFileSync(join(this.dir, storageKey), file.buffer);
     }
     return this.prisma.fileObject.create({
@@ -71,15 +72,17 @@ export class FilesService {
     });
   }
 
-  async getMeta(id: string) {
-    const f = await this.prisma.fileObject.findUnique({ where: { id } });
+  async getMeta(id: string, tenantId?: string) {
+    const f = await this.prisma.fileObject.findFirst({
+      where: { id, ...(tenantId ? { tenantId } : {}) },
+    });
     if (!f) throw new NotFoundException('File not found');
     return f;
   }
 
   // Readable stream + metadata, regardless of driver.
-  async getStream(id: string): Promise<{ stream: Readable; meta: any }> {
-    const meta = await this.getMeta(id);
+  async getStream(id: string, tenantId?: string): Promise<{ stream: Readable; meta: any }> {
+    const meta = await this.getMeta(id, tenantId);
     if (this.s3) {
       const res = await this.s3.send(
         new GetObjectCommand({ Bucket: this.bucket, Key: meta.storageKey }),
@@ -90,8 +93,8 @@ export class FilesService {
   }
 
   // Full contents in memory — for parsing (resumes) and letter templating.
-  async getBuffer(id: string): Promise<{ buffer: Buffer; meta: any }> {
-    const { stream, meta } = await this.getStream(id);
+  async getBuffer(id: string, tenantId?: string): Promise<{ buffer: Buffer; meta: any }> {
+    const { stream, meta } = await this.getStream(id, tenantId);
     const chunks: Buffer[] = [];
     for await (const chunk of stream) {
       chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));

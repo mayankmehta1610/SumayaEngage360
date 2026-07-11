@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   standalone: true,
@@ -38,6 +39,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
       </table>
     </div>
 
+    @if (isAdmin) {
     <div class="card">
       <h2>Configure workflow</h2>
       <div class="row">
@@ -95,12 +97,14 @@ import { ExportBarComponent } from '../core/export-bar.component';
         }
       </table>
     </div>
+    }
   
     </e360-module-shell>
   `,
 })
 export class ApprovalsComponent implements OnInit {
   private api = inject(ApiService);
+  private auth = inject(AuthService);
   pending: any[] = [];
   workflows: any[] = [];
   error = '';
@@ -115,12 +119,16 @@ export class ApprovalsComponent implements OnInit {
   designations: any[] = [];
   users: any[] = [];
 
+  get isAdmin() { return this.auth.hasRole('TENANT_ADMIN', 'HR'); }
+
   async ngOnInit() { await this.load(); }
   async load() {
     try { this.pending = await this.api.get<any[]>('/approvals/pending'); } catch { this.pending = []; }
-    try { this.workflows = await this.api.get<any[]>('/approvals/workflows'); } catch { this.workflows = []; }
-    try { this.designations = await this.api.get<any[]>('/designations'); } catch {}
-    try { this.users = await this.api.get<any[]>('/users'); } catch {}
+    if (this.isAdmin) {
+      try { this.workflows = await this.api.get<any[]>('/approvals/workflows'); } catch { this.workflows = []; }
+      try { this.designations = await this.api.get<any[]>('/designations'); } catch {}
+      try { this.users = await this.api.get<any[]>('/users'); } catch {}
+    }
   }
   async act(id: string, action: string) {
     try { await this.api.post(`/approvals/${id}/act`, { action }); await this.load(); }

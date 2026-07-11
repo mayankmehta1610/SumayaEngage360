@@ -1,63 +1,224 @@
-import { expect, test } from '@playwright/test';
+import { APIRequestContext, expect, Page, test } from '@playwright/test';
 
-// Credentials come from env so nothing is hardcoded into the suite.
-const TENANT = process.env.E2E_TENANT ?? 'sumaya';
-const EMAIL = process.env.E2E_EMAIL ?? 'owner@sumaya.com';
-const PASSWORD = process.env.E2E_PASSWORD ?? 'Owner@12345';
+const API = process.env.API_URL ?? 'http://127.0.0.1:3000/api';
+const RUN = Date.now().toString(36);
+const TENANT_A = `ui-a-${RUN}`;
+const TENANT_B = `ui-b-${RUN}`;
+const PASSWORD = 'Flow@12345';
 
-test('landing page shows product pitch and Login button', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByText('SumayaEngage360').first()).toBeVisible();
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Hire, onboard and grow');
-  await expect(page.getByRole('link', { name: 'Login' }).first()).toBeVisible();
-});
+type ApiOptions = { token?: string; tenant?: string; data?: unknown };
 
-test('login button navigates to the sign-in form', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('link', { name: 'Login' }).first().click();
-  await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByText('Sign in to your workspace')).toBeVisible();
-});
+async function api(
+  request: APIRequestContext,
+  method: string,
+  path: string,
+  options: ApiOptions = {},
+) {
+  const response = await request.fetch(`${API}${path}`, {
+    method,
+    headers: {
+      ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
+      ...(options.tenant ? { 'x-tenant-id': options.tenant } : {}),
+    },
+    data: options.data,
+  });
+  const body = await response.json().catch(() => null);
+  return { status: response.status(), body };
+}
 
-test('tenant admin can log in and sees live dashboard data', async ({ page }) => {
+async function login(page: Page, tenant: string, email: string, landing = '/dashboard') {
   await page.goto('/login');
-  await page.getByPlaceholder('acme').fill(TENANT);
-  await page.locator('input[type="email"]').fill(EMAIL);
+  await page.getByPlaceholder('acme').fill(tenant);
+  await page.locator('input[type="email"]').fill(email);
   await page.locator('input[type="password"]').fill(PASSWORD);
   await page.getByRole('button', { name: /sign in/i }).click();
-  await expect(page).toHaveURL(/\/dashboard$/, { timeout: 90_000 }); // free-tier API cold start
-  // Counters are populated by API calls, not hardcoded
-  await expect(page.getByText('Open jobs')).toBeVisible();
-});
+  await expect(page).toHaveURL(new RegExp(`${landing.replace('/', '\\/')}$`));
+}
 
-test('employees table is API-backed and offers Excel/PDF export', async ({ page }) => {
-  await page.goto('/login');
-  await page.getByPlaceholder('acme').fill(TENANT);
-  await page.locator('input[type="email"]').fill(EMAIL);
-  await page.locator('input[type="password"]').fill(PASSWORD);
-  await page.getByRole('button', { name: /sign in/i }).click();
-  await page.waitForURL(/\/dashboard$/, { timeout: 90_000 });
-  await page.goto('/employees');
-  await expect(page.getByRole('button', { name: /Excel/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /PDF/ })).toBeVisible();
-});
+test.describe.serial('role-controlled two-tenant workflows', () => {
+  let ownerA = '';
+  let managerId = '';
 
-test('public careers page renders jobs from the API', async ({ page }) => {
-  await page.goto(`/careers/${TENANT}/sumaya-internal`);
-  // Header comes from the hiring-client record in the database
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Careers');
-});
+  test.beforeAll(async ({ request }) => {
+    await api(request, 'POST', '/auth/register', {
+      data: {
+        email: 'admin@engage360.com',
+        password: 'Admin@12345',
+        firstName: 'Platform',
+        lastName: 'Admin',
+      },
+    });
+    const platform = await api(request, 'POST', '/auth/login', {
+      data: { email: 'admin@engage360.com', password: 'Admin@12345' },
+    });
+    expect(platform.status).toBeLessThan(300);
+    const platformToken = platform.body.accessToken as string;
 
-test('reports page loads catalogue and can run a report', async ({ page }) => {
-  await page.goto('/login');
-  await page.getByPlaceholder('acme').fill(TENANT);
-  await page.locator('input[type="email"]').fill(EMAIL);
-  await page.locator('input[type="password"]').fill(PASSWORD);
-  await page.getByRole('button', { name: /sign in/i }).click();
-  await page.waitForURL(/\/dashboard$/, { timeout: 90_000 });
-  await page.goto('/reports');
-  await expect(page.getByRole('heading', { name: 'Reports & KPIs' })).toBeVisible();
-  await expect(page.getByText('RPT-001')).toBeVisible();
-  await page.getByRole('button', { name: /Run report/i }).click();
-  await expect(page.getByText(/Generated/)).toBeVisible({ timeout: 30_000 });
+    for (const [tenant, label] of [[TENANT_A, 'Alpha'], [TENANT_B, 'Beta']] as const) {
+      const created = await api(request, 'POST', '/tenants', {
+        token: platformToken,
+        data: {
+          name: `${label} UI ${RUN}`,
+          subdomain: tenant,
+          country: 'IN',
+          adminEmail: `owner@${tenant}.test`,
+          adminPassword: PASSWORD,
+          adminFirstName: label,
+          adminLastName: 'Owner',
+        },
+      });
+      expect(created.status).toBe(201);
+    }
+
+    const ownerLogin = await api(request, 'POST', '/auth/login', {
+      tenant: TENANT_A,
+      data: { email: `owner@${TENANT_A}.test`, password: PASSWORD },
+    });
+    ownerA = ownerLogin.body.accessToken;
+    const scoped = (data?: unknown): ApiOptions => ({ token: ownerA, tenant: TENANT_A, data });
+
+    const department = await api(request, 'POST', '/departments', scoped({ name: 'Engineering' }));
+    const manager = await api(request, 'POST', '/employees', scoped({
+      email: `manager@${TENANT_A}.test`, password: PASSWORD,
+      firstName: 'Maya', lastName: 'Manager', designation: 'Engineering Manager',
+      departmentId: department.body.id, joinDate: new Date().toISOString(),
+    }));
+    managerId = manager.body.id;
+    const employee = await api(request, 'POST', '/employees', scoped({
+      email: `employee@${TENANT_A}.test`, password: PASSWORD,
+      firstName: 'Eli', lastName: 'Employee', designation: 'Engineer',
+      departmentId: department.body.id, managerId, joinDate: new Date().toISOString(),
+    }));
+
+    const users = await api(request, 'GET', '/users', scoped());
+    const managerUser = users.body.find((u: any) => u.email === `manager@${TENANT_A}.test`);
+    await api(request, 'PATCH', `/users/${managerUser.id}/access`, scoped({ roles: ['EMPLOYEE', 'MANAGER'] }));
+    const interviewer = await api(request, 'POST', '/users', scoped({
+      email: `interviewer@${TENANT_A}.test`, password: PASSWORD,
+      firstName: 'Ivy', lastName: 'Interviewer', roles: ['INTERVIEWER'],
+    }));
+    await api(request, 'POST', '/users', scoped({
+      email: `vendor@${TENANT_A}.test`, password: PASSWORD,
+      firstName: 'Vera', lastName: 'Vendor', roles: ['BGC_VENDOR'],
+    }));
+
+    const client = await api(request, 'POST', '/hiring-clients', scoped({
+      name: 'Alpha Careers', slug: `alpha-${RUN}`, isInternal: true,
+    }));
+    const job = await api(request, 'POST', '/jobs', scoped({
+      hiringClientId: client.body.id, title: `UI Engineer ${RUN}`,
+      description: 'Role-flow browser test', vacancies: 1, location: 'Remote',
+      skills: ['Angular'], interviewPlan: [{ level: 1, name: 'Technical' }],
+    }));
+    await api(request, 'POST', `/jobs/${job.body.id}/publish`, scoped());
+    const application = await api(request, 'POST', `/public/careers/jobs/${job.body.id}/apply`, {
+      tenant: TENANT_A,
+      data: {
+        email: `candidate@${TENANT_A}.test`, firstName: 'Casey', lastName: 'Candidate',
+        skills: ['Angular'],
+      },
+    });
+    await api(request, 'POST', `/applications/${application.body.id}/interviews`, scoped({
+      level: 1, name: 'Technical', mode: 'TEAMS', interviewerId: interviewer.body.id,
+    }));
+
+    await api(request, 'POST', '/benefits/plans', scoped({
+      code: `MED-${RUN}`, name: 'Medical cover', category: 'HEALTH',
+    }));
+    await api(request, 'POST', '/assets', scoped({
+      assetTag: `LAP-${RUN}`, category: 'LAPTOP', model: 'ThinkPad',
+    }));
+    await api(request, 'POST', '/goals', scoped({
+      employeeId: employee.body.id, title: 'Ship role-safe workflow', target: '100%',
+    }));
+    const bgvVendor = await api(request, 'POST', '/bgc/vendors', scoped({
+      name: 'Verified Checks', email: `vendor@${TENANT_A}.test`,
+    }));
+    await api(request, 'POST', `/bgc/employees/${employee.body.id}/submit`, scoped({
+      vendorId: bgvVendor.body.id,
+    }));
+  });
+
+  test('tenant admin can administer roles, benefits, and assets', async ({ page }) => {
+    await login(page, TENANT_A, `owner@${TENANT_A}.test`);
+
+    await page.goto('/users');
+    await expect(page.getByText(`manager@${TENANT_A}.test`)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Save roles' }).first()).toBeVisible();
+
+    await page.goto('/benefits');
+    await expect(page.getByRole('button', { name: 'Add plan' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Enroll' }).first()).toBeVisible();
+
+    await page.goto('/assets');
+    await expect(page.getByRole('button', { name: 'Assign' }).first()).toBeVisible();
+  });
+
+  test('manager gets operational actions but not tenant administration', async ({ page }) => {
+    await login(page, TENANT_A, `manager@${TENANT_A}.test`);
+    await expect(page.getByRole('link', { name: 'Projects' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Hiring clients' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Jobs' })).toHaveCount(0);
+
+    await page.goto('/projects');
+    await expect(page.getByRole('heading', { name: 'Create project' })).toHaveCount(0);
+
+    await page.goto('/org');
+    await expect(page.getByText('Read only').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add' })).toHaveCount(0);
+
+    await page.goto('/goals');
+    await expect(page.getByRole('heading', { name: 'Assign goal' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Eli Employee' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add KPI' })).toHaveCount(0);
+  });
+
+  test('employee self-service hides all administration controls', async ({ page }) => {
+    await login(page, TENANT_A, `employee@${TENANT_A}.test`);
+
+    await page.goto('/benefits');
+    await expect(page.getByRole('button', { name: 'Add plan' })).toHaveCount(0);
+
+    await page.goto('/goals');
+    await expect(page.getByRole('button', { name: 'Add KPI' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Assign goal' })).toHaveCount(0);
+
+    await page.goto('/approvals');
+    await expect(page.getByRole('heading', { name: 'Configure workflow' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'My pending approvals' })).toBeVisible();
+  });
+
+  test('interviewer sees only assigned interview work', async ({ page }) => {
+    await login(page, TENANT_A, `interviewer@${TENANT_A}.test`);
+    await expect(page.getByRole('link', { name: 'Applications' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Talent pool' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Jobs' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Hiring clients' })).toHaveCount(0);
+
+    await page.goto('/applications');
+    await expect(page.getByText('Casey Candidate')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Record result' })).toBeVisible();
+    await expect(page.getByText('Move to status')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Schedule round' })).toHaveCount(0);
+
+    await page.goto('/jobs');
+    await expect(page).toHaveURL(/\/dashboard$/);
+  });
+
+  test('second tenant cannot see first tenant recruitment data', async ({ page }) => {
+    await login(page, TENANT_B, `owner@${TENANT_B}.test`);
+    await page.goto('/candidates');
+    await expect(page.getByText('Casey Candidate')).toHaveCount(0);
+    await expect(page.getByText(/No candidates yet/)).toBeVisible();
+  });
+
+  test('BGC vendor lands in the assigned case portal only', async ({ page }) => {
+    await login(page, TENANT_A, `vendor@${TENANT_A}.test`, '/bgc-vendor');
+    await expect(page.getByRole('heading', { name: 'BGV vendor portal' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Mark clear' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'BGV cases' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Employees' })).toHaveCount(0);
+    await page.goto('/employees');
+    await expect(page).toHaveURL(/\/bgc-vendor$/);
+  });
 });

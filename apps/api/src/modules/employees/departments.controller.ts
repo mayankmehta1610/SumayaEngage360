@@ -6,11 +6,12 @@ import { DepartmentsService } from './departments.service';
 import { CreateDepartmentDto, CreateDesignationDto } from './employees.dto';
 
 @Controller()
-@Roles(Role.TENANT_ADMIN, Role.HR)
+@Roles(Role.TENANT_ADMIN, Role.HR, Role.MANAGER)
 export class DepartmentsController {
   constructor(private readonly departments: DepartmentsService) {}
 
   @Post('departments')
+  @Roles(Role.TENANT_ADMIN, Role.HR)
   createDepartment(
     @TenantId() tenantId: string,
     @Body() dto: CreateDepartmentDto,
@@ -24,6 +25,7 @@ export class DepartmentsController {
   }
 
   @Post('departments/:id/head/:employeeId')
+  @Roles(Role.TENANT_ADMIN, Role.HR)
   setHead(
     @TenantId() tenantId: string,
     @Param('id') id: string,
@@ -33,6 +35,7 @@ export class DepartmentsController {
   }
 
   @Post('designations')
+  @Roles(Role.TENANT_ADMIN, Role.HR)
   createDesignation(
     @TenantId() tenantId: string,
     @Body() dto: CreateDesignationDto,

@@ -1,6 +1,8 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { Roles } from '../../common/auth/roles.decorator';
+import { CurrentUser } from '../../common/auth/current-user.decorator';
+import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { TenantId } from '../../common/tenant/tenant.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -11,9 +13,14 @@ export class CandidatesController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get()
-  list(@TenantId() tenantId: string) {
+  list(@TenantId() tenantId: string, @CurrentUser() user: JwtPayload) {
     return this.prisma.candidate.findMany({
-      where: { tenantId },
+      where: {
+        tenantId,
+        ...(this.interviewerScope(user)
+          ? { applications: { some: { interviews: { some: { interviewerId: user.sub } } } } }
+          : {}),
+      },
       include: {
         skills: { include: { skill: { select: { name: true } } } },
         _count: { select: { applications: true, matches: true } },
@@ -23,9 +30,19 @@ export class CandidatesController {
   }
 
   @Get(':id')
-  detail(@TenantId() tenantId: string, @Param('id') id: string) {
+  detail(
+    @TenantId() tenantId: string,
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
     return this.prisma.candidate.findFirst({
-      where: { id, tenantId },
+      where: {
+        id,
+        tenantId,
+        ...(this.interviewerScope(user)
+          ? { applications: { some: { interviews: { some: { interviewerId: user.sub } } } } }
+          : {}),
+      },
       include: {
         skills: { include: { skill: true } },
         experiences: true,
@@ -36,5 +53,11 @@ export class CandidatesController {
         },
       },
     });
+  }
+
+  private interviewerScope(user: JwtPayload) {
+    return user.roles.includes(Role.INTERVIEWER) &&
+      !user.roles.includes(Role.TENANT_ADMIN) &&
+      !user.roles.includes(Role.HR);
   }
 }

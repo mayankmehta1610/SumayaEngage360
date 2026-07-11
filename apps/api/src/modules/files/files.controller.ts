@@ -13,6 +13,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Request, Response } from 'express';
 import { Public } from '../../common/auth/public.decorator';
 import { FilesService } from './files.service';
+import { TenantId } from '../../common/tenant/tenant.decorator';
 
 const MAX_SIZE = 100 * 1024 * 1024; // recordings can be large
 
@@ -44,13 +45,17 @@ export class FilesController {
   }
 
   @Get(':id')
-  meta(@Param('id') id: string) {
-    return this.files.getMeta(id);
+  meta(@Param('id') id: string, @TenantId() tenantId: string) {
+    return this.files.getMeta(id, tenantId);
   }
 
   @Get(':id/download')
-  async download(@Param('id') id: string, @Res() res: Response) {
-    const { stream, meta } = await this.files.getStream(id);
+  async download(
+    @Param('id') id: string,
+    @TenantId() tenantId: string,
+    @Res() res: Response,
+  ) {
+    const { stream, meta } = await this.files.getStream(id, tenantId);
     res.setHeader('Content-Type', meta.contentType);
     res.setHeader(
       'Content-Disposition',

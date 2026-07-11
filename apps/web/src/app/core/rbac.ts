@@ -49,8 +49,8 @@ export const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/tenants', label: 'Tenants', roles: ['PLATFORM_ADMIN'], icon: 'building-2', group: 'platform' },
   { path: '/users', label: 'User accounts', roles: ['TENANT_ADMIN'], icon: 'users', group: 'platform' },
 
-  { path: '/clients', label: 'Hiring clients', roles: ['TENANT_ADMIN', 'HR', 'INTERVIEWER'], icon: 'briefcase', group: 'ats' },
-  { path: '/jobs', label: 'Jobs', roles: ['TENANT_ADMIN', 'HR', 'INTERVIEWER'], icon: 'file-text', group: 'ats' },
+  { path: '/clients', label: 'Hiring clients', roles: ['TENANT_ADMIN', 'HR'], icon: 'briefcase', group: 'ats' },
+  { path: '/jobs', label: 'Jobs', roles: ['TENANT_ADMIN', 'HR'], icon: 'file-text', group: 'ats' },
   { path: '/candidates', label: 'Talent pool', roles: ['TENANT_ADMIN', 'HR', 'INTERVIEWER'], icon: 'user-search', group: 'ats' },
   { path: '/applications', label: 'Applications', roles: ['TENANT_ADMIN', 'HR', 'INTERVIEWER'], icon: 'inbox', group: 'ats' },
 
@@ -124,4 +124,13 @@ export function canAccess(roles: string[], path: string): boolean {
   const required = rolesForPath(path);
   if (!required) return true;
   return required.some((r) => roles.includes(r));
+}
+
+export function homeForRoles(roles: string[]): string {
+  if (roles.includes('PLATFORM_ADMIN')) return '/tenants';
+  if (roles.some((r) => ['TENANT_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE', 'INTERVIEWER', 'DEPARTMENT_HEAD'].includes(r))) {
+    return '/dashboard';
+  }
+  if (roles.includes('BGC_VENDOR')) return '/bgc-vendor';
+  return '/dashboard';
 }

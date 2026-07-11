@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from './auth.service';
-import { canAccess } from './rbac';
+import { canAccess, homeForRoles } from './rbac';
 
 export const roleGuard: CanActivateFn = (_route, state) => {
   const auth = inject(AuthService);
@@ -10,5 +10,5 @@ export const roleGuard: CanActivateFn = (_route, state) => {
   if (!user) return router.parseUrl('/login');
   const path = state.url.split('?')[0];
   if (canAccess(user.roles, path)) return true;
-  return router.parseUrl('/dashboard');
+  return router.parseUrl(homeForRoles(user.roles));
 };

@@ -46,6 +46,12 @@ export class EmployeesController {
     return this.employees.directory(tenantId);
   }
 
+  @Get('team')
+  @Roles(Role.MANAGER)
+  async team(@TenantId() tenantId: string, @CurrentUser() user: JwtPayload) {
+    return this.employees.directReports(tenantId, user.sub);
+  }
+
   // Employee's own profile (BGC never included).
   @Get('me')
   async me(@TenantId() tenantId: string, @CurrentUser() user: JwtPayload) {

@@ -65,6 +65,21 @@ jobs:
           API_BASE: http://localhost:3000/api
         run: npm run test:e2e
 
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+
+      - name: Role and tenant UI tests
+        working-directory: apps/web
+        env:
+          WEB_URL: http://127.0.0.1:4200
+          API_URL: http://127.0.0.1:3000/api
+        run: npm run test:e2e
+
   web:
     runs-on: ubuntu-latest
     steps:

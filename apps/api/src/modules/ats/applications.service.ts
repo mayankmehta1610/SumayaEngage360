@@ -117,12 +117,20 @@ export class ApplicationsService {
     return application;
   }
 
-  findAll(tenantId: string, jobId?: string, status?: ApplicationStatus) {
+  findAll(
+    tenantId: string,
+    jobId?: string,
+    status?: ApplicationStatus,
+    interviewerId?: string,
+  ) {
     return this.prisma.application.findMany({
       where: {
         tenantId,
         ...(jobId ? { jobId } : {}),
         ...(status ? { status } : {}),
+        ...(interviewerId
+          ? { interviews: { some: { interviewerId } } }
+          : {}),
       },
       include: {
         candidate: {
@@ -136,9 +144,15 @@ export class ApplicationsService {
     });
   }
 
-  async findOne(tenantId: string, id: string) {
+  async findOne(tenantId: string, id: string, interviewerId?: string) {
     const app = await this.prisma.application.findFirst({
-      where: { id, tenantId },
+      where: {
+        id,
+        tenantId,
+        ...(interviewerId
+          ? { interviews: { some: { interviewerId } } }
+          : {}),
+      },
       include: {
         candidate: {
           include: {

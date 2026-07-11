@@ -29,6 +29,11 @@ export class BenefitsService {
   async enroll(tenantId: string, planId: string, employeeId: string) {
     const plan = await this.prisma.benefitPlan.findFirst({ where: { id: planId, tenantId } });
     if (!plan) throw new NotFoundException('Benefit plan not found');
+    const employee = await this.prisma.employee.findFirst({
+      where: { id: employeeId, tenantId },
+      select: { id: true },
+    });
+    if (!employee) throw new NotFoundException('Employee not found');
     return this.prisma.benefitEnrollment.upsert({
       where: { planId_employeeId: { planId, employeeId } },
       create: { tenantId, planId, employeeId },

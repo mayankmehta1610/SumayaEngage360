@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   standalone: true,
@@ -19,6 +20,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
     >
       <div actions><export-bar [rows]="projects" [cols]="exportCols" name="projects" /></div>
 @if (error) { <div class="e360-error">{{ error }}</div> }
+    @if (auth.hasRole('TENANT_ADMIN', 'HR')) {
     <div class="card">
       <h2>Create project</h2>
       <div class="row">
@@ -42,6 +44,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
       </div>
       <button (click)="create()">Create project</button>
     </div>
+    }
 
     @for (p of projects; track p.id) {
       <div class="card">
@@ -70,6 +73,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
 })
 export class ProjectsComponent implements OnInit {
   private api = inject(ApiService);
+  auth = inject(AuthService);
   projects: any[] = [];
   clients: any[] = [];
   employees: any[] = [];

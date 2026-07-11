@@ -74,6 +74,14 @@ const main = async () => {
     email: `hr@${TENANT}.test`, password: 'Hr@1234567',
     firstName: 'Heena', lastName: 'HR', roles: ['HR'] } });
   check('HR user created', hr.status === 201, JSON.stringify(hr.data));
+  const interviewer = await req('POST', '/users', { ...t, body: {
+    email: `interviewer@${TENANT}.test`, password: 'Interviewer@123',
+    firstName: 'Isha', lastName: 'Interviewer', roles: ['INTERVIEWER'] } });
+  check('interviewer user created', interviewer.status === 201, JSON.stringify(interviewer.data));
+  const vendorUser = await req('POST', '/users', { ...t, body: {
+    email: `vendor@${TENANT}.test`, password: 'Vendor@12345',
+    firstName: 'Vera', lastName: 'Vendor', roles: ['BGC_VENDOR'] } });
+  check('BGC vendor user created', vendorUser.status === 201, JSON.stringify(vendorUser.data));
   const dept = await req('POST', '/departments', { ...t, body: { name: 'IT' } });
   check('department created', dept.status === 201);
   const desig = await req('POST', '/designations', { ...t, body: { name: 'Engineer', level: 2 } });
@@ -84,6 +92,11 @@ const main = async () => {
     firstName: 'Mahesh', lastName: 'Manager', designation: 'Manager',
     departmentId: dept.data.id, joinDate: new Date().toISOString() } });
   check('manager employee created', mgrEmp.status === 201, JSON.stringify(mgrEmp.data));
+  const tenantUsers = await req('GET', '/users', { ...t });
+  const managerUser = tenantUsers.data.find((u) => u.email === `manager@${TENANT}.test`);
+  const managerAccess = await req('PATCH', `/users/${managerUser.id}/access`, { ...t, body: {
+    roles: ['EMPLOYEE', 'MANAGER', 'DEPARTMENT_HEAD'] } });
+  check('manager and department-head roles assigned', managerAccess.status === 200);
   await req('POST', `/departments/${dept.data.id}/head/${mgrEmp.data.id}`, { ...t });
 
   // ─── ATS ──────────────────────────────────────────────────────────
@@ -116,8 +129,26 @@ const main = async () => {
   console.log('\n[4] Interviews with mandatory screenshot');
   const appId = applyRes.data.id;
   const round = await req('POST', `/applications/${appId}/interviews`, { ...t, body: {
-    level: 1, name: 'Technical', mode: 'TEAMS' } });
+    level: 1, name: 'Technical', mode: 'TEAMS', interviewerId: interviewer.data.id } });
   check('interview scheduled', round.status === 201);
+
+  const interviewerLogin = await req('POST', '/auth/login', { tenant: TENANT, body: {
+    email: `interviewer@${TENANT}.test`, password: 'Interviewer@123' } });
+  const interviewerSession = { token: interviewerLogin.data.accessToken, tenant: TENANT };
+  const assignedApps = await req('GET', '/applications', interviewerSession);
+  check('interviewer sees assigned application', assignedApps.data?.length === 1);
+  const interviewerSchedule = await req('POST', `/applications/${appId}/interviews`, {
+    ...interviewerSession, body: { level: 2, name: 'Unauthorized scheduling' },
+  });
+  check('interviewer cannot schedule rounds', interviewerSchedule.status === 403);
+  const interviewerStatus = await req('PATCH', `/applications/${appId}/status`, {
+    ...interviewerSession, body: { status: 'SELECTED' },
+  });
+  check('interviewer cannot change application status', interviewerStatus.status === 403);
+  const assignedCandidates = await req('GET', '/candidates', interviewerSession);
+  check('interviewer talent pool is assignment scoped', assignedCandidates.data?.length === 1);
+  check('interviewer cannot access jobs', (await req('GET', '/jobs', interviewerSession)).status === 403);
+  check('interviewer cannot access clients', (await req('GET', '/hiring-clients', interviewerSession)).status === 403);
 
   const noShot = await req('PATCH', `/interviews/${round.data.id}/result`, { ...t, body: {
     result: 'PASSED', rating: 8 } });
@@ -187,6 +218,12 @@ const main = async () => {
   const hireEmp = employees.data.find((e) => e.user.email === `cand@${TENANT}.test`);
   const bgc = await req('POST', `/bgc/employees/${hireEmp.id}/submit`, { ...t, body: { vendorId: vendor.data.id } });
   check('BGC submitted to vendor', bgc.status === 201);
+  const vendorLogin = await req('POST', '/auth/login', { tenant: TENANT, body: {
+    email: `vendor@${TENANT}.test`, password: 'Vendor@12345' } });
+  const vendorSession = { token: vendorLogin.data.accessToken, tenant: TENANT };
+  const vendorCases = await req('GET', '/bgc/vendor/cases', vendorSession);
+  check('vendor sees assigned BGC case', vendorCases.data?.length === 1);
+  check('vendor denied employee directory', (await req('GET', '/employees', vendorSession)).status === 403);
   const me = await req('GET', '/employees/me', { ...hire });
   check('BGC hidden from employee', me.status === 200 && me.data.backgroundCheck === undefined);
 
@@ -218,6 +255,7 @@ const main = async () => {
   const mgrLogin = await req('POST', '/auth/login', { tenant: TENANT, body: {
     email: `manager@${TENANT}.test`, password: 'Manager@123' } });
   const mgr = { token: mgrLogin.data.accessToken, tenant: TENANT };
+  check('manager login carries configured role', jwtSub(mgr.token) != null && mgrLogin.data.user.roles.includes('MANAGER'));
   const pendingTs = await req('GET', '/timesheets/pending-approval', { ...mgr });
   check('manager sees submitted timesheet', pendingTs.data?.length === 1);
   const tsApprove = await req('POST', `/timesheets/${ts.data.id}/approve`, { ...mgr, body: { note: 'ok' } });
@@ -380,6 +418,28 @@ const main = async () => {
   const kpis2 = await req('GET', '/dashboard/kpis', { ...t2 });
   check('KPI aggregates are tenant-scoped (all zero for new tenant)',
     kpis2.data?.business?.applicationsTotal === 0 && kpis2.data?.business?.employeesTotal === 0);
+
+  const t2Plan = await req('POST', '/benefits/plans', { ...t2, body: {
+    code: `ISO-${RUN}`, name: 'Isolation plan', category: 'HEALTH' } });
+  const crossBenefit = await req('POST', `/benefits/plans/${t2Plan.data.id}/enroll`, {
+    ...t2, body: { employeeId: hireEmp.id },
+  });
+  check('cross-tenant benefit enrollment rejected', crossBenefit.status === 404);
+  const t2Asset = await req('POST', '/assets', { ...t2, body: {
+    assetTag: `ISO-${RUN}`, category: 'LAPTOP' } });
+  const crossAsset = await req('POST', `/assets/${t2Asset.data.id}/assign/${hireEmp.id}`, { ...t2 });
+  check('cross-tenant asset assignment rejected', crossAsset.status === 404);
+  const crossGoal = await req('POST', '/goals', { ...t2, body: {
+    employeeId: hireEmp.id, title: 'Leaked goal' } });
+  check('cross-tenant goal assignment rejected', crossGoal.status === 404);
+  const crossFile = await req('GET', `/files/${upload.data.id}`, { ...t2 });
+  check('cross-tenant file metadata rejected', crossFile.status === 404);
+  const t2Interviewer = await req('POST', '/users', { ...t2, body: {
+    email: `interviewer@${T2}.test`, password: 'Interviewer@123',
+    firstName: 'Other', lastName: 'Interviewer', roles: ['INTERVIEWER'] } });
+  const crossInterviewer = await req('POST', `/applications/${appId}/interviews`, { ...t, body: {
+    level: 2, name: 'Cross tenant interview', interviewerId: t2Interviewer.data.id } });
+  check('cross-tenant interviewer assignment rejected', crossInterviewer.status === 400);
 
   // ─── Reports catalogue & audit (sheets 05/08) ───────────────────
   console.log('\n[16] Reports catalogue, execution & audit log');
@@ -562,6 +622,17 @@ const main = async () => {
   check('RBAC matrix endpoint', rbacMatrix.status === 200 && Array.isArray(rbacMatrix.data));
   const slaBreaches = await req('GET', '/approvals/sla-breaches', t);
   check('SLA breaches endpoint', slaBreaches.status === 200 && Array.isArray(slaBreaches.data));
+  const hrLogin = await req('POST', '/auth/login', { tenant: TENANT, body: {
+    email: `hr@${TENANT}.test`, password: 'Hr@1234567' } });
+  const hrSession = { token: hrLogin.data.accessToken, tenant: TENANT };
+  check('HR can read users for workflow assignment', (await req('GET', '/users', hrSession)).status === 200);
+  check('HR cannot create privileged user accounts', (await req('POST', '/users', {
+    ...hrSession, body: { email: `blocked@${TENANT}.test`, password: 'Blocked@123', firstName: 'Blocked', lastName: 'User', roles: ['HR'] },
+  })).status === 403);
+  check('HR cannot access tenant provisioning', (await req('GET', '/tenants', hrSession)).status === 403);
+  check('manager can read organization structure', (await req('GET', '/departments', mgr)).status === 200);
+  check('manager cannot create departments', (await req('POST', '/departments', { ...mgr, body: { name: 'Blocked' } })).status === 403);
+  check('employee cannot list company-wide goals', (await req('GET', '/goals', hire)).status === 403);
 
   console.log(`\n==== ${passed} passed, ${failed} failed ====`);
   process.exit(failed ? 1 : 0);

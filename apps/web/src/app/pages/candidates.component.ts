@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { AuthService } from '../core/auth.service';
 
 // The talent pool: every candidate ever captured, their parse status,
 // application history and best job matches.
@@ -21,9 +22,11 @@ import { ExportBarComponent } from '../core/export-bar.component';
       [breadcrumbs]="[{ label: 'Recruitment' }, { label: 'Talent pool' }]"
     >
       <div actions class="e360-toolbar" style="margin:0;gap:.4rem">
-        <button class="secondary" (click)="parseNow()" [disabled]="busy">
-          {{ busy ? 'Parsing…' : '⚙ Run offline resume parser now' }}
-        </button>
+        @if (auth.hasRole('TENANT_ADMIN', 'HR')) {
+          <button class="secondary" (click)="parseNow()" [disabled]="busy">
+            {{ busy ? 'Parsing…' : 'Run offline resume parser now' }}
+          </button>
+        }
         <export-bar [rows]="candidates" [cols]="exportCols" name="candidates" />
       </div>
 @if (parseInfo) { <div class="card" style="border-color:#22c55e">{{ parseInfo }}</div> }
@@ -88,6 +91,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
 })
 export class CandidatesComponent implements OnInit {
   private api = inject(ApiService);
+  auth = inject(AuthService);
   candidates: any[] = [];
   detail: any = null;
   detailFor: string | null = null;

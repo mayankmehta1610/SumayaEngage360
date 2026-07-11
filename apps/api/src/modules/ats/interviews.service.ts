@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ApplicationStatus, InterviewResult } from '@prisma/client';
+import { ApplicationStatus, InterviewResult, Role } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RecordInterviewResultDto, ScheduleInterviewDto } from './ats.dto';
 
@@ -20,6 +20,20 @@ export class InterviewsService {
       where: { id: applicationId, tenantId },
     });
     if (!app) throw new NotFoundException('Application not found');
+    if (dto.interviewerId) {
+      const interviewer = await this.prisma.users.findFirst({
+        where: {
+          id: dto.interviewerId,
+          tenantId,
+          isActive: true,
+          roles: { has: Role.INTERVIEWER },
+        },
+        select: { id: true },
+      });
+      if (!interviewer) {
+        throw new BadRequestException('Interviewer is not active in this tenant');
+      }
+    }
 
     const round = await this.prisma.interviewRound.create({
       data: {
@@ -49,9 +63,10 @@ export class InterviewsService {
     tenantId: string,
     roundId: string,
     dto: RecordInterviewResultDto,
+    interviewerId?: string,
   ) {
     const round = await this.prisma.interviewRound.findFirst({
-      where: { id: roundId, tenantId },
+      where: { id: roundId, tenantId, ...(interviewerId ? { interviewerId } : {}) },
     });
     if (!round) throw new NotFoundException('Interview round not found');
 
@@ -79,9 +94,9 @@ export class InterviewsService {
     });
   }
 
-  listForApplication(tenantId: string, applicationId: string) {
+  listForApplication(tenantId: string, applicationId: string, interviewerId?: string) {
     return this.prisma.interviewRound.findMany({
-      where: { tenantId, applicationId },
+      where: { tenantId, applicationId, ...(interviewerId ? { interviewerId } : {}) },
       orderBy: { level: 'asc' },
     });
   }

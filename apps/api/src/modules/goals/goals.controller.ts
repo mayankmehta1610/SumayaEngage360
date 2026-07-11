@@ -50,7 +50,11 @@ export class GoalsController {
   }
 
   @Get()
-  list(@TenantId() t: string) {
+  @Roles(Role.TENANT_ADMIN, Role.HR, Role.MANAGER)
+  list(@TenantId() t: string, @CurrentUser() u: JwtPayload) {
+    if (u.roles.includes(Role.MANAGER) && !this.isHr(u)) {
+      return this.goals.managerGoals(t, u.sub);
+    }
     return this.goals.employeeGoals(t);
   }
 
@@ -62,12 +66,28 @@ export class GoalsController {
 
   @Post()
   @Roles(Role.TENANT_ADMIN, Role.HR, Role.MANAGER)
-  assign(@TenantId() t: string, @Body() dto: { employeeId: string; title: string; target?: string; dueDate?: string }) {
+  async assign(
+    @TenantId() t: string,
+    @CurrentUser() u: JwtPayload,
+    @Body() dto: { employeeId: string; title: string; target?: string; dueDate?: string },
+  ) {
+    if (u.roles.includes(Role.MANAGER) && !this.isHr(u)) {
+      await this.goals.assertManagerCanAssign(t, u.sub, dto.employeeId);
+    }
     return this.goals.assignGoal(t, dto);
   }
 
   @Patch(':id/progress')
-  updateProgress(@TenantId() t: string, @Param('id') id: string, @Body('progress') progress: number) {
-    return this.goals.updateProgress(t, id, progress);
+  updateProgress(
+    @TenantId() t: string,
+    @Param('id') id: string,
+    @Body('progress') progress: number,
+    @CurrentUser() u: JwtPayload,
+  ) {
+    return this.goals.updateProgress(t, id, progress, u.sub, this.isHr(u));
+  }
+
+  private isHr(user: JwtPayload) {
+    return user.roles.includes(Role.TENANT_ADMIN) || user.roles.includes(Role.HR);
   }
 }

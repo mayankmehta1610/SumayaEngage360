@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -36,7 +36,12 @@ export class GoalsService {
     });
   }
 
-  assignGoal(tenantId: string, dto: { employeeId: string; title: string; target?: string; dueDate?: string; cycleId?: string }) {
+  async assignGoal(tenantId: string, dto: { employeeId: string; title: string; target?: string; dueDate?: string; cycleId?: string }) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { id: dto.employeeId, tenantId },
+      select: { id: true },
+    });
+    if (!employee) throw new NotFoundException('Employee not found');
     return this.prisma.employeeGoal.create({
       data: {
         tenantId,
@@ -49,9 +54,50 @@ export class GoalsService {
     });
   }
 
-  updateProgress(tenantId: string, goalId: string, progress: number) {
-    return this.prisma.employeeGoal.updateMany({
+  async managerGoals(tenantId: string, userId: string) {
+    const manager = await this.prisma.employee.findFirst({
+      where: { tenantId, userId },
+      select: { id: true },
+    });
+    if (!manager) return [];
+    return this.prisma.employeeGoal.findMany({
+      where: { tenantId, employee: { managerId: manager.id } },
+      include: { employee: { select: { employeeCode: true, user: { select: { firstName: true, lastName: true } } } } },
+    });
+  }
+
+  async assertManagerCanAssign(tenantId: string, userId: string, employeeId: string) {
+    const target = await this.prisma.employee.findFirst({
+      where: { id: employeeId, tenantId },
+      select: { manager: { select: { userId: true } } },
+    });
+    if (!target) throw new NotFoundException('Employee not found');
+    if (target.manager?.userId !== userId) {
+      throw new ForbiddenException('Managers can assign goals only to direct reports');
+    }
+  }
+
+  async updateProgress(
+    tenantId: string,
+    goalId: string,
+    progress: number,
+    userId: string,
+    privileged: boolean,
+  ) {
+    const goal = await this.prisma.employeeGoal.findFirst({
       where: { id: goalId, tenantId },
+      select: { employee: { select: { userId: true, manager: { select: { userId: true } } } } },
+    });
+    if (!goal) throw new NotFoundException('Goal not found');
+    if (
+      !privileged &&
+      goal.employee.userId !== userId &&
+      goal.employee.manager?.userId !== userId
+    ) {
+      throw new ForbiddenException('Goal is outside your assigned scope');
+    }
+    return this.prisma.employeeGoal.update({
+      where: { id: goalId },
       data: { progress: Math.min(100, Math.max(0, progress)) },
     });
   }

@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
+import { homeForRoles } from '../core/rbac';
 
 @Component({
   standalone: true,
@@ -41,8 +42,8 @@ export class LoginComponent {
     this.busy = true;
     this.error = '';
     try {
-      await this.auth.login(this.email, this.password, this.tenant);
-      this.router.navigateByUrl('/dashboard');
+      const user = await this.auth.login(this.email, this.password, this.tenant);
+      this.router.navigateByUrl(homeForRoles(user.roles));
     } catch (e) {
       this.error = errMsg(e);
     } finally {

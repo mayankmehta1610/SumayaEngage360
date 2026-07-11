@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   standalone: true,
@@ -39,13 +40,25 @@ import { ExportBarComponent } from '../core/export-bar.component';
     </div>
     <div class="card">
       <table>
-        <tr><th>Name</th><th>Email</th><th>Roles</th><th>Active</th></tr>
+        <tr><th>Name</th><th>Email</th><th>Roles</th><th>Active</th><th>Actions</th></tr>
         @for (u of users; track u.id) {
           <tr>
             <td>{{ u.firstName }} {{ u.lastName }}</td>
             <td>{{ u.email }}</td>
-            <td>@for (r of u.roles; track r) { <span class="badge" style="margin-right:.25rem">{{ r }}</span> }</td>
+            <td>
+              @for (r of allRoles; track r) {
+                <label style="font-weight:400;margin-right:.5rem"><input type="checkbox"
+                  [checked]="u._roles.includes(r)" (change)="toggleUserRole(u, r)"
+                  style="width:auto;margin-right:.2rem" />{{ r }}</label>
+              }
+            </td>
             <td><span class="badge" [class.ok]="u.isActive">{{ u.isActive ? 'active' : 'disabled' }}</span></td>
+            <td>
+              @if (u.id !== auth.user()?.id) {
+                <button (click)="saveAccess(u)" [disabled]="!u._roles.length">Save roles</button>
+                <button class="secondary" (click)="toggleActive(u)">{{ u.isActive ? 'Disable' : 'Enable' }}</button>
+              } @else { <span class="muted">Current account</span> }
+            </td>
           </tr>
         }
       </table>
@@ -56,6 +69,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
 })
 export class UsersComponent implements OnInit {
   private api = inject(ApiService);
+  auth = inject(AuthService);
   users: any[] = [];
   error = '';
   allRoles = ['HR', 'MANAGER', 'INTERVIEWER', 'BGC_VENDOR', 'TENANT_ADMIN', 'EMPLOYEE'];
@@ -70,7 +84,9 @@ export class UsersComponent implements OnInit {
 
   async ngOnInit() { await this.load(); }
   async load() {
-    try { this.users = await this.api.get<any[]>('/users'); }
+    try {
+      this.users = (await this.api.get<any[]>('/users')).map((u) => ({ ...u, _roles: [...u.roles] }));
+    }
     catch (e) { this.error = errMsg(e); }
   }
   toggleRole(r: string) {
@@ -78,11 +94,28 @@ export class UsersComponent implements OnInit {
       ? this.f.roles.filter((x: string) => x !== r)
       : [...this.f.roles, r];
   }
+  toggleUserRole(user: any, role: string) {
+    user._roles = user._roles.includes(role)
+      ? user._roles.filter((r: string) => r !== role)
+      : [...user._roles, role];
+  }
   async create() {
     this.error = '';
     try {
       await this.api.post('/users', this.f);
       this.f = { roles: ['HR'] };
+      await this.load();
+    } catch (e) { this.error = errMsg(e); }
+  }
+  async saveAccess(user: any) {
+    try {
+      await this.api.patch(`/users/${user.id}/access`, { roles: user._roles });
+      await this.load();
+    } catch (e) { this.error = errMsg(e); }
+  }
+  async toggleActive(user: any) {
+    try {
+      await this.api.patch(`/users/${user.id}/access`, { isActive: !user.isActive });
       await this.load();
     } catch (e) { this.error = errMsg(e); }
   }
