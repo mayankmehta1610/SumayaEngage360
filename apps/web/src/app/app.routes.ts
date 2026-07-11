@@ -15,6 +15,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/shell.component').then((m) => m.ShellComponent),
     children: [
       { path: 'dashboard', loadComponent: () => import('./pages/dashboard.component').then((m) => m.DashboardComponent) },
+      { path: 'profile', loadComponent: () => import('./pages/profile.component').then((m) => m.ProfileComponent) },
+      { path: 'users', loadComponent: () => import('./pages/users.component').then((m) => m.UsersComponent) },
+      { path: 'candidates', loadComponent: () => import('./pages/candidates.component').then((m) => m.CandidatesComponent) },
+      { path: 'recognition', loadComponent: () => import('./pages/recognition.component').then((m) => m.RecognitionComponent) },
       { path: 'clients', loadComponent: () => import('./pages/clients.component').then((m) => m.ClientsComponent) },
       { path: 'jobs', loadComponent: () => import('./pages/jobs.component').then((m) => m.JobsComponent) },
       { path: 'applications', loadComponent: () => import('./pages/applications.component').then((m) => m.ApplicationsComponent) },

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
@@ -12,7 +12,11 @@ import { environment } from '../../environments/environment';
   imports: [FormsModule, DatePipe, ExportBarComponent],
   template: `
     <div class="toolbar"><h1>Applications</h1>
-      <export-bar [rows]="applications" [cols]="exportCols" name="applications" />
+      <span style="display:inline-flex;gap:.4rem;align-items:center">
+        @if (status) { <span class="badge warn">filtered: {{ status }}</span>
+          <button class="secondary" (click)="status = undefined; load()">Clear filter</button> }
+        <export-bar [rows]="applications" [cols]="exportCols" name="applications" />
+      </span>
     </div>
     @if (error) { <div class="error">{{ error }}</div> }
     @for (a of applications; track a.id) {
@@ -114,8 +118,9 @@ import { environment } from '../../environments/environment';
     }
   `,
 })
-export class ApplicationsComponent implements OnInit {
+export class ApplicationsComponent implements OnInit, OnChanges {
   private api = inject(ApiService);
+  @Input() status?: string;
   applications: any[] = [];
   error = '';
   exportCols = [
@@ -132,10 +137,13 @@ export class ApplicationsComponent implements OnInit {
   screenshotFile: File | null = null;
 
   async ngOnInit() { await this.load(); }
+  ngOnChanges() { this.load(); }
 
   async load() {
     try {
-      this.applications = await this.api.get<any[]>('/applications');
+      this.applications = await this.api.get<any[]>(
+        this.status ? `/applications?status=${this.status}` : '/applications',
+      );
       for (const a of this.applications) {
         a._status = a.status;
         a._roundMode = 'TEAMS';

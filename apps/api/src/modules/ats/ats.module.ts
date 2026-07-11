@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MatchingModule } from '../matching/matching.module';
+import { CandidatesController } from './candidates.controller';
 import { HiringClientsController } from './hiring-clients.controller';
 import { HiringClientsService } from './hiring-clients.service';
 import { JobsController } from './jobs.controller';
@@ -14,6 +15,7 @@ import { OffersService } from './offers.service';
 @Module({
   imports: [MatchingModule],
   controllers: [
+    CandidatesController,
     HiringClientsController,
     JobsController,
     ApplicationsController,

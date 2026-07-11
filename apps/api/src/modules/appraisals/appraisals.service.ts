@@ -89,7 +89,7 @@ export class AppraisalsService {
         OR: [{ appraiserId: emp.id }, { reviewerId: emp.id }],
       },
       include: {
-        cycle: { select: { name: true } },
+        cycle: { select: { name: true, template: true } },
         employee: {
           select: {
             employeeCode: true,

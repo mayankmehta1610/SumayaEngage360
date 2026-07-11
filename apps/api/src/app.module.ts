@@ -20,6 +20,7 @@ import { AssetsModule } from './modules/assets/assets.module';
 import { TrainingsModule } from './modules/trainings/trainings.module';
 import { ExitModule } from './modules/exit/exit.module';
 import { MatchingModule } from './modules/matching/matching.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -44,6 +45,7 @@ import { HealthController } from './health.controller';
     TrainingsModule,
     ExitModule,
     MatchingModule,
+    DashboardModule,
   ],
   controllers: [HealthController],
 })

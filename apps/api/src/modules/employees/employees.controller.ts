@@ -39,6 +39,13 @@ export class EmployeesController {
     return this.employees.findAll(tenantId, status);
   }
 
+  // Company directory — any signed-in user (needed to pick colleagues for
+  // recognition/feedback). Exposes names and roles only.
+  @Get('directory')
+  async directory(@TenantId() tenantId: string) {
+    return this.employees.directory(tenantId);
+  }
+
   // Employee's own profile (BGC never included).
   @Get('me')
   async me(@TenantId() tenantId: string, @CurrentUser() user: JwtPayload) {

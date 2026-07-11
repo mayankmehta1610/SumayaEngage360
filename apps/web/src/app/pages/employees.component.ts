@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
@@ -9,7 +9,11 @@ import { ExportBarComponent } from '../core/export-bar.component';
   imports: [FormsModule, DatePipe, ExportBarComponent],
   template: `
     <div class="toolbar"><h1>Employees</h1>
-      <export-bar [rows]="employees" [cols]="exportCols" name="employees" />
+      <span style="display:inline-flex;gap:.4rem;align-items:center">
+        @if (status) { <span class="badge warn">filtered: {{ status }}</span>
+          <button class="secondary" (click)="status = undefined; load()">Clear filter</button> }
+        <export-bar [rows]="employees" [cols]="exportCols" name="employees" />
+      </span>
     </div>
     @if (error) { <div class="error">{{ error }}</div> }
     <div class="card">
@@ -41,8 +45,9 @@ import { ExportBarComponent } from '../core/export-bar.component';
     </div>
   `,
 })
-export class EmployeesComponent implements OnInit {
+export class EmployeesComponent implements OnInit, OnChanges {
   private api = inject(ApiService);
+  @Input() status?: string;
   employees: any[] = [];
   error = '';
   f: any = {};
@@ -58,9 +63,13 @@ export class EmployeesComponent implements OnInit {
   ];
 
   async ngOnInit() { await this.load(); }
+  ngOnChanges() { this.load(); }
   async load() {
-    try { this.employees = await this.api.get<any[]>('/employees'); }
-    catch (e) { this.error = errMsg(e); }
+    try {
+      this.employees = await this.api.get<any[]>(
+        this.status ? `/employees?status=${this.status}` : '/employees',
+      );
+    } catch (e) { this.error = errMsg(e); }
   }
   async create() {
     try {

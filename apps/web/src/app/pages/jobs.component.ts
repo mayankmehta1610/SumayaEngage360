@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { ExportBarComponent } from '../core/export-bar.component';
@@ -91,8 +91,9 @@ import { ExportBarComponent } from '../core/export-bar.component';
     }
   `,
 })
-export class JobsComponent implements OnInit {
+export class JobsComponent implements OnInit, OnChanges {
   private api = inject(ApiService);
+  @Input() status?: string;
   jobs: any[] = [];
   clients: any[] = [];
   error = '';
@@ -126,9 +127,12 @@ export class JobsComponent implements OnInit {
       this.clients = await this.api.get<any[]>('/hiring-clients');
     } catch { /* role may not allow; job creation still works without */ }
   }
+  ngOnChanges() { this.load(); }
   async load() {
     try {
-      this.jobs = await this.api.get<any[]>('/jobs');
+      this.jobs = await this.api.get<any[]>(
+        this.status ? `/jobs?status=${this.status}` : '/jobs',
+      );
     } catch (e) {
       this.error = errMsg(e);
     }

@@ -146,6 +146,20 @@ export class EmployeesService {
     });
   }
 
+  directory(tenantId: string) {
+    return this.prisma.employee.findMany({
+      where: { tenantId, status: { in: ['ACTIVE', 'ON_NOTICE', 'ONBOARDING'] } },
+      select: {
+        id: true,
+        employeeCode: true,
+        designation: true,
+        user: { select: { firstName: true, lastName: true } },
+        department: { select: { name: true } },
+      },
+      orderBy: { employeeCode: 'asc' },
+    });
+  }
+
   async byUserId(userId: string) {
     const emp = await this.prisma.employee.findUnique({ where: { userId } });
     if (!emp) throw new NotFoundException('No employee record for this user');

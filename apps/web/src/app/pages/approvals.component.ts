@@ -42,10 +42,33 @@ import { ExportBarComponent } from '../core/export-bar.component';
         </div>
         <div><label>Name</label><input [(ngModel)]="wf.name" placeholder="Default resignation chain" /></div>
       </div>
-      <label>Steps — one per line: <code>DESIGNATION:HR Manager</code>, <code>REPORTING_MANAGER</code>, <code>DEPARTMENT_HEAD</code></label>
-      <textarea rows="3" [(ngModel)]="stepsText" placeholder="REPORTING_MANAGER
-DESIGNATION:HR Manager"></textarea>
-      <button (click)="createWorkflow()">Save workflow</button>
+      <label>Approval steps (executed in order)</label>
+      @for (s of steps; track $index; let i = $index) {
+        <div style="display:flex;gap:.5rem;align-items:center;margin:.35rem 0">
+          <span class="badge">Step {{ i + 1 }}</span>
+          <select [(ngModel)]="s.type" style="max-width:230px;margin:0">
+            <option value="REPORTING_MANAGER">Reporting manager</option>
+            <option value="DEPARTMENT_HEAD">Department head</option>
+            <option value="DESIGNATION">Anyone with designation…</option>
+            <option value="USER">Specific person…</option>
+          </select>
+          @if (s.type === 'DESIGNATION') {
+            <select [(ngModel)]="s.value" style="max-width:230px;margin:0">
+              <option [ngValue]="undefined">choose designation…</option>
+              @for (d of designations; track d.id) { <option [ngValue]="d.name">{{ d.name }}</option> }
+            </select>
+          }
+          @if (s.type === 'USER') {
+            <select [(ngModel)]="s.value" style="max-width:260px;margin:0">
+              <option [ngValue]="undefined">choose person…</option>
+              @for (u of users; track u.id) { <option [ngValue]="u.id">{{ u.firstName }} {{ u.lastName }} ({{ u.email }})</option> }
+            </select>
+          }
+          <button class="danger" (click)="steps.splice(i, 1)" [disabled]="steps.length === 1">✕</button>
+        </div>
+      }
+      <button class="secondary" (click)="steps.push({ type: 'REPORTING_MANAGER' })">+ Add step</button>
+      <button style="margin-left:.5rem" (click)="createWorkflow()" [disabled]="!wf.name">Save workflow</button>
     </div>
 
     <div class="card">
@@ -78,12 +101,16 @@ export class ApprovalsComponent implements OnInit {
     { key: 'createdAt', label: 'Raised' },
   ];
   wf: any = { entityType: 'RESIGNATION' };
-  stepsText = '';
+  steps: { type: string; value?: string }[] = [{ type: 'REPORTING_MANAGER' }];
+  designations: any[] = [];
+  users: any[] = [];
 
   async ngOnInit() { await this.load(); }
   async load() {
     try { this.pending = await this.api.get<any[]>('/approvals/pending'); } catch { this.pending = []; }
     try { this.workflows = await this.api.get<any[]>('/approvals/workflows'); } catch { this.workflows = []; }
+    try { this.designations = await this.api.get<any[]>('/designations'); } catch {}
+    try { this.users = await this.api.get<any[]>('/users'); } catch {}
   }
   async act(id: string, action: string) {
     try { await this.api.post(`/approvals/${id}/act`, { action }); await this.load(); }
@@ -92,15 +119,14 @@ export class ApprovalsComponent implements OnInit {
   async createWorkflow() {
     this.error = '';
     try {
-      const steps = this.stepsText
-        .split('\n').map((s) => s.trim()).filter(Boolean)
-        .map((line, i) => {
-          const [type, value] = line.split(':').map((x) => x.trim());
-          return { stepOrder: i + 1, approverType: type, approverValue: value || undefined };
-        });
+      const steps = this.steps.map((s, i) => ({
+        stepOrder: i + 1,
+        approverType: s.type,
+        approverValue: s.value || undefined,
+      }));
       await this.api.post('/approvals/workflows', { ...this.wf, steps });
       this.wf = { entityType: 'RESIGNATION' };
-      this.stepsText = '';
+      this.steps = [{ type: 'REPORTING_MANAGER' }];
       await this.load();
     } catch (e) { this.error = errMsg(e); }
   }

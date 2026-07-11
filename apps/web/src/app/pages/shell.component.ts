@@ -24,20 +24,30 @@ import { AuthService } from '../core/auth.service';
     <div class="layout">
       <nav>
         <div class="brand">Engage360</div>
-        <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+        <a routerLink="/dashboard" routerLinkActive="active">📊 Dashboard</a>
+        <a routerLink="/profile" routerLinkActive="active">👤 My profile</a>
         @if (auth.hasRole('PLATFORM_ADMIN')) {
           <a routerLink="/tenants" routerLinkActive="active">Tenants</a>
         }
-        <a routerLink="/clients" routerLinkActive="active">Hiring clients</a>
-        <a routerLink="/jobs" routerLinkActive="active">Jobs</a>
-        <a routerLink="/applications" routerLinkActive="active">Applications</a>
-        <a routerLink="/onboarding" routerLinkActive="active">Onboarding</a>
-        <a routerLink="/employees" routerLinkActive="active">Employees</a>
-        <a routerLink="/org" routerLinkActive="active">Departments</a>
-        <a routerLink="/projects" routerLinkActive="active">Projects</a>
+        @if (auth.hasRole('TENANT_ADMIN')) {
+          <a routerLink="/users" routerLinkActive="active">User accounts</a>
+        }
+        @if (auth.hasRole('TENANT_ADMIN', 'HR', 'INTERVIEWER')) {
+          <a routerLink="/clients" routerLinkActive="active">Hiring clients</a>
+          <a routerLink="/jobs" routerLinkActive="active">Jobs</a>
+          <a routerLink="/candidates" routerLinkActive="active">Talent pool</a>
+          <a routerLink="/applications" routerLinkActive="active">Applications</a>
+          <a routerLink="/onboarding" routerLinkActive="active">Onboarding</a>
+        }
+        @if (auth.hasRole('TENANT_ADMIN', 'HR', 'MANAGER')) {
+          <a routerLink="/employees" routerLinkActive="active">Employees</a>
+          <a routerLink="/org" routerLinkActive="active">Departments</a>
+          <a routerLink="/projects" routerLinkActive="active">Projects</a>
+        }
         <a routerLink="/timesheets" routerLinkActive="active">Timesheets</a>
         <a routerLink="/appraisals" routerLinkActive="active">Appraisals</a>
         <a routerLink="/trainings" routerLinkActive="active">Trainings</a>
+        <a routerLink="/recognition" routerLinkActive="active">Recognition</a>
         <a routerLink="/exit" routerLinkActive="active">Exit</a>
         <a routerLink="/approvals" routerLinkActive="active">Approvals</a>
         <div class="spacer"></div>

@@ -330,6 +330,18 @@ const main = async () => {
   check('offline parser extracted experience/skills',
     (parsedCv?.skills ?? []).length >= 1 || parsedCv?.totalYearsExperience != null);
 
+  // ─── Dashboard KPIs, directory, talent pool endpoints ─────────────
+  console.log('\n[14] Dashboard KPIs & visibility endpoints');
+  const kpis = await req('GET', '/dashboard/kpis', { ...t });
+  check('business KPIs computed from DB', kpis.data?.business?.jobsPublished >= 1
+    && Array.isArray(kpis.data?.business?.applicationsByStatus), JSON.stringify(kpis.data?.business ?? {}).slice(0, 120));
+  const kpisEmp = await req('GET', '/dashboard/kpis', { ...mgr });
+  check('personal KPIs for employees', kpisEmp.data?.personal != null);
+  const dir = await req('GET', '/employees/directory', { ...mgr });
+  check('directory visible to any employee', Array.isArray(dir.data) && dir.data.length >= 1);
+  const pool = await req('GET', '/candidates', { ...t });
+  check('talent pool endpoint lists candidates', Array.isArray(pool.data) && pool.data.length >= 1);
+
   console.log(`\n==== ${passed} passed, ${failed} failed ====`);
   process.exit(failed ? 1 : 0);
 };
