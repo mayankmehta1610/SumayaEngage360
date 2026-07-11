@@ -1,16 +1,24 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent],
   template: `
-    <div class="toolbar"><h1>Departments & designations</h1>
-      <export-bar [rows]="departments" [cols]="deptCols" name="departments" />
-    </div>
-    @if (error) { <div class="error">{{ error }}</div> }
+    <e360-module-shell
+      title="Departments & designations"
+      description="Organizational structure and designation levels."
+      icon="network"
+      moduleKey="org"
+      auditEntityType="DEPARTMENT"
+      rolesHint="TENANT_ADMIN, HR, MANAGER"
+      [breadcrumbs]="[{ label: 'Workforce' }, { label: 'Departments' }]"
+    >
+      <div actions><export-bar [rows]="departments" [cols]="deptCols" name="departments" /></div>
+@if (error) { <div class="e360-error">{{ error }}</div> }
     <div class="row">
       <div class="card">
         <h2>Departments</h2>
@@ -50,6 +58,8 @@ import { ExportBarComponent } from '../core/export-bar.component';
         </table>
       </div>
     </div>
+  
+    </e360-module-shell>
   `,
 })
 export class OrgComponent implements OnInit {

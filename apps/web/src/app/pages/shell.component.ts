@@ -1,66 +1,90 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
+import { NAV_GROUPS, ROUTE_ACCESS } from '../core/rbac';
+import { IconComponent } from '../ui/icon.component';
 
 @Component({
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
-  styles: [`
-    .layout { display: flex; min-height: 100vh; }
-    nav {
-      width: 215px; background: #101b33; color: #cbd5ec; padding: 1rem .75rem;
-      display: flex; flex-direction: column; gap: .15rem; flex-shrink: 0;
-    }
-    nav .brand { color: #fff; font-weight: 700; padding: .5rem; margin-bottom: .75rem; }
-    nav a {
-      color: #cbd5ec; padding: .45rem .6rem; border-radius: 7px; font-size: .88rem;
-    }
-    nav a.active, nav a:hover { background: #1d2c4f; color: #fff; }
-    nav .spacer { flex: 1; }
-    main { flex: 1; padding: 1.25rem 1.5rem; min-width: 0; }
-    .who { font-size: .78rem; color: #8ea0c8; padding: .5rem .6rem; }
-  `],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent],
   template: `
-    <div class="layout">
-      <nav>
-        <div class="brand">Engage360</div>
-        <a routerLink="/dashboard" routerLinkActive="active">📊 Dashboard</a>
-        <a routerLink="/profile" routerLinkActive="active">👤 My profile</a>
-        @if (auth.hasRole('PLATFORM_ADMIN')) {
-          <a routerLink="/tenants" routerLinkActive="active">Tenants</a>
-        }
-        @if (auth.hasRole('TENANT_ADMIN')) {
-          <a routerLink="/users" routerLinkActive="active">User accounts</a>
-        }
-        @if (auth.hasRole('TENANT_ADMIN', 'HR', 'INTERVIEWER')) {
-          <a routerLink="/clients" routerLinkActive="active">Hiring clients</a>
-          <a routerLink="/jobs" routerLinkActive="active">Jobs</a>
-          <a routerLink="/candidates" routerLinkActive="active">Talent pool</a>
-          <a routerLink="/applications" routerLinkActive="active">Applications</a>
-          <a routerLink="/onboarding" routerLinkActive="active">Onboarding</a>
-        }
-        @if (auth.hasRole('TENANT_ADMIN', 'HR', 'MANAGER')) {
-          <a routerLink="/employees" routerLinkActive="active">Employees</a>
-          <a routerLink="/org" routerLinkActive="active">Departments</a>
-          <a routerLink="/projects" routerLinkActive="active">Projects</a>
-        }
-        <a routerLink="/timesheets" routerLinkActive="active">Timesheets</a>
-        <a routerLink="/appraisals" routerLinkActive="active">Appraisals</a>
-        <a routerLink="/trainings" routerLinkActive="active">Trainings</a>
-        <a routerLink="/recognition" routerLinkActive="active">Recognition</a>
-        <a routerLink="/exit" routerLinkActive="active">Exit</a>
-        <a routerLink="/approvals" routerLinkActive="active">Approvals</a>
-        <div class="spacer"></div>
-        <div class="who">
-          {{ auth.user()?.firstName }} {{ auth.user()?.lastName }}<br />
-          {{ auth.user()?.email }}
+    <div class="e360-layout">
+      <aside class="e360-sidebar">
+        <div class="e360-sidebar-brand">
+          <e360-icon name="layout-dashboard" [size]="22" />
+          <div>
+            Engage360
+            @if (auth.tenant) { <div class="tenant">{{ auth.tenant }}</div> }
+          </div>
         </div>
-        <a href="" (click)="$event.preventDefault(); auth.logout()">Sign out</a>
-      </nav>
-      <main><router-outlet /></main>
+
+        <nav style="flex:1;overflow-y:auto;padding-bottom:.5rem">
+          @for (group of navGroups; track group.key) {
+            <div class="e360-nav-group">
+              <div class="e360-nav-group-title">{{ group.label }}</div>
+              @for (item of group.items; track item.path) {
+                <a
+                  class="e360-nav-link"
+                  [routerLink]="item.path"
+                  routerLinkActive="active"
+                  [routerLinkActiveOptions]="{ exact: item.path === '/dashboard' }"
+                >
+                  @if (item.icon) { <e360-icon [name]="item.icon" [size]="16" /> }
+                  {{ item.label }}
+                </a>
+              }
+            </div>
+          }
+        </nav>
+
+        <div class="e360-sidebar-footer">
+          <div class="e360-user-menu">
+            <strong>{{ auth.user()?.firstName }} {{ auth.user()?.lastName }}</strong>
+            {{ auth.user()?.email }}
+            <div style="margin-top:.35rem;display:flex;flex-wrap:wrap;gap:.2rem">
+              @for (r of auth.user()?.roles ?? []; track r) {
+                <span class="e360-badge" style="font-size:.6rem">{{ r }}</span>
+              }
+            </div>
+          </div>
+          <a class="e360-nav-link" routerLink="/profile" routerLinkActive="active" style="margin-top:.5rem">
+            <e360-icon name="user" [size]="16" /> My profile
+          </a>
+          <a class="e360-nav-link" href="" (click)="$event.preventDefault(); auth.logout()" style="margin-top:.15rem">
+            <e360-icon name="log-out" [size]="16" /> Sign out
+          </a>
+        </div>
+      </aside>
+      <main class="e360-main"><router-outlet /></main>
     </div>
   `,
 })
 export class ShellComponent {
   auth = inject(AuthService);
+
+  get navGroups() {
+    const user = this.auth.user();
+    if (!user) return [];
+    const roles = user.roles;
+    const isPlatform = roles.includes('PLATFORM_ADMIN');
+
+    const grouped = new Map<string, typeof ROUTE_ACCESS>();
+    for (const route of ROUTE_ACCESS) {
+      if (route.path === '/profile') continue;
+      if (!isPlatform && !route.roles.some((r) => roles.includes(r))) continue;
+      if (route.path === '/tenants' && !isPlatform) continue;
+      const g = route.group ?? 'platform';
+      if (!grouped.has(g)) grouped.set(g, []);
+      grouped.get(g)!.push(route);
+    }
+
+    return Object.entries(NAV_GROUPS)
+      .sort((a, b) => a[1].order - b[1].order)
+      .map(([key, meta]) => ({
+        key,
+        label: meta.label,
+        items: grouped.get(key) ?? [],
+      }))
+      .filter((g) => g.items.length > 0);
+  }
 }

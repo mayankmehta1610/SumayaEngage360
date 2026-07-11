@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
+import { Roles } from '../../common/auth/roles.decorator';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { TenantId } from '../../common/tenant/tenant.decorator';
@@ -15,6 +16,7 @@ export class DashboardController {
   ) {}
 
   @Get('kpis')
+  @Roles(Role.TENANT_ADMIN, Role.HR, Role.MANAGER, Role.EMPLOYEE, Role.INTERVIEWER, Role.DEPARTMENT_HEAD)
   async kpis(@TenantId() tenantId: string, @CurrentUser() user: JwtPayload) {
     const isOps =
       user.roles.includes(Role.TENANT_ADMIN) ||

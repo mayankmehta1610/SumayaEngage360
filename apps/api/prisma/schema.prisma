@@ -112,6 +112,11 @@ model Job {
   title          String
   description    String // full JD
   vacancies      Int           @default(1)
+  vacanciesFilled Int          @default(0)
+  headcountBudget Decimal?
+  recruiterIds   String[]      @default([])
+  hiringTeamIds  String[]      @default([])
+  jobFamilyId    String?
   location       String
   employmentType String        @default("FULL_TIME") // FULL_TIME | PART_TIME | CONTRACT
   minExperience  Float?
@@ -516,6 +521,12 @@ model Employee {
   assetAssignments AssetAssignment[]
   trainings        TrainingAssignment[]
   resignation      Resignation?
+  personalData     EmployeePersonalData?
+  onboardingTasks  OnboardingTask[]
+  payslips         Payslip[]
+  benefitEnrollments BenefitEnrollment[]
+  expenseClaims    ExpenseClaim[]
+  goals            EmployeeGoal[]
 
   @@unique([tenantId, employeeCode])
   @@map("employees")
@@ -578,6 +589,7 @@ model Project {
 
   allocations ProjectAllocation[]
   timesheets  Timesheet[]
+  contracts   ProjectContract[]
 
   @@unique([tenantId, code])
   @@map("projects")
@@ -646,6 +658,107 @@ model TimesheetEntry {
   notes       String?
 
   @@map("timesheet_entries")
+}
+
+// ─────────────────────────────── Attendance & Leave ───────────────────────────────
+
+model LeaveType {
+  id           String  @id @default(uuid())
+  tenantId     String
+  code         String // AL, SL, CL…
+  name         String
+  annualQuota  Float   @default(0) // days per year
+  carryForward Boolean @default(false)
+  isActive     Boolean @default(true)
+
+  balances LeaveBalance[]
+  requests LeaveRequest[]
+
+  @@unique([tenantId, code])
+  @@map("leave_types")
+}
+
+model LeaveBalance {
+  id          String    @id @default(uuid())
+  tenantId    String
+  employeeId  String
+  leaveTypeId String
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  year        Int
+  allocated   Float     @default(0)
+  used        Float     @default(0)
+
+  @@unique([employeeId, leaveTypeId, year])
+  @@map("leave_balances")
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model LeaveRequest {
+  id          String      @id @default(uuid())
+  tenantId    String
+  employeeId  String
+  leaveTypeId String
+  leaveType   LeaveType   @relation(fields: [leaveTypeId], references: [id])
+  startDate   DateTime
+  endDate     DateTime
+  days        Float
+  reason      String?
+  status      LeaveStatus @default(PENDING)
+  actorId     String? // approver/rejector user id
+  actionNote  String?
+  createdAt   DateTime    @default(now())
+  actedAt     DateTime?
+
+  @@index([tenantId, employeeId, status])
+  @@map("leave_requests")
+}
+
+// One row per employee per day; check-in/out via web (mobile later).
+model AttendancePunch {
+  id         String    @id @default(uuid())
+  tenantId   String
+  employeeId String
+  workDate   DateTime // date-only (00:00 UTC)
+  inAt       DateTime?
+  outAt      DateTime?
+  source     String    @default("WEB") // WEB | MOBILE | BIOMETRIC
+  late       Boolean   @default(false) // vs tenant shift start
+  createdAt  DateTime  @default(now())
+
+  @@unique([employeeId, workDate])
+  @@index([tenantId, workDate])
+  @@map("attendance_punches")
+}
+
+enum RegularizationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Missing-punch / correction request, approved by the reporting manager.
+model AttendanceRegularization {
+  id          String               @id @default(uuid())
+  tenantId    String
+  employeeId  String
+  workDate    DateTime
+  requestedIn DateTime?
+  requestedOut DateTime?
+  reason      String
+  status      RegularizationStatus @default(PENDING)
+  actorId     String?
+  actionNote  String?
+  createdAt   DateTime             @default(now())
+  actedAt     DateTime?
+
+  @@index([tenantId, employeeId, status])
+  @@map("attendance_regularizations")
 }
 
 // ─────────────────────────────── Appraisals ───────────────────────────────
@@ -964,6 +1077,7 @@ model ApprovalWorkflow {
 
   steps    ApprovalStep[]
   requests ApprovalRequest[]
+  versions WorkflowVersion[]
 
   @@unique([tenantId, entityType, name])
   @@map("approval_workflows")
@@ -1017,4 +1131,960 @@ model ApprovalAction {
   createdAt DateTime        @default(now())
 
   @@map("approval_actions")
+}
+
+// ─────────────────────────────── Analytics & audit (sheets 05/08) ───────────────────────────────
+
+// Database-driven report catalogue — seeded from 08_Reports_KPIs; no hard-coded UI lists.
+model ReportDefinition {
+  id        String   @id @default(uuid())
+  code      String   @unique // RPT-001 …
+  name      String
+  audience  String
+  filters   String // human-readable filter description
+  priority  String   @default("Must")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("report_definitions")
+}
+
+// Immutable audit trail for privileged/sensitive actions (NFR-009).
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String?
+  userId     String?
+  action     String // LOGIN, CREATE, UPDATE, DELETE, APPROVE, EXPORT …
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+// ─────────────────────────────── Sheet 06: Data entity catalogue ───────────────────────────────
+
+model DataEntityCatalogue {
+  id               String  @id
+  domain           String
+  entity           String
+  purpose          String
+  tenantScoped     Boolean @default(true)
+  branchScoped     Boolean @default(false)
+  pii              String  @default("Medium")
+  mandatoryColumns String
+  notes            String?
+  implemented      Boolean @default(false)
+  prismaModel      String? // maps to @@map name when implemented
+
+  @@index([domain])
+  @@map("data_entity_catalogue")
+}
+
+// ─────────────────────────────── Sheet 07: API catalogue ───────────────────────────────
+
+model ApiCatalogueEntry {
+  id                   String  @id // API-0001
+  domain               String
+  resource             String
+  endpoint             String
+  methods              String
+  security             String
+  contractRequirements String
+  documentation        String
+  implemented          Boolean @default(false)
+  actualPath           String?
+
+  @@index([domain])
+  @@map("api_catalogue_entries")
+}
+
+// ─────────────────────────────── Sheet 09: Integrations registry ───────────────────────────────
+
+model IntegrationDefinition {
+  id             String @id // INT-001
+  name           String
+  useCases       String
+  protocol       String
+  authentication String
+  priority       String @default("Must")
+
+  connections TenantIntegration[]
+
+  @@map("integration_definitions")
+}
+
+model TenantIntegration {
+  id            String   @id @default(uuid())
+  tenantId      String
+  integrationId String
+  integration   IntegrationDefinition @relation(fields: [integrationId], references: [id])
+  enabled       Boolean  @default(false)
+  config        Json? // provider credentials/settings (never returned in full to UI)
+  lastTestedAt  DateTime?
+  lastTestOk    Boolean?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([tenantId, integrationId])
+  @@map("tenant_integrations")
+}
+
+// ─────────────────────────────── Sheet 10: Config masters ───────────────────────────────
+
+model ConfigMasterArea {
+  id               String @id // CFG-001
+  area             String
+  examples         String
+  scope            String
+  effectiveDating  Boolean @default(true)
+  versioning       Boolean @default(true)
+  administration   String
+  rule             String
+
+  items TenantConfigItem[]
+
+  @@map("config_master_areas")
+}
+
+model TenantConfigItem {
+  id            String    @id @default(uuid())
+  tenantId      String
+  areaId        String
+  area          ConfigMasterArea @relation(fields: [areaId], references: [id])
+  key           String
+  value         Json
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+  version       Int       @default(1)
+  createdAt     DateTime  @default(now())
+
+  @@unique([tenantId, areaId, key, version])
+  @@index([tenantId, areaId])
+  @@map("tenant_config_items")
+}
+
+model FeatureFlag {
+  id        String   @id @default(uuid())
+  tenantId  String
+  code      String
+  name      String
+  enabled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, code])
+  @@map("feature_flags")
+}
+
+model Branch {
+  id        String   @id @default(uuid())
+  tenantId  String
+  code      String
+  name      String
+  country   String   @default("IN")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, code])
+  @@map("branches")
+}
+
+model Shift {
+  id            String   @id @default(uuid())
+  tenantId      String
+  code          String
+  name          String
+  startTime     String // HH:mm
+  endTime       String
+  graceMinutes  Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@unique([tenantId, code])
+  @@map("shifts")
+}
+
+// ─────────────────────────────── Sheet 12: Execution evidence ───────────────────────────────
+
+model ExecutionEvidence {
+  id          String   @id @default(uuid())
+  featureId   String? // SE360-xxxxx or sheet row ID
+  sheetRef    String // e.g. 05_NFR, 12_AI_Execution
+  step        String
+  evidence    String
+  status      String   @default("DONE")
+  createdAt   DateTime @default(now())
+
+  @@index([sheetRef])
+  @@map("execution_evidence")
+}
+
+// ─────────────────────────────── Sheet 06: Organization masters ───────────────────────────────
+
+model LegalEntity {
+  id        String   @id @default(uuid())
+  tenantId  String
+  code      String
+  name      String
+  country   String   @default("IN")
+  taxId     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, code])
+  @@map("legal_entities")
+}
+
+model Location {
+  id        String   @id @default(uuid())
+  tenantId  String
+  code      String
+  name      String
+  city      String?
+  country   String   @default("IN")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, code])
+  @@map("locations")
+}
+
+model BusinessUnit {
+  id        String   @id @default(uuid())
+  tenantId  String
+  code      String
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, code])
+  @@map("business_units")
+}
+
+model CostCenter {
+  id        String   @id @default(uuid())
+  tenantId  String
+  code      String
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, code])
+  @@map("cost_centers")
+}
+
+model Grade {
+  id        String   @id @default(uuid())
+  tenantId  String
+  code      String
+  name      String
+  level     Int      @default(1)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, code])
+  @@map("grades")
+}
+
+model EmploymentType {
+  id        String   @id @default(uuid())
+  tenantId  String
+  code      String
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, code])
+  @@map("employment_types")
+}
+
+model HolidayCalendar {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  year      Int
+  holidays  Json // [{date,name}]
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, name, year])
+  @@map("holiday_calendars")
+}
+
+model JdLibrary {
+  id        String   @id @default(uuid())
+  tenantId  String
+  title     String
+  body      String
+  tags      String[]
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("jd_library")
+}
+
+model SubscriptionPlan {
+  id           String   @id @default(uuid())
+  code         String   @unique
+  name         String
+  maxEmployees Int?
+  features     Json
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@map("subscription_plans")
+}
+
+model TenantSetting {
+  id        String   @id @default(uuid())
+  tenantId  String
+  key       String
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, key])
+  @@map("tenant_settings")
+}
+
+// ─────────────────────────────── Sheet 05: Privacy (NFR-010) ───────────────────────────────
+
+enum DsrType {
+  ACCESS
+  ERASURE
+  PORTABILITY
+  RECTIFICATION
+}
+
+enum DsrStatus {
+  SUBMITTED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+model ConsentRecord {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String
+  purpose   String
+  granted   Boolean
+  version   String   @default("1")
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, userId])
+  @@map("consent_records")
+}
+
+model DataSubjectRequest {
+  id          String    @id @default(uuid())
+  tenantId    String
+  userId      String
+  type        DsrType
+  status      DsrStatus @default(SUBMITTED)
+  details     String?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([tenantId, status])
+  @@map("data_subject_requests")
+}
+
+// ─────────────────────────────── Sheet 12 step 8: Notifications ───────────────────────────────
+
+model NotificationTemplate {
+  id        String   @id @default(uuid())
+  tenantId  String? // null = platform default
+  code      String
+  channel   String // EMAIL | SMS | WHATSAPP
+  subject   String?
+  body      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, code, channel])
+  @@map("notification_templates")
+}
+
+model NotificationDelivery {
+  id         String   @id @default(uuid())
+  tenantId   String
+  templateId String?
+  channel    String
+  recipient  String
+  payload    Json?
+  status     String   @default("PENDING") // PENDING | SENT | FAILED
+  sentAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, status])
+  @@map("notification_deliveries")
+}
+
+// ─────────────────────────────── NFR-014: Idempotency ───────────────────────────────
+
+model IdempotencyKey {
+  id        String   @id @default(uuid())
+  tenantId  String?
+  userId    String?
+  key       String
+  method    String
+  path      String
+  response  Json?
+  statusCode Int?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@unique([tenantId, key])
+  @@map("idempotency_keys")
+}
+
+// ─────────────────────────────── NFR-007 / INT-014: SSO ───────────────────────────────
+
+model SsoProvider {
+  id           String   @id @default(uuid())
+  tenantId     String
+  provider     String // OIDC | SAML
+  issuerUrl    String
+  clientId     String
+  clientSecret String?
+  metadataUrl  String?
+  isActive     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@unique([tenantId, provider])
+  @@map("sso_providers")
+}
+
+// ─────────────────────────────── NFR-024: Async exports ───────────────────────────────
+
+model AsyncExportJob {
+  id         String    @id @default(uuid())
+  tenantId   String
+  userId     String
+  entityType String
+  filters    Json?
+  status     String    @default("PENDING") // PENDING | READY | EXPIRED
+  fileId     String?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([tenantId, userId])
+  @@map("async_export_jobs")
+}
+
+// ─────────────────────────────── Sheet 01: Feature catalogue ───────────────────────────────
+
+model FeatureCatalogue {
+  id          String @id // SE360-00001
+  domain      String
+  module      String
+  capability  String
+  featureName String
+  status      String @default("Not Started")
+  phase       String?
+  priority    String?
+  cursorDone  Boolean @default(false)
+
+  @@index([domain, module])
+  @@index([status])
+  @@map("feature_catalogue")
+}
+
+// ─────────────────────────────── Sheet 02: Module summary ───────────────────────────────
+
+model ModuleSummary {
+  id           String @id
+  domain       String
+  submodules   Int
+  featureRows  Int
+  mustCount    Int
+  shouldCount  Int
+  storyPoints  Int
+  phase        String
+
+  @@map("module_summary")
+}
+
+// ─────────────────────────────── Sheet 03: Roles ───────────────────────────────
+
+model RoleDefinition {
+  id              String @id
+  role            String
+  persona         String
+  scope           String
+  capabilities    String
+  sensitiveAccess String
+  approvalRights  String
+  boundary        String
+  sodNotes        String
+  systemRole      String? // maps to Role enum when applicable
+
+  @@map("role_definitions")
+}
+
+// ─────────────────────────────── Sheet 04: Workflows ───────────────────────────────
+
+model WorkflowDefinition {
+  id        String @id
+  name      String
+  trigger   String
+  stages    String
+  actors    String
+  outcome   String
+  exceptions String?
+  implemented Boolean @default(false)
+  systemFlow  String? // maps to existing flow e.g. ATS_HIRE, EXIT
+
+  @@map("workflow_definitions")
+}
+
+// ─────────────────────────────── Preboarding & personal data ───────────────────────────────
+
+model EmployeePersonalData {
+  id                String   @id @default(uuid())
+  tenantId          String
+  employeeId        String   @unique
+  employee          Employee @relation(fields: [employeeId], references: [id])
+  emergencyName     String?
+  emergencyPhone    String?
+  emergencyRelation String?
+  bankName          String?
+  bankAccountNo     String?
+  bankIfsc          String?
+  pan               String?
+  aadhaarLast4      String?
+  address           Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("employee_personal_data")
+}
+
+model OnboardingTask {
+  id          String    @id @default(uuid())
+  tenantId    String
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  taskType    String
+  title       String
+  status      String    @default("PENDING")
+  assigneeId  String?
+  dueDate     DateTime?
+  completedAt DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+
+  @@index([tenantId, employeeId])
+  @@map("onboarding_tasks")
+}
+
+// ─────────────────────────────── Manpower requisition ───────────────────────────────
+
+model ManpowerRequest {
+  id            String   @id @default(uuid())
+  tenantId      String
+  departmentId  String?
+  title         String
+  headcount     Int
+  budget        Decimal?
+  justification String?
+  status        String   @default("DRAFT")
+  requestedBy   String
+  approvedBy    String?
+  jobId         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId, status])
+  @@map("manpower_requests")
+}
+
+// ─────────────────────────────── Payroll ───────────────────────────────
+
+model SalaryComponentMaster {
+  id          String  @id @default(uuid())
+  tenantId    String
+  code        String
+  name        String
+  type        String
+  isStatutory Boolean @default(false)
+
+  @@unique([tenantId, code])
+  @@map("salary_component_masters")
+}
+
+model PayrollCalendar {
+  id        String       @id @default(uuid())
+  tenantId  String
+  name      String
+  frequency String       @default("MONTHLY")
+  payDay    Int          @default(28)
+  isActive  Boolean      @default(true)
+  runs      PayrollRun[]
+
+  @@unique([tenantId, name])
+  @@map("payroll_calendars")
+}
+
+model PayrollRun {
+  id          String          @id @default(uuid())
+  tenantId    String
+  calendarId  String
+  calendar    PayrollCalendar @relation(fields: [calendarId], references: [id])
+  periodStart DateTime
+  periodEnd   DateTime
+  status      String          @default("DRAFT")
+  processedAt DateTime?
+  createdAt   DateTime        @default(now())
+  payslips    Payslip[]
+
+  @@index([tenantId, status])
+  @@map("payroll_runs")
+}
+
+model Payslip {
+  id           String     @id @default(uuid())
+  tenantId     String
+  payrollRunId String
+  payrollRun   PayrollRun @relation(fields: [payrollRunId], references: [id])
+  employeeId   String
+  employee     Employee   @relation(fields: [employeeId], references: [id])
+  grossPay     Decimal
+  netPay       Decimal
+  components   Json
+  createdAt    DateTime   @default(now())
+
+  @@unique([payrollRunId, employeeId])
+  @@map("payslips")
+}
+
+// ─────────────────────────────── Benefits ───────────────────────────────
+
+model BenefitPlan {
+  id          String              @id @default(uuid())
+  tenantId    String
+  code        String
+  name        String
+  description String?
+  category    String
+  isActive    Boolean             @default(true)
+  enrollments BenefitEnrollment[]
+
+  @@unique([tenantId, code])
+  @@map("benefit_plans")
+}
+
+model BenefitEnrollment {
+  id         String      @id @default(uuid())
+  tenantId   String
+  planId     String
+  plan       BenefitPlan @relation(fields: [planId], references: [id])
+  employeeId String
+  employee   Employee    @relation(fields: [employeeId], references: [id])
+  status     String      @default("ACTIVE")
+  enrolledAt DateTime    @default(now())
+
+  @@unique([planId, employeeId])
+  @@map("benefit_enrollments")
+}
+
+// ─────────────────────────────── Expenses ───────────────────────────────
+
+model ExpenseClaim {
+  id          String            @id @default(uuid())
+  tenantId    String
+  employeeId  String
+  employee    Employee          @relation(fields: [employeeId], references: [id])
+  title       String
+  status      String            @default("DRAFT")
+  totalAmount Decimal           @default(0)
+  submittedAt DateTime?
+  approvedAt  DateTime?
+  lines       ExpenseLineItem[]
+  createdAt   DateTime          @default(now())
+
+  @@index([tenantId, employeeId, status])
+  @@map("expense_claims")
+}
+
+model ExpenseLineItem {
+  id            String       @id @default(uuid())
+  claimId       String
+  claim         ExpenseClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  date          DateTime
+  category      String
+  amount        Decimal
+  description   String?
+  receiptFileId String?
+
+  @@map("expense_line_items")
+}
+
+// ─────────────────────────────── Performance libraries & goals ───────────────────────────────
+
+model GoalLibrary {
+  id       String @id @default(uuid())
+  tenantId String
+  title    String
+  category String?
+  kpis     Json?
+
+  @@map("goal_library")
+}
+
+model EmployeeGoal {
+  id         String    @id @default(uuid())
+  tenantId   String
+  employeeId String
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  cycleId    String?
+  title      String
+  target     String?
+  progress   Int       @default(0)
+  status     String    @default("ACTIVE")
+  dueDate    DateTime?
+
+  @@index([tenantId, employeeId])
+  @@map("employee_goals")
+}
+
+model KpiLibrary {
+  id       String @id @default(uuid())
+  tenantId String
+  code     String
+  name     String
+  unit     String?
+
+  @@unique([tenantId, code])
+  @@map("kpi_library")
+}
+
+model CompetencyLibrary {
+  id       String @id @default(uuid())
+  tenantId String
+  code     String
+  name     String
+  level    Int    @default(1)
+
+  @@unique([tenantId, code])
+  @@map("competency_library")
+}
+
+// ─────────────────────────────── Project contracts & rate cards ───────────────────────────────
+
+model ProjectContract {
+  id        String   @id @default(uuid())
+  tenantId  String
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  clientRef String?
+  value     Decimal?
+  startDate DateTime
+  endDate   DateTime?
+  terms     String?
+  createdAt DateTime @default(now())
+
+  @@map("project_contracts")
+}
+
+model RateCard {
+  id         String  @id @default(uuid())
+  tenantId   String
+  projectId  String?
+  role       String
+  hourlyRate Decimal
+  currency   String  @default("INR")
+  isActive   Boolean @default(true)
+
+  @@index([tenantId, projectId])
+  @@map("rate_cards")
+}
+
+// ─────────────────────────────── Sheet 09: SFTP import jobs ───────────────────────────────
+
+model SftpImportJob {
+  id           String    @id @default(uuid())
+  tenantId     String
+  remotePath   String
+  entityType   String
+  status       String    @default("PENDING")
+  rowsImported Int       @default(0)
+  log          Json?
+  createdAt    DateTime  @default(now())
+  completedAt  DateTime?
+
+  @@index([tenantId, status])
+  @@map("sftp_import_jobs")
+}
+
+// ─────────────────────────────── CFG-006: Roster & geofencing ───────────────────────────────
+
+model RosterShift {
+  id         String   @id @default(uuid())
+  tenantId   String
+  employeeId String
+  shiftId    String
+  date       DateTime
+  location   String?
+  createdAt  DateTime @default(now())
+
+  @@unique([tenantId, employeeId, date])
+  @@map("roster_shifts")
+}
+
+model GeofenceZone {
+  id        String  @id @default(uuid())
+  tenantId  String
+  name      String
+  latitude  Float
+  longitude Float
+  radiusM   Int     @default(200)
+  isActive  Boolean @default(true)
+
+  @@unique([tenantId, name])
+  @@map("geofence_zones")
+}
+
+// ─────────────────────────────── Sheet 04: Workflow versions ───────────────────────────────
+
+model WorkflowVersion {
+  id          String   @id @default(uuid())
+  tenantId    String
+  workflowId  String
+  workflow    ApprovalWorkflow @relation(fields: [workflowId], references: [id])
+  version     Int
+  definition  Json
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@unique([workflowId, version])
+  @@map("workflow_versions")
+}
+
+// ─────────────────────────────── Remaining feature modules ───────────────────────────────
+
+model JobFamily {
+  id       String @id @default(uuid())
+  tenantId String
+  code     String
+  name     String
+  @@unique([tenantId, code])
+  @@map("job_families")
+}
+
+model OrgPosition {
+  id       String @id @default(uuid())
+  tenantId String
+  code     String
+  title    String
+  familyId String?
+  isActive Boolean @default(true)
+  @@unique([tenantId, code])
+  @@map("org_positions")
+}
+
+model BgvPackage {
+  id          String @id @default(uuid())
+  tenantId    String
+  code        String
+  name        String
+  checks      Json
+  isActive    Boolean @default(true)
+  @@unique([tenantId, code])
+  @@map("bgv_packages")
+}
+
+model JobTeamMember {
+  id     String @id @default(uuid())
+  tenantId String
+  jobId  String
+  userId String
+  role   String
+  @@unique([jobId, userId, role])
+  @@map("job_team_members")
+}
+
+model ApprovalDelegation {
+  id           String   @id @default(uuid())
+  tenantId     String
+  delegatorId  String
+  delegateId   String
+  startsAt     DateTime
+  endsAt       DateTime?
+  isActive     Boolean  @default(true)
+  @@map("approval_delegations")
+}
+
+model WorkflowRule {
+  id       String @id @default(uuid())
+  tenantId String
+  ruleType String
+  name     String
+  definition Json
+  isActive Boolean @default(true)
+  @@map("workflow_rules")
+}
+
+model RatingScale {
+  id       String @id @default(uuid())
+  tenantId String
+  name     String
+  levels   Json
+  @@unique([tenantId, name])
+  @@map("rating_scales")
+}
+
+model PerformanceCheckIn {
+  id         String   @id @default(uuid())
+  tenantId   String
+  employeeId String
+  managerId  String?
+  notes      String
+  mood       Int?
+  createdAt  DateTime @default(now())
+  @@map("performance_checkins")
+}
+
+model CalibrationSession {
+  id       String @id @default(uuid())
+  tenantId String
+  cycleId  String?
+  name     String
+  status   String @default("DRAFT")
+  ratings  Json?
+  @@map("calibration_sessions")
+}
+
+model CountryConfig {
+  id        String @id @default(uuid())
+  tenantId  String
+  country   String
+  settings  Json
+  @@unique([tenantId, country])
+  @@map("country_configs")
+}
+
+model DocumentRepositoryItem {
+  id       String @id @default(uuid())
+  tenantId String
+  title    String
+  category String
+  fileId   String?
+  tags     String[]
+  @@map("document_repository")
+}
+
+model ScheduledJobDef {
+  id       String @id @default(uuid())
+  tenantId String
+  name     String
+  cron     String
+  jobType  String
+  config   Json?
+  isActive Boolean @default(true)
+  @@map("scheduled_job_defs")
 }

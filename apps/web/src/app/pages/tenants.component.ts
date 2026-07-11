@@ -1,16 +1,23 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent],
   template: `
-    <div class="toolbar"><h1>Tenants</h1>
-      <export-bar [rows]="tenants" [cols]="exportCols" name="tenants" />
-    </div>
-    <div class="card">
+    <e360-module-shell
+      title="Tenants"
+      description="Multi-tenant provisioning and management."
+      icon="building-2"
+      [showReports]="false"
+      rolesHint="PLATFORM_ADMIN"
+      [breadcrumbs]="[{ label: 'Platform' }, { label: 'Tenants' }]"
+    >
+      <div actions><export-bar [rows]="tenants" [cols]="exportCols" name="tenants" /></div>
+<div class="card">
       <h2>Create tenant</h2>
       <div class="row">
         <div><label>Company name</label><input [(ngModel)]="f.name" /></div>
@@ -23,7 +30,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
         <div><label>Admin first name</label><input [(ngModel)]="f.adminFirstName" /></div>
         <div><label>Admin last name</label><input [(ngModel)]="f.adminLastName" /></div>
       </div>
-      @if (error) { <div class="error">{{ error }}</div> }
+      @if (error) { <div class="e360-error">{{ error }}</div> }
       <button (click)="create()">Create tenant</button>
     </div>
     <div class="card">
@@ -37,6 +44,8 @@ import { ExportBarComponent } from '../core/export-bar.component';
         }
       </table>
     </div>
+  
+    </e360-module-shell>
   `,
 })
 export class TenantsComponent implements OnInit {

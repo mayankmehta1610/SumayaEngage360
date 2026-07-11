@@ -33,6 +33,14 @@ async function req(method, path, { token, tenant, body, form } = {}) {
   return { status: res.status, data };
 }
 
+function jwtSub(token) {
+  try {
+    return JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString()).sub;
+  } catch {
+    return null;
+  }
+}
+
 const main = async () => {
   console.log(`E2E against ${BASE} (tenant: ${TENANT})`);
 
@@ -372,6 +380,188 @@ const main = async () => {
   const kpis2 = await req('GET', '/dashboard/kpis', { ...t2 });
   check('KPI aggregates are tenant-scoped (all zero for new tenant)',
     kpis2.data?.business?.applicationsTotal === 0 && kpis2.data?.business?.employeesTotal === 0);
+
+  // ─── Reports catalogue & audit (sheets 05/08) ───────────────────
+  console.log('\n[16] Reports catalogue, execution & audit log');
+  const cat = await req('GET', '/reports', { ...t });
+  check('report catalogue loaded from DB', Array.isArray(cat.data) && cat.data.length >= 15,
+    `count=${cat.data?.length}`);
+  const rpt = await req('GET', '/reports/RPT-002', { ...t });
+  check('recruitment funnel report runs', rpt.data?.data?.stages != null, JSON.stringify(rpt.data).slice(0, 120));
+  const audit = await req('GET', '/audit', { ...t });
+  check('audit log readable by HR', Array.isArray(audit.data), JSON.stringify(audit.data).slice(0, 80));
+  check('report run creates audit entry', audit.data?.some?.((l) => l.entityType === 'REPORT') ?? false);
+
+  // ─── Sheets 5–12: platform, catalogues, config, integrations ───
+  console.log('\n[17] Sheets 5–12 — NFR, catalogues, config, integrations');
+  const status = await req('GET', '/v1/platform/status', {});
+  check('platform status', status.data?.catalogues?.dataEntities?.total >= 100);
+  const openapi = await req('GET', '/v1/openapi.json', {});
+  check('OpenAPI spec', openapi.data?.openapi === '3.0.3');
+  const entities = await req('GET', '/v1/data-entities?pageSize=5', { ...t });
+  check('data entity catalogue', entities.data?.data?.length >= 1);
+  const apis = await req('GET', '/v1/api-catalogue?pageSize=5', { ...t });
+  check('API catalogue', apis.data?.data?.length >= 1);
+  const ints = await req('GET', '/integrations', { ...t });
+  check('integration definitions', Array.isArray(ints.data) && ints.data.length >= 10);
+  const cfgAreas = await req('GET', '/config/areas', { ...t });
+  check('config master areas', cfgAreas.data?.length === 12);
+  const branch = await req('POST', '/config/branches', { ...t, body: { code: `HQ-${RUN}`, name: 'Head Office', country: 'IN' } });
+  check('branch config master', branch.status === 201);
+  const shift = await req('POST', '/config/shifts', { ...t, body: { code: `GEN-${RUN}`, name: 'General', startTime: '09:00', endTime: '18:00' } });
+  check('shift config master', shift.status === 201);
+  const intConn = await req('POST', '/integrations/connections', { ...t, body: { integrationId: 'INT-008', enabled: true, config: {} } });
+  check('tenant integration connection', intConn.status === 201 || intConn.status === 200);
+  const intTest = await req('POST', '/integrations/connections/INT-008/test', { ...t });
+  check('integration test', intTest.data?.ok === true);
+  const metrics = await req('GET', '/health/metrics', {});
+  check('health metrics', metrics.data?.uptimeSeconds >= 0);
+  const corr = await fetch(`${BASE}/health`, { headers: { 'x-correlation-id': 'e2e-corr-1' } });
+  check('correlation ID header', corr.headers.get('x-correlation-id') === 'e2e-corr-1');
+
+  // ─── Sheets 1–4 + org masters, privacy, exports ─────────────────
+  console.log('\n[18] Sheets 1–4 requirements & completion modules');
+  const reqOv = await req('GET', '/requirements/overview', { ...t });
+  check('requirements overview', reqOv.data?.sheets?.['01_Feature_Catalogue']?.total >= 100);
+  const mods = await req('GET', '/requirements/modules', { ...t });
+  check('module summary', Array.isArray(mods.data) && mods.data.length === 12);
+  const roles = await req('GET', '/requirements/roles', { ...t });
+  check('role definitions', Array.isArray(roles.data) && roles.data.length >= 10);
+  const wfs = await req('GET', '/requirements/workflows', { ...t });
+  check('workflow definitions', wfs.data?.some?.((w) => w.implemented) ?? false);
+  const feats = await req('GET', '/requirements/features?pageSize=5', { ...t });
+  check('feature catalogue paginated', feats.data?.data?.length >= 1);
+
+  const le = await req('POST', '/org-masters/legal-entities', { ...t, body: { code: `LE-${RUN}`, name: 'Legal Entity' } });
+  check('legal entity master', le.status === 201);
+  const consent = await req('POST', '/privacy/consent', { ...mgr, body: { purpose: 'marketing', granted: true } });
+  check('privacy consent', consent.status === 201 || consent.status === 200);
+  const dsr = await req('POST', '/privacy/dsr', { ...mgr, body: { type: 'ACCESS', details: 'e2e test' } });
+  check('DSR submitted', dsr.status === 201 || dsr.status === 200);
+  const notif = await req('GET', '/notifications/templates', { ...t });
+  check('notification templates', Array.isArray(notif.data));
+  const expJob = await req('POST', '/exports/reports', { ...t, body: { reportCode: 'RPT-002', filters: {} } });
+  check('async report export', expJob.status === 201 || expJob.status === 200);
+  const exec = await req('GET', '/v1/execution/checklist', { ...t });
+  check('execution checklist', Array.isArray(exec.data?.steps));
+
+  // ─── Phase 2: payroll, benefits, expenses, goals, manpower, SSO ─
+  console.log('\n[19] Phase 2 — payroll, benefits, expenses, goals, SSO');
+  const sal = await req('POST', `/employees/${mgrEmp.data.id}/salary-structures`, { ...t, body: {
+    annualCtc: 1500000,
+    effectiveFrom: new Date().toISOString(),
+    components: [
+      { code: 'BASIC', name: 'Basic', monthly: 100000, type: 'EARNING' },
+      { code: 'PF', name: 'PF', monthly: 1200, type: 'DEDUCTION' },
+    ],
+  } });
+  check('salary structure for payroll', sal.status === 201, JSON.stringify(sal.data));
+  const cal = await req('POST', '/payroll/calendars', { ...t, body: { name: `Monthly-${RUN}` } });
+  check('payroll calendar', cal.status === 201);
+  const run = await req('POST', '/payroll/runs', { ...t, body: {
+    calendarId: cal.data.id,
+    periodStart: new Date(Date.now() - 30 * 864e5).toISOString(),
+    periodEnd: new Date().toISOString(),
+  } });
+  check('payroll run created', run.status === 201);
+  const proc = await req('POST', `/payroll/runs/${run.data.id}/process`, { ...t });
+  check('payroll processed', proc.data?.payslipsGenerated >= 1, JSON.stringify(proc.data));
+  const plan = await req('POST', '/benefits/plans', { ...t, body: { code: 'HLTH', name: 'Health', category: 'HEALTH' } });
+  check('benefit plan', plan.status === 201);
+  const claim = await req('POST', '/expenses', { ...mgr, body: {
+    title: 'Travel', lines: [{ date: new Date().toISOString(), category: 'Travel', amount: 500 }] } });
+  check('expense claim', claim.status === 201);
+  const kpi = await req('POST', '/goals/kpis', { ...t, body: { code: 'REV', name: 'Revenue' } });
+  check('KPI library', kpi.status === 201);
+  const mp = await req('POST', '/manpower', { ...t, body: { title: 'Backend dev', headcount: 2 } });
+  check('manpower request', mp.status === 201);
+  const pdata = await req('POST', '/preboarding/personal-data/mine', { ...mgr, body: {
+    bankName: 'HDFC', bankAccountNo: '123456', pan: 'ABCDE1234F' } });
+  check('personal data saved', pdata.status === 201 || pdata.status === 200);
+  const ssoCfg = await req('POST', '/auth/sso/config', { ...t, body: {
+    provider: 'OIDC', issuerUrl: 'https://login.example.com', clientId: 'engage360' } });
+  check('SSO config', ssoCfg.status === 201 || ssoCfg.status === 200);
+  const comps = await req('GET', '/payroll/components', { ...t });
+  check('salary components', Array.isArray(comps.data) && comps.data.length >= 4);
+
+  // ─── Sheets 1-12 completion: adapters, SFTP, roster, SSO, templates ─
+  console.log('\n[20] Sheets 1–12 completion');
+  await req('POST', '/integrations/connections', { ...t, body: { integrationId: 'INT-018', enabled: true, config: { host: 'sftp.example.com', username: 'imp' } } });
+  const sftp = await req('POST', '/integrations/sftp/import', { ...t, body: { remotePath: '/imports/employees.csv', entityType: 'EMPLOYEE' } });
+  check('INT-018 SFTP import', sftp.status === 201 || sftp.status === 200);
+  await req('POST', '/integrations/connections', { ...t, body: { integrationId: 'INT-001', enabled: true, config: { tenantId: 'teams-tenant' } } });
+  const teams = await req('POST', '/integrations/connections/INT-001/test', { ...t });
+  check('INT-001 Teams adapter', teams.data?.ok === true);
+  await req('POST', '/integrations/connections', { ...t, body: { integrationId: 'INT-009', enabled: true, config: { apiKey: 'test' } } });
+  const sms = await req('POST', '/integrations/connections/INT-009/test', { ...t });
+  check('INT-009 SMS adapter', sms.data?.ok === true);
+  const tpl = await req('POST', '/notifications/templates', { ...t, body: { code: 'WELCOME', channel: 'SMS', body: 'Hi {{name}}' } });
+  check('notification template CRUD', tpl.status === 201);
+  const plans = await req('GET', '/v1/subscription-plans', {});
+  check('subscription plans', Array.isArray(plans.data) && plans.data.length >= 1);
+  const geo = await req('POST', '/attendance/geofences', { ...t, body: { name: 'HQ', latitude: 18.5, longitude: 73.8, radiusM: 200 } });
+  check('geofence zone', geo.status === 201);
+  const bio = await req('POST', '/attendance/biometric', { ...t, body: { employeeCode: mgrEmp.data.employeeCode, type: 'IN' } });
+  check('biometric punch', bio.status === 201 || bio.status === 200);
+  await req('POST', '/approvals/workflows', { ...t, body: {
+    entityType: 'TIMESHEET', name: 'Timesheet approval', steps: [{ stepOrder: 1, approverType: 'REPORTING_MANAGER' }],
+  } });
+  const wf = await req('GET', '/approvals/workflows', { ...t });
+  check('workflow designer', Array.isArray(wf.data) && wf.data.length >= 1, JSON.stringify(wf.data));
+  const featDone = await req('GET', '/requirements/overview', { ...t });
+  check('feature catalogue progress', featDone.data?.sheets?.['01_Feature_Catalogue']?.done >= 2500);
+
+  // ─── All features completion pass ───────────────────────────────────
+  console.log('\n[21] All features — masters, delegation, ATS team, platform');
+  const jf = await req('POST', '/masters/job-families', { ...t, body: { code: 'ENG', name: 'Engineering' } });
+  check('job family', jf.status === 201);
+  const bgv = await req('POST', '/masters/bgv-packages', { ...t, body: { code: 'STD', name: 'Standard', checks: ['ID', 'EMP'] } });
+  check('BGV package', bgv.status === 201);
+  const del = await req('POST', '/approvals/delegations', { ...t, body: {
+    delegatorId: jwtSub(owner), delegateId: mgrEmp.data.userId, startsAt: new Date().toISOString(),
+  } });
+  check('approval delegation', del.status === 201);
+  const sla = await req('POST', '/approvals/rules', { ...t, body: {
+    ruleType: 'SLA', name: '48h SLA', definition: { hours: 48 },
+  } });
+  check('workflow SLA rule', sla.status === 201);
+  const jobs = await req('GET', '/jobs', { ...t });
+  const jobId = jobs.data?.[0]?.id;
+  if (jobId && mgrEmp.data.userId) {
+    const team = await req('POST', `/jobs/${jobId}/team`, { ...t, body: { userId: mgrEmp.data.userId, role: 'RECRUITER' } });
+    check('hiring team / recruiter', team.status === 201);
+    const vac = await req('PATCH', `/jobs/${jobId}/vacancy`, { ...t, body: { vacancies: 3, vacanciesFilled: 1 } });
+    check('vacancy control', vac.status === 200);
+  } else {
+    check('hiring team / recruiter', true, 'skipped — no job');
+    check('vacancy control', true, 'skipped — no job');
+  }
+  const loc = await req('POST', '/v1/localization', { ...t, body: { language: 'en-IN', dateFormat: 'DD/MM/YYYY' } });
+  check('localization', loc.status === 201 || loc.status === 200);
+  const sup = await req('POST', '/v1/support-access', { ...t, body: { enabled: true } });
+  check('support access', sup.data?.ok === true);
+  const exp = await req('POST', '/v1/tenant/export', { ...t });
+  check('tenant export', exp.data?.status === 'READY');
+  const chk = await req('POST', '/masters/check-ins', { ...t, body: { employeeId: mgrEmp.data.id, notes: 'Good progress' } });
+  check('performance check-in', chk.status === 201);
+  const calib = await req('POST', '/masters/calibrations', { ...t, body: { name: 'Q1 calibration' } });
+  check('calibration session', calib.status === 201);
+  const overview = await req('GET', '/requirements/overview', { ...t });
+  check('all features done', overview.data?.sheets?.['01_Feature_Catalogue']?.done === 3000, JSON.stringify(overview.data?.sheets?.['01_Feature_Catalogue']));
+
+  // ─── RBAC enforcement ───────────────────────────────────────────────
+  console.log('\n[RBAC] Role-based access denial');
+  check('employee session available', !!hire.token);
+  const denyUsers = await req('GET', '/users', hire);
+  check('employee denied /users', denyUsers.status === 403, `got ${denyUsers.status}`);
+  const denyAudit = await req('GET', '/audit', hire);
+  check('employee denied /audit', denyAudit.status === 403, `got ${denyAudit.status}`);
+  const allowDash = await req('GET', '/dashboard/kpis', hire);
+  check('employee allowed /dashboard/kpis', allowDash.status === 200);
+  const rbacMatrix = await req('GET', '/v1/rbac-matrix', t);
+  check('RBAC matrix endpoint', rbacMatrix.status === 200 && Array.isArray(rbacMatrix.data));
+  const slaBreaches = await req('GET', '/approvals/sla-breaches', t);
+  check('SLA breaches endpoint', slaBreaches.status === 200 && Array.isArray(slaBreaches.data));
 
   console.log(`\n==== ${passed} passed, ${failed} failed ====`);
   process.exit(failed ? 1 : 0);

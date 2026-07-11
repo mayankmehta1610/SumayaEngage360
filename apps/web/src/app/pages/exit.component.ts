@@ -2,16 +2,24 @@ import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent],
+  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent],
   template: `
-    <div class="toolbar"><h1>Exit management</h1>
-      <export-bar [rows]="resignations" [cols]="exportCols" name="resignations" />
-    </div>
-    @if (error) { <div class="error">{{ error }}</div> }
+    <e360-module-shell
+      title="Exit management"
+      description="Resignations, clearances, and offboarding."
+      icon="log-out"
+      moduleKey="exit"
+      auditEntityType="RESIGNATION"
+      rolesHint="TENANT_ADMIN, HR, MANAGER, EMPLOYEE"
+      [breadcrumbs]="[{ label: 'Workforce' }, { label: 'Exit management' }]"
+    >
+      <div actions><export-bar [rows]="resignations" [cols]="exportCols" name="resignations" /></div>
+@if (error) { <div class="e360-error">{{ error }}</div> }
 
     <!-- ══════════ MY RESIGNATION (employee self-service) ══════════ -->
     <div class="card">
@@ -106,6 +114,8 @@ import { ExportBarComponent } from '../core/export-bar.component';
         </div>
       </div>
     } @empty { <div class="card muted">No resignations.</div> }
+  
+    </e360-module-shell>
   `,
 })
 export class ExitComponent implements OnInit {

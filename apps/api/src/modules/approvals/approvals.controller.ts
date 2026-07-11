@@ -23,10 +23,32 @@ export class ApprovalsController {
     return this.approvals.listWorkflows(tenantId);
   }
 
+  @Post('workflows/:id/versions')
+  @Roles(Role.TENANT_ADMIN, Role.HR)
+  createVersion(
+    @TenantId() tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: { definition: Record<string, unknown> },
+  ) {
+    return this.approvals.createVersion(tenantId, id, dto.definition);
+  }
+
+  @Get('workflows/:id/versions')
+  @Roles(Role.TENANT_ADMIN, Role.HR)
+  versions(@TenantId() tenantId: string, @Param('id') id: string) {
+    return this.approvals.versions(tenantId, id);
+  }
+
   // Approvals inbox for the logged-in user (any role can be an approver).
   @Get('pending')
   myPending(@TenantId() tenantId: string, @CurrentUser() user: JwtPayload) {
     return this.approvals.myPending(tenantId, user.sub);
+  }
+
+  @Get('sla-breaches')
+  @Roles(Role.TENANT_ADMIN, Role.HR)
+  slaBreaches(@TenantId() tenantId: string) {
+    return this.approvals.listSlaBreaches(tenantId);
   }
 
   @Post(':requestId/act')
@@ -46,5 +68,35 @@ export class ApprovalsController {
     @Query('entityId') entityId: string,
   ) {
     return this.approvals.requestFor(tenantId, entityType, entityId);
+  }
+
+  @Get('delegations')
+  @Roles(Role.TENANT_ADMIN, Role.HR)
+  delegations(@TenantId() tenantId: string) {
+    return this.approvals.listDelegations(tenantId);
+  }
+
+  @Post('delegations')
+  @Roles(Role.TENANT_ADMIN, Role.HR)
+  createDelegation(
+    @TenantId() tenantId: string,
+    @Body() body: { delegatorId: string; delegateId: string; startsAt: string; endsAt?: string },
+  ) {
+    return this.approvals.createDelegation(tenantId, body);
+  }
+
+  @Get('rules')
+  @Roles(Role.TENANT_ADMIN, Role.HR)
+  rules(@TenantId() tenantId: string, @Query('ruleType') ruleType?: string) {
+    return this.approvals.listRules(tenantId, ruleType);
+  }
+
+  @Post('rules')
+  @Roles(Role.TENANT_ADMIN, Role.HR)
+  createRule(
+    @TenantId() tenantId: string,
+    @Body() body: { ruleType: string; name: string; definition: Record<string, unknown> },
+  ) {
+    return this.approvals.createRule(tenantId, body);
   }
 }

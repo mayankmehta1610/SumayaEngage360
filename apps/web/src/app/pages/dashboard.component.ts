@@ -1,13 +1,14 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService, errMsg } from '../core/api.service';
+import { ModuleShellComponent } from '../ui/module-shell.component';
 import { AuthService } from '../core/auth.service';
 
 // Business dashboard: every KPI aggregated live by /dashboard/kpis and
 // clickable — each tile navigates to the underlying, filtered data.
 @Component({
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, ModuleShellComponent],
   styles: [`
     .kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .75rem; }
     .kpi {
@@ -27,10 +28,15 @@ import { AuthService } from '../core/auth.service';
     h2 { margin: 1.4rem 0 .6rem; }
   `],
   template: `
-    <div class="toolbar"><h1>Dashboard</h1>
-      <span class="muted">All figures live from the database · click any KPI to open the data</span>
-    </div>
-    @if (error) { <div class="card error">{{ error }}</div> }
+    <e360-module-shell
+      title="Dashboard"
+      description="All figures live from the database · click any KPI to open the data"
+      icon="layout-dashboard"
+      moduleKey="dashboard"
+      rolesHint="TENANT_ADMIN, HR, MANAGER, EMPLOYEE, INTERVIEWER, DEPARTMENT_HEAD"
+      [breadcrumbs]="[{ label: 'Platform' }, { label: 'Dashboard' }]"
+    >
+@if (error) { <div class="e360-error">{{ error }}</div> }
 
     @if (k?.business; as b) {
       <h2>Recruitment</h2>
@@ -96,10 +102,12 @@ import { AuthService } from '../core/auth.service';
         }
       </div>
       @if (p.resignationStatus) {
-        <p class="muted">Your resignation status: <span class="badge warn">{{ p.resignationStatus }}</span>
+        <p class="e360-muted">Your resignation status: <span class="badge warn">{{ p.resignationStatus }}</span>
           — <a routerLink="/exit">view progress</a></p>
       }
     }
+  
+    </e360-module-shell>
   `,
 })
 export class DashboardComponent implements OnInit {

@@ -2,11 +2,12 @@ import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
+import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent],
   styles: [`
     .progress { background: #eef2f9; border-radius: 6px; height: 10px; overflow: hidden; }
     .progress div { background: #2f6bff; height: 100%; transition: width .5s; }
@@ -18,10 +19,17 @@ import { ExportBarComponent } from '../core/export-bar.component';
     .qopt.sel { border-color: #2f6bff; background: #eef3ff; }
   `],
   template: `
-    <div class="toolbar"><h1>Trainings</h1>
-      @if (isHr) { <export-bar [rows]="courses" [cols]="exportCols" name="training-courses" /> }
-    </div>
-    @if (error) { <div class="error">{{ error }}</div> }
+    <e360-module-shell
+      title="Trainings"
+      description="Courses, video progress, quizzes, and assignments."
+      icon="graduation-cap"
+      moduleKey="trainings"
+      auditEntityType="TRAINING_COURSE"
+      rolesHint="TENANT_ADMIN, HR, MANAGER, EMPLOYEE"
+      [breadcrumbs]="[{ label: 'Performance' }, { label: 'Trainings' }]"
+    >
+      <div actions>@if (isHr) { <export-bar [rows]="courses" [cols]="exportCols" name="training-courses" /> }</div>
+@if (error) { <div class="e360-error">{{ error }}</div> }
 
     <!-- ══════════ MY TRAININGS (every employee) ══════════ -->
     @if (mine.length || !isHr) {
@@ -180,6 +188,8 @@ import { ExportBarComponent } from '../core/export-bar.component';
         </div>
       }
     }
+  
+    </e360-module-shell>
   `,
 })
 export class TrainingsComponent implements OnInit, OnDestroy {

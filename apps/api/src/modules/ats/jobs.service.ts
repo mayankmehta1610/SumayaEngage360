@@ -78,4 +78,28 @@ export class JobsService {
       .catch(() => undefined);
     return job;
   }
+
+  listTeam(tenantId: string, jobId: string) {
+    return this.prisma.jobTeamMember.findMany({ where: { tenantId, jobId } });
+  }
+
+  async addTeamMember(tenantId: string, jobId: string, userId: string, role: string) {
+    await this.findOne(tenantId, jobId);
+    const member = await this.prisma.jobTeamMember.create({
+      data: { tenantId, jobId, userId, role },
+    });
+    const field = role === 'RECRUITER' ? 'recruiterIds' : 'hiringTeamIds';
+    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+    const ids = new Set([...(job?.[field as 'recruiterIds'] ?? []), userId]);
+    await this.prisma.job.update({
+      where: { id: jobId },
+      data: { [field]: [...ids] },
+    });
+    return member;
+  }
+
+  async updateVacancy(tenantId: string, jobId: string, body: { vacancies?: number; vacanciesFilled?: number; headcountBudget?: number }) {
+    await this.findOne(tenantId, jobId);
+    return this.prisma.job.update({ where: { id: jobId }, data: body });
+  }
 }

@@ -1,16 +1,23 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent],
   template: `
-    <div class="toolbar"><h1>User accounts</h1>
-      <export-bar [rows]="users" [cols]="exportCols" name="users" />
-    </div>
-    @if (error) { <div class="error">{{ error }}</div> }
+    <e360-module-shell
+      title="User accounts"
+      description="Staff logins for HR, interviewers, and vendor agencies."
+      icon="users"
+      [showReports]="false"
+      rolesHint="TENANT_ADMIN"
+      [breadcrumbs]="[{ label: 'Platform' }, { label: 'User accounts' }]"
+    >
+      <div actions><export-bar [rows]="users" [cols]="exportCols" name="users" /></div>
+@if (error) { <div class="e360-error">{{ error }}</div> }
     <div class="card">
       <h2 style="margin-top:0">Create user account</h2>
       <p class="muted">For staff logins that are not employees hired through the ATS — HR executives,
@@ -43,6 +50,8 @@ import { ExportBarComponent } from '../core/export-bar.component';
         }
       </table>
     </div>
+  
+    </e360-module-shell>
   `,
 })
 export class UsersComponent implements OnInit {

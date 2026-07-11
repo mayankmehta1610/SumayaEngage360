@@ -2,16 +2,24 @@ import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent],
+  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent],
   template: `
-    <div class="toolbar"><h1>Timesheets</h1>
-      <export-bar [rows]="mine" [cols]="exportCols" name="my-timesheets" />
-    </div>
-    @if (error) { <div class="error">{{ error }}</div> }
+    <e360-module-shell
+      title="Timesheets"
+      description="Submit timesheets and approve team entries."
+      icon="clock"
+      moduleKey="timesheets"
+      auditEntityType="TIMESHEET"
+      rolesHint="TENANT_ADMIN, HR, MANAGER, EMPLOYEE"
+      [breadcrumbs]="[{ label: 'Operations' }, { label: 'Timesheets' }]"
+    >
+      <div actions><export-bar [rows]="mine" [cols]="exportCols" name="my-timesheets" /></div>
+@if (error) { <div class="e360-error">{{ error }}</div> }
 
     <div class="card">
       <h2>Awaiting my approval</h2>
@@ -61,6 +69,8 @@ import { ExportBarComponent } from '../core/export-bar.component';
         }
       </table>
     </div>
+  
+    </e360-module-shell>
   `,
 })
 export class TimesheetsComponent implements OnInit {

@@ -2,16 +2,23 @@ import { Component, ElementRef, OnInit, ViewChild, inject } from '@angular/core'
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { ApiService, errMsg } from '../core/api.service';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportService } from '../core/export.service';
 
 @Component({
   standalone: true,
-  imports: [DatePipe, DecimalPipe, ExportBarComponent],
+  imports: [DatePipe, DecimalPipe, ExportBarComponent, ModuleShellComponent],
   template: `
-    <div class="toolbar"><h1>My profile</h1>
-      @if (me) { <button class="secondary" (click)="print()">🖨 Print / save profile as PDF</button> }
-    </div>
-    @if (error) { <div class="card error">{{ error }}</div> }
+    <e360-module-shell
+      title="My profile"
+      description="Employee profile, skills, history, and documents."
+      icon="user"
+      [showReports]="false"
+      rolesHint="All authenticated users"
+      [breadcrumbs]="[{ label: 'My workspace' }, { label: 'My profile' }]"
+    >
+      <div actions>@if (me) { <button class="secondary" (click)="print()">🖨 Print / save profile as PDF</button> }</div>
+@if (error) { <div class="e360-error">{{ error }}</div> }
     @if (me) {
       <div #printable>
         <div class="card">
@@ -86,6 +93,8 @@ import { ExportService } from '../core/export.service';
     } @else if (!error) {
       <div class="card muted">No employee record is linked to this account (admin/HR-only users don't have one).</div>
     }
+  
+    </e360-module-shell>
   `,
 })
 export class ProfileComponent implements OnInit {

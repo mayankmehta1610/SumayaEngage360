@@ -1,12 +1,9 @@
-import {
-  ConflictException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
+import { OidcService } from './oidc.service';
 import { LoginDto, RegisterDto } from './auth.dto';
 
 @Injectable()
@@ -14,6 +11,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly oidc: OidcService,
   ) {}
 
   // Bootstrap: the first registered user becomes the platform admin.
@@ -43,7 +41,6 @@ export class AuthService {
       where: {
         email: dto.email.toLowerCase(),
         isActive: true,
-        // platform admins log in without a tenant; tenant users within theirs
         ...(tenantId ? { tenantId } : {}),
       },
     });
@@ -51,6 +48,29 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
     return this.issueToken(user.id);
+  }
+
+  async ssoProviders(tenantId: string) {
+    return this.prisma.ssoProvider.findMany({
+      where: { tenantId, isActive: true },
+      select: { id: true, provider: true, issuerUrl: true, clientId: true },
+    });
+  }
+
+  // OIDC callback stub: validates provider is enabled and issues JWT for mapped user.
+  async ssoLogin(tenantId: string, dto: { email: string; provider: string; idToken?: string }) {
+    const user = await this.oidc.validateAndLogin(tenantId, dto.email, dto.idToken);
+    return this.issueToken(user.id);
+  }
+
+  async upsertSsoProvider(tenantId: string, dto: {
+    provider: string; issuerUrl: string; clientId: string; clientSecret?: string; isActive?: boolean;
+  }) {
+    return this.prisma.ssoProvider.upsert({
+      where: { tenantId_provider: { tenantId, provider: dto.provider } },
+      create: { tenantId, ...dto, isActive: dto.isActive ?? true },
+      update: { issuerUrl: dto.issuerUrl, clientId: dto.clientId, clientSecret: dto.clientSecret, isActive: dto.isActive ?? true },
+    });
   }
 
   private async issueToken(userId: string) {

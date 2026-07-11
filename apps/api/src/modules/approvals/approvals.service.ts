@@ -40,7 +40,28 @@ export class ApprovalsService {
   listWorkflows(tenantId: string) {
     return this.prisma.approvalWorkflow.findMany({
       where: { tenantId, isActive: true },
-      include: { steps: { orderBy: { stepOrder: 'asc' } } },
+      include: { steps: { orderBy: { stepOrder: 'asc' } }, versions: { orderBy: { version: 'desc' }, take: 3 } },
+    });
+  }
+
+  async createVersion(tenantId: string, workflowId: string, definition: Record<string, unknown>) {
+    const wf = await this.prisma.approvalWorkflow.findFirst({ where: { id: workflowId, tenantId } });
+    if (!wf) throw new NotFoundException('Workflow not found');
+    const latest = await this.prisma.workflowVersion.findFirst({
+      where: { workflowId },
+      orderBy: { version: 'desc' },
+    });
+    const version = (latest?.version ?? 0) + 1;
+    await this.prisma.workflowVersion.updateMany({ where: { workflowId }, data: { isActive: false } });
+    return this.prisma.workflowVersion.create({
+      data: { tenantId, workflowId, version, definition: definition as any, isActive: true },
+    });
+  }
+
+  versions(tenantId: string, workflowId: string) {
+    return this.prisma.workflowVersion.findMany({
+      where: { tenantId, workflowId },
+      orderBy: { version: 'desc' },
     });
   }
 
@@ -69,10 +90,18 @@ export class ApprovalsService {
       where: { tenantId, status: RequestStatus.PENDING },
       include: { workflow: { include: { steps: true } }, actions: true },
     });
-    const mine = [] as typeof requests;
+    const slaHours = await this.defaultSlaHours(tenantId);
+    const mine = [] as (typeof requests[0] & { slaBreached: boolean; slaDueAt: string })[];
     for (const r of requests) {
       const approvers = await this.resolveApprovers(r);
-      if (approvers.includes(userId)) mine.push(r);
+      if (approvers.includes(userId)) {
+        const dueAt = new Date(r.createdAt.getTime() + slaHours * 3600_000);
+        mine.push({
+          ...r,
+          slaBreached: Date.now() > dueAt.getTime(),
+          slaDueAt: dueAt.toISOString(),
+        });
+      }
     }
     return mine;
   }
@@ -88,6 +117,8 @@ export class ApprovalsService {
       include: { workflow: { include: { steps: true } } },
     });
     if (!request) throw new NotFoundException('Pending approval not found');
+
+    await this.evaluateBusinessRules(tenantId, request.entityType, request.entityId, dto.action);
 
     const approvers = await this.resolveApprovers(request);
     if (!approvers.includes(userId)) {
@@ -169,9 +200,11 @@ export class ApprovalsService {
     );
     if (!step) return [];
 
+    let base: string[];
     switch (step.approverType) {
       case 'USER':
-        return step.approverValue ? [step.approverValue] : [];
+        base = step.approverValue ? [step.approverValue] : [];
+        break;
       case 'DESIGNATION': {
         const emps = await this.prisma.employee.findMany({
           where: {
@@ -180,7 +213,8 @@ export class ApprovalsService {
           },
           select: { userId: true },
         });
-        return emps.map((e) => e.userId);
+        base = emps.map((e) => e.userId);
+        break;
       }
       case 'REPORTING_MANAGER': {
         const subject = await this.subjectEmployee(request.entityType, request.entityId);
@@ -189,7 +223,8 @@ export class ApprovalsService {
           where: { id: subject.managerId },
           select: { userId: true },
         });
-        return mgr ? [mgr.userId] : [];
+        base = mgr ? [mgr.userId] : [];
+        break;
       }
       case 'DEPARTMENT_HEAD': {
         const subject = await this.subjectEmployee(request.entityType, request.entityId);
@@ -202,11 +237,30 @@ export class ApprovalsService {
           where: { id: dept.headId },
           select: { userId: true },
         });
-        return head ? [head.userId] : [];
+        base = head ? [head.userId] : [];
+        break;
       }
       default:
-        return [];
+        base = [];
     }
+    return this.applyDelegations(request.tenantId, base);
+  }
+
+  /** Active delegations expand the approver set for out-of-office coverage. */
+  private async applyDelegations(tenantId: string, approverIds: string[]): Promise<string[]> {
+    if (!approverIds.length) return [];
+    const now = new Date();
+    const delegations = await this.prisma.approvalDelegation.findMany({
+      where: {
+        tenantId,
+        isActive: true,
+        delegatorId: { in: approverIds },
+        startsAt: { lte: now },
+        OR: [{ endsAt: null }, { endsAt: { gte: now } }],
+      },
+    });
+    const delegates = delegations.map((d) => d.delegateId);
+    return [...new Set([...approverIds, ...delegates])];
   }
 
   private async subjectEmployee(entityType: ApprovalEntity, entityId: string) {
@@ -264,6 +318,98 @@ export class ApprovalsService {
         break;
       default:
         break; // other entities read the request status directly
+    }
+  }
+
+  // ── delegation, SLA, escalation, business rules ────────────────────────
+
+  listDelegations(tenantId: string) {
+    return this.prisma.approvalDelegation.findMany({
+      where: { tenantId, isActive: true },
+      orderBy: { startsAt: 'desc' },
+    });
+  }
+
+  createDelegation(
+    tenantId: string,
+    body: { delegatorId: string; delegateId: string; startsAt: string; endsAt?: string },
+  ) {
+    return this.prisma.approvalDelegation.create({
+      data: {
+        tenantId,
+        delegatorId: body.delegatorId,
+        delegateId: body.delegateId,
+        startsAt: new Date(body.startsAt),
+        endsAt: body.endsAt ? new Date(body.endsAt) : undefined,
+      },
+    });
+  }
+
+  listRules(tenantId: string, ruleType?: string) {
+    return this.prisma.workflowRule.findMany({
+      where: { tenantId, isActive: true, ...(ruleType ? { ruleType } : {}) },
+    });
+  }
+
+  createRule(
+    tenantId: string,
+    body: { ruleType: string; name: string; definition: Record<string, unknown> },
+  ) {
+    return this.prisma.workflowRule.create({
+      data: { tenantId, ...body, definition: body.definition as object },
+    });
+  }
+
+  /** SLA hours from tenant workflow rules (ruleType SLA) or default 48h. */
+  async defaultSlaHours(tenantId: string): Promise<number> {
+    const rule = await this.prisma.workflowRule.findFirst({
+      where: { tenantId, isActive: true, ruleType: 'SLA' },
+      orderBy: { name: 'asc' },
+    });
+    const hours = (rule?.definition as { hours?: number } | null)?.hours;
+    return typeof hours === 'number' && hours > 0 ? hours : 48;
+  }
+
+  /** Pending requests past SLA — used by cron and admin dashboards. */
+  async listSlaBreaches(tenantId: string) {
+    const slaHours = await this.defaultSlaHours(tenantId);
+    const cutoff = new Date(Date.now() - slaHours * 3600_000);
+    const pending = await this.prisma.approvalRequest.findMany({
+      where: { tenantId, status: RequestStatus.PENDING, createdAt: { lt: cutoff } },
+      include: { workflow: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    return pending.map((r) => ({
+      ...r,
+      slaHours,
+      slaDueAt: new Date(r.createdAt.getTime() + slaHours * 3600_000).toISOString(),
+      hoursOverdue: Math.floor((Date.now() - r.createdAt.getTime() - slaHours * 3600_000) / 3600_000),
+    }));
+  }
+
+  /** Evaluates tenant business rules before allowing an approval action. */
+  private async evaluateBusinessRules(
+    tenantId: string,
+    entityType: ApprovalEntity,
+    entityId: string,
+    action: string,
+  ) {
+    const rules = await this.prisma.workflowRule.findMany({
+      where: { tenantId, isActive: true, ruleType: 'APPROVAL' },
+    });
+    for (const rule of rules) {
+      const def = rule.definition as {
+        entityTypes?: string[];
+        blockActions?: string[];
+        requireCommentOn?: string[];
+      };
+      if (def.entityTypes?.length && !def.entityTypes.includes(entityType)) continue;
+      if (def.blockActions?.includes(action)) {
+        throw new BadRequestException(`Business rule "${rule.name}" blocks action ${action}`);
+      }
+      if (def.requireCommentOn?.includes(action)) {
+        // comment validation happens in DTO layer for act(); hook for extensions
+      }
     }
   }
 }

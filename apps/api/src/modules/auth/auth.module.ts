@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/auth/roles.guard';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { OidcService } from './oidc.service';
 
 @Module({
   imports: [
@@ -19,8 +20,10 @@ import { AuthService } from './auth.service';
   controllers: [AuthController],
   providers: [
     AuthService,
+    OidcService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
+  exports: [OidcService],
 })
 export class AuthModule {}

@@ -1,4 +1,6 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Role } from '@prisma/client';
+import { Roles } from '../../common/auth/roles.decorator';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { TenantId } from '../../common/tenant/tenant.decorator';
@@ -6,6 +8,7 @@ import { GiveFeedbackDto, GiveRecognitionDto } from './engagement.dto';
 import { EngagementService } from './engagement.service';
 
 @Controller()
+@Roles(Role.TENANT_ADMIN, Role.HR, Role.MANAGER, Role.EMPLOYEE)
 export class EngagementController {
   constructor(private readonly engagement: EngagementService) {}
 

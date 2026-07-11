@@ -67,4 +67,30 @@ export class ProjectsController {
   ) {
     return this.projects.employeeAllocations(tenantId, employeeId);
   }
+
+  @Get(':id/contracts')
+  contracts(@TenantId() tenantId: string, @Param('id') id: string) {
+    return this.projects.contracts(tenantId, id);
+  }
+
+  @Post(':id/contracts')
+  @Roles(Role.TENANT_ADMIN, Role.HR)
+  createContract(
+    @TenantId() tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: { clientRef?: string; value?: number; startDate: string; endDate?: string; terms?: string },
+  ) {
+    return this.projects.createContract(tenantId, id, dto);
+  }
+
+  @Get('rate-cards')
+  rateCards(@TenantId() tenantId: string) {
+    return this.projects.rateCards(tenantId);
+  }
+
+  @Post('rate-cards')
+  @Roles(Role.TENANT_ADMIN, Role.HR)
+  createRateCard(@TenantId() tenantId: string, @Body() dto: { projectId?: string; role: string; hourlyRate: number }) {
+    return this.projects.createRateCard(tenantId, dto);
+  }
 }

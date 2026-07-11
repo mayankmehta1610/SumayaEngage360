@@ -1,16 +1,24 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent],
   template: `
-    <div class="toolbar"><h1>Approvals</h1>
-      <export-bar [rows]="pending" [cols]="exportCols" name="pending-approvals" />
-    </div>
-    @if (error) { <div class="error">{{ error }}</div> }
+    <e360-module-shell
+      title="Approvals inbox"
+      description="Pending approvals and workflow configuration."
+      icon="check-square"
+      moduleKey="approvals"
+      auditEntityType="APPROVAL_REQUEST"
+      rolesHint="TENANT_ADMIN, HR, MANAGER, EMPLOYEE, DEPARTMENT_HEAD"
+      [breadcrumbs]="[{ label: 'Workflow' }, { label: 'Approvals' }]"
+    >
+      <div actions><export-bar [rows]="pending" [cols]="exportCols" name="pending-approvals" /></div>
+@if (error) { <div class="e360-error">{{ error }}</div> }
 
     <div class="card">
       <h2>My pending approvals</h2>
@@ -87,6 +95,8 @@ import { ExportBarComponent } from '../core/export-bar.component';
         }
       </table>
     </div>
+  
+    </e360-module-shell>
   `,
 })
 export class ApprovalsComponent implements OnInit {

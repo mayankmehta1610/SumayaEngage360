@@ -9,6 +9,7 @@ import { createReadStream, mkdirSync, writeFileSync } from 'fs';
 import { extname, join, resolve } from 'path';
 import { Readable } from 'stream';
 import { PrismaService } from '../../prisma/prisma.service';
+import { FileSecurityService } from './file-security.service';
 
 // Storage driver picks itself from the environment:
 //  - S3_BUCKET set  -> S3-compatible object storage (AWS S3, Cloudflare R2,
@@ -32,7 +33,10 @@ export class FilesService {
       })
     : null;
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly security: FileSecurityService,
+  ) {
     if (!this.s3) mkdirSync(this.dir, { recursive: true });
   }
 
@@ -41,6 +45,7 @@ export class FilesService {
     tenantId?: string,
     uploadedBy?: string,
   ) {
+    this.security.validate(file);
     const storageKey = `${randomUUID()}${extname(file.originalname)}`;
     if (this.s3) {
       await this.s3.send(

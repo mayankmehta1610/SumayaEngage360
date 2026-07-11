@@ -47,3 +47,17 @@ test('public careers page renders jobs from the API', async ({ page }) => {
   // Header comes from the hiring-client record in the database
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Careers');
 });
+
+test('reports page loads catalogue and can run a report', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByPlaceholder('acme').fill(TENANT);
+  await page.locator('input[type="email"]').fill(EMAIL);
+  await page.locator('input[type="password"]').fill(PASSWORD);
+  await page.getByRole('button', { name: /sign in/i }).click();
+  await page.waitForURL(/\/dashboard$/, { timeout: 90_000 });
+  await page.goto('/reports');
+  await expect(page.getByRole('heading', { name: 'Reports & KPIs' })).toBeVisible();
+  await expect(page.getByText('RPT-001')).toBeVisible();
+  await page.getByRole('button', { name: /Run report/i }).click();
+  await expect(page.getByText(/Generated/)).toBeVisible({ timeout: 30_000 });
+});

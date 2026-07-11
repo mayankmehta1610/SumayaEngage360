@@ -1,43 +1,60 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth.guard';
+import { roleGuard } from './core/role.guard';
+
+const shellChildren = [
+  { path: 'dashboard', loadComponent: () => import('./pages/dashboard.component').then((m) => m.DashboardComponent) },
+  { path: 'reports', loadComponent: () => import('./pages/reports.component').then((m) => m.ReportsComponent) },
+  { path: 'settings', loadComponent: () => import('./pages/settings.component').then((m) => m.SettingsComponent) },
+  { path: 'catalogues', loadComponent: () => import('./pages/catalogues.component').then((m) => m.CataloguesComponent) },
+  { path: 'requirements', loadComponent: () => import('./pages/requirements.component').then((m) => m.RequirementsComponent) },
+  { path: 'audit', loadComponent: () => import('./pages/audit.component').then((m) => m.AuditComponent) },
+  { path: 'execution', loadComponent: () => import('./pages/execution.component').then((m) => m.ExecutionComponent) },
+  { path: 'manpower', loadComponent: () => import('./pages/manpower.component').then((m) => m.ManpowerComponent) },
+  { path: 'payroll', loadComponent: () => import('./pages/payroll.component').then((m) => m.PayrollComponent) },
+  { path: 'benefits', loadComponent: () => import('./pages/benefits.component').then((m) => m.BenefitsComponent) },
+  { path: 'expenses', loadComponent: () => import('./pages/expenses.component').then((m) => m.ExpensesComponent) },
+  { path: 'goals', loadComponent: () => import('./pages/goals.component').then((m) => m.GoalsComponent) },
+  { path: 'assets', loadComponent: () => import('./pages/assets.component').then((m) => m.AssetsComponent) },
+  { path: 'org-masters', loadComponent: () => import('./pages/org-masters.component').then((m) => m.OrgMastersComponent) },
+  { path: 'masters', loadComponent: () => import('./pages/masters.component').then((m) => m.MastersPageComponent) },
+  { path: 'notifications', loadComponent: () => import('./pages/notifications.component').then((m) => m.NotificationsComponent) },
+  { path: 'bgc-vendor', loadComponent: () => import('./pages/bgc-vendor.component').then((m) => m.BgcVendorComponent) },
+  { path: 'workflows', loadComponent: () => import('./pages/workflows.component').then((m) => m.WorkflowsComponent) },
+  { path: 'preboarding-admin', loadComponent: () => import('./pages/preboarding-admin.component').then((m) => m.PreboardingAdminComponent) },
+  { path: 'privacy', loadComponent: () => import('./pages/privacy.component').then((m) => m.PrivacyComponent) },
+  { path: 'profile', loadComponent: () => import('./pages/profile.component').then((m) => m.ProfileComponent) },
+  { path: 'users', loadComponent: () => import('./pages/users.component').then((m) => m.UsersComponent) },
+  { path: 'candidates', loadComponent: () => import('./pages/candidates.component').then((m) => m.CandidatesComponent) },
+  { path: 'recognition', loadComponent: () => import('./pages/recognition.component').then((m) => m.RecognitionComponent) },
+  { path: 'clients', loadComponent: () => import('./pages/clients.component').then((m) => m.ClientsComponent) },
+  { path: 'jobs', loadComponent: () => import('./pages/jobs.component').then((m) => m.JobsComponent) },
+  { path: 'applications', loadComponent: () => import('./pages/applications.component').then((m) => m.ApplicationsComponent) },
+  { path: 'onboarding', loadComponent: () => import('./pages/onboarding.component').then((m) => m.OnboardingComponent) },
+  { path: 'employees', loadComponent: () => import('./pages/employees.component').then((m) => m.EmployeesComponent) },
+  { path: 'org', loadComponent: () => import('./pages/org.component').then((m) => m.OrgComponent) },
+  { path: 'projects', loadComponent: () => import('./pages/projects.component').then((m) => m.ProjectsComponent) },
+  { path: 'leave', loadComponent: () => import('./pages/leave.component').then((m) => m.LeaveComponent) },
+  { path: 'timesheets', loadComponent: () => import('./pages/timesheets.component').then((m) => m.TimesheetsComponent) },
+  { path: 'appraisals', loadComponent: () => import('./pages/appraisals.component').then((m) => m.AppraisalsComponent) },
+  { path: 'trainings', loadComponent: () => import('./pages/trainings.component').then((m) => m.TrainingsComponent) },
+  { path: 'exit', loadComponent: () => import('./pages/exit.component').then((m) => m.ExitComponent) },
+  { path: 'approvals', loadComponent: () => import('./pages/approvals.component').then((m) => m.ApprovalsComponent) },
+  { path: 'tenants', loadComponent: () => import('./pages/tenants.component').then((m) => m.TenantsComponent) },
+].map((r) => ({ ...r, canActivate: [roleGuard] }));
 
 export const routes: Routes = [
-  // Public marketing/landing page
   { path: '', pathMatch: 'full', loadComponent: () => import('./pages/landing.component').then((m) => m.LandingComponent) },
   { path: 'login', loadComponent: () => import('./pages/login.component').then((m) => m.LoginComponent) },
-  // Public, company-scoped careers pages: /careers/<company>/<client-page>.
-  // The company is part of the URL, so a link always shows exactly one
-  // tenant's data no matter who opens it.
   { path: 'careers/:tenant/:slug', loadComponent: () => import('./pages/careers.component').then((m) => m.CareersComponent) },
-  // Legacy single-segment link (pre-tenant-scoped URLs)
   { path: 'careers/:slug', loadComponent: () => import('./pages/careers.component').then((m) => m.CareersComponent) },
-  // Secure onboarding portal, company-scoped: /onboarding/<company>/<token>
   { path: 'onboarding/:tenant/:token', loadComponent: () => import('./pages/onboarding-portal.component').then((m) => m.OnboardingPortalComponent) },
   { path: 'onboarding/:token', loadComponent: () => import('./pages/onboarding-portal.component').then((m) => m.OnboardingPortalComponent) },
   {
     path: '',
     canActivate: [authGuard],
     loadComponent: () => import('./pages/shell.component').then((m) => m.ShellComponent),
-    children: [
-      { path: 'dashboard', loadComponent: () => import('./pages/dashboard.component').then((m) => m.DashboardComponent) },
-      { path: 'profile', loadComponent: () => import('./pages/profile.component').then((m) => m.ProfileComponent) },
-      { path: 'users', loadComponent: () => import('./pages/users.component').then((m) => m.UsersComponent) },
-      { path: 'candidates', loadComponent: () => import('./pages/candidates.component').then((m) => m.CandidatesComponent) },
-      { path: 'recognition', loadComponent: () => import('./pages/recognition.component').then((m) => m.RecognitionComponent) },
-      { path: 'clients', loadComponent: () => import('./pages/clients.component').then((m) => m.ClientsComponent) },
-      { path: 'jobs', loadComponent: () => import('./pages/jobs.component').then((m) => m.JobsComponent) },
-      { path: 'applications', loadComponent: () => import('./pages/applications.component').then((m) => m.ApplicationsComponent) },
-      { path: 'onboarding', loadComponent: () => import('./pages/onboarding.component').then((m) => m.OnboardingComponent) },
-      { path: 'employees', loadComponent: () => import('./pages/employees.component').then((m) => m.EmployeesComponent) },
-      { path: 'org', loadComponent: () => import('./pages/org.component').then((m) => m.OrgComponent) },
-      { path: 'projects', loadComponent: () => import('./pages/projects.component').then((m) => m.ProjectsComponent) },
-      { path: 'timesheets', loadComponent: () => import('./pages/timesheets.component').then((m) => m.TimesheetsComponent) },
-      { path: 'appraisals', loadComponent: () => import('./pages/appraisals.component').then((m) => m.AppraisalsComponent) },
-      { path: 'trainings', loadComponent: () => import('./pages/trainings.component').then((m) => m.TrainingsComponent) },
-      { path: 'exit', loadComponent: () => import('./pages/exit.component').then((m) => m.ExitComponent) },
-      { path: 'approvals', loadComponent: () => import('./pages/approvals.component').then((m) => m.ApprovalsComponent) },
-      { path: 'tenants', loadComponent: () => import('./pages/tenants.component').then((m) => m.TenantsComponent) },
-    ],
+    children: shellChildren,
   },
   { path: '**', redirectTo: '' },
 ];

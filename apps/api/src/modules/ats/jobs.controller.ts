@@ -46,4 +46,27 @@ export class JobsController {
   publish(@TenantId() tenantId: string, @Param('id') id: string) {
     return this.jobs.publish(tenantId, id);
   }
+
+  @Get(':id/team')
+  team(@TenantId() tenantId: string, @Param('id') id: string) {
+    return this.jobs.listTeam(tenantId, id);
+  }
+
+  @Post(':id/team')
+  addTeam(
+    @TenantId() tenantId: string,
+    @Param('id') id: string,
+    @Body() body: { userId: string; role: string },
+  ) {
+    return this.jobs.addTeamMember(tenantId, id, body.userId, body.role);
+  }
+
+  @Patch(':id/vacancy')
+  vacancy(
+    @TenantId() tenantId: string,
+    @Param('id') id: string,
+    @Body() body: { vacancies?: number; vacanciesFilled?: number; headcountBudget?: number },
+  ) {
+    return this.jobs.updateVacancy(tenantId, id, body);
+  }
 }

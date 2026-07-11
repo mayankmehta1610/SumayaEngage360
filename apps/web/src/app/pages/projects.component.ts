@@ -1,16 +1,24 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent],
   template: `
-    <div class="toolbar"><h1>Projects & allocation</h1>
-      <export-bar [rows]="projects" [cols]="exportCols" name="projects" />
-    </div>
-    @if (error) { <div class="error">{{ error }}</div> }
+    <e360-module-shell
+      title="Projects & allocation"
+      description="Project catalogue and employee allocations."
+      icon="folder-kanban"
+      moduleKey="projects"
+      auditEntityType="PROJECT"
+      rolesHint="TENANT_ADMIN, HR, MANAGER"
+      [breadcrumbs]="[{ label: 'Operations' }, { label: 'Projects' }]"
+    >
+      <div actions><export-bar [rows]="projects" [cols]="exportCols" name="projects" /></div>
+@if (error) { <div class="e360-error">{{ error }}</div> }
     <div class="card">
       <h2>Create project</h2>
       <div class="row">
@@ -56,6 +64,8 @@ import { ExportBarComponent } from '../core/export-bar.component';
         <p class="muted">Allocating sets the project manager as the employee's reporting manager (first allocation).</p>
       </div>
     }
+  
+    </e360-module-shell>
   `,
 })
 export class ProjectsComponent implements OnInit {

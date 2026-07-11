@@ -3,16 +3,24 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
+import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent],
+  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent],
   template: `
-    <div class="toolbar"><h1>Appraisals</h1>
-      @if (isHr) { <export-bar [rows]="cycles" [cols]="exportCols" name="appraisal-cycles" /> }
-    </div>
-    @if (error) { <div class="error">{{ error }}</div> }
+    <e360-module-shell
+      title="Appraisals"
+      description="Review cycles, self-assessments, and manager evaluations."
+      icon="star"
+      moduleKey="appraisals"
+      auditEntityType="APPRAISAL"
+      rolesHint="TENANT_ADMIN, HR, MANAGER, EMPLOYEE"
+      [breadcrumbs]="[{ label: 'Performance' }, { label: 'Appraisals' }]"
+    >
+      <div actions>@if (isHr) { <export-bar [rows]="cycles" [cols]="exportCols" name="appraisal-cycles" /> }</div>
+@if (error) { <div class="e360-error">{{ error }}</div> }
 
     <!-- ══════════ MY APPRAISALS (employee) ══════════ -->
     <h2>My appraisals</h2>
@@ -114,6 +122,8 @@ import { ExportBarComponent } from '../core/export-bar.component';
         </table>
       </div>
     }
+  
+    </e360-module-shell>
   `,
 })
 export class AppraisalsComponent implements OnInit {

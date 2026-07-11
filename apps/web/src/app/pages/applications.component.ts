@@ -3,22 +3,30 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { ModuleShellComponent } from '../ui/module-shell.component';
 import { environment } from '../../environments/environment';
 
 // Pipeline view: status changes, interview rounds (recording + mandatory
 // screenshot before pass/fail), and offer creation/sending.
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent],
+  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent],
   template: `
-    <div class="toolbar"><h1>Applications</h1>
-      <span style="display:inline-flex;gap:.4rem;align-items:center">
-        @if (status) { <span class="badge warn">filtered: {{ status }}</span>
+    <e360-module-shell
+      title="Applications"
+      description="Application pipeline, interviews, and offers."
+      icon="inbox"
+      moduleKey="applications"
+      auditEntityType="APPLICATION"
+      rolesHint="TENANT_ADMIN, HR, INTERVIEWER"
+      [breadcrumbs]="[{ label: 'Recruitment' }, { label: 'Applications' }]"
+    >
+      <div actions class="e360-toolbar" style="margin:0;gap:.4rem">
+        @if (status) { <span class="e360-badge warning">filtered: {{ status }}</span>
           <button class="secondary" (click)="status = undefined; load()">Clear filter</button> }
         <export-bar [rows]="applications" [cols]="exportCols" name="applications" />
-      </span>
-    </div>
-    @if (error) { <div class="error">{{ error }}</div> }
+      </div>
+@if (error) { <div class="e360-error">{{ error }}</div> }
     @for (a of applications; track a.id) {
       <div class="card">
         <div class="toolbar" style="margin-bottom:.25rem">
@@ -116,6 +124,8 @@ import { environment } from '../../environments/environment';
     } @empty {
       <div class="card muted">No applications yet. Publish a job and share its careers page.</div>
     }
+  
+    </e360-module-shell>
   `,
 })
 export class ApplicationsComponent implements OnInit, OnChanges {

@@ -1,4 +1,6 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Role } from '@prisma/client';
+import { Roles } from '../../common/auth/roles.decorator';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { TenantId } from '../../common/tenant/tenant.decorator';
@@ -6,6 +8,7 @@ import { CreateTimesheetDto, TimesheetActionDto } from './timesheets.dto';
 import { TimesheetsService } from './timesheets.service';
 
 @Controller('timesheets')
+@Roles(Role.TENANT_ADMIN, Role.HR, Role.MANAGER, Role.EMPLOYEE)
 export class TimesheetsController {
   constructor(private readonly timesheets: TimesheetsService) {}
 

@@ -2,16 +2,24 @@ import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent],
+  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent],
   template: `
-    <div class="toolbar"><h1>Recognition & feedback</h1>
-      <export-bar [rows]="feed" [cols]="feedCols" name="recognition-feed" />
-    </div>
-    @if (error) { <div class="error">{{ error }}</div> }
+    <e360-module-shell
+      title="Recognition & feedback"
+      description="Peer recognition, badges, and 360° feedback."
+      icon="award"
+      moduleKey="recognition"
+      auditEntityType="RECOGNITION"
+      rolesHint="TENANT_ADMIN, HR, MANAGER, EMPLOYEE"
+      [breadcrumbs]="[{ label: 'Performance' }, { label: 'Recognition' }]"
+    >
+      <div actions><export-bar [rows]="feed" [cols]="feedCols" name="recognition-feed" /></div>
+@if (error) { <div class="e360-error">{{ error }}</div> }
 
     <div class="row">
       <div class="card">
@@ -83,6 +91,8 @@ import { ExportBarComponent } from '../core/export-bar.component';
         </div>
       } @empty { <p class="muted">No feedback received yet.</p> }
     </div>
+  
+    </e360-module-shell>
   `,
 })
 export class RecognitionComponent implements OnInit {

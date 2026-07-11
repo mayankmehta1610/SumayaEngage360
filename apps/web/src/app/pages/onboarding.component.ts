@@ -1,16 +1,24 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent],
   template: `
-    <div class="toolbar"><h1>Onboarding</h1>
-      <export-bar [rows]="cases" [cols]="exportCols" name="onboarding-cases" />
-    </div>
-    @if (error) { <div class="error">{{ error }}</div> }
+    <e360-module-shell
+      title="Onboarding"
+      description="Document requirements and onboarding case management."
+      icon="user-plus"
+      moduleKey="onboarding"
+      auditEntityType="ONBOARDING_CASE"
+      rolesHint="TENANT_ADMIN, HR, INTERVIEWER"
+      [breadcrumbs]="[{ label: 'Workforce' }, { label: 'Onboarding' }]"
+    >
+      <div actions><export-bar [rows]="cases" [cols]="exportCols" name="onboarding-cases" /></div>
+@if (error) { <div class="e360-error">{{ error }}</div> }
 
     <div class="card">
       <h2>Document requirements (per country)</h2>
@@ -56,6 +64,8 @@ import { ExportBarComponent } from '../core/export-bar.component';
         }
       </div>
     } @empty { <div class="card muted">No onboarding cases yet.</div> }
+  
+    </e360-module-shell>
   `,
 })
 export class OnboardingComponent implements OnInit {

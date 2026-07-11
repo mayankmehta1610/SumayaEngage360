@@ -127,4 +127,32 @@ export class ProjectsService {
       orderBy: { startDate: 'desc' },
     });
   }
+
+  contracts(tenantId: string, projectId: string) {
+    return this.prisma.projectContract.findMany({ where: { tenantId, projectId } });
+  }
+
+  createContract(tenantId: string, projectId: string, dto: { clientRef?: string; value?: number; startDate: string; endDate?: string; terms?: string }) {
+    return this.prisma.projectContract.create({
+      data: {
+        tenantId,
+        projectId,
+        clientRef: dto.clientRef,
+        value: dto.value,
+        startDate: new Date(dto.startDate),
+        endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+        terms: dto.terms,
+      },
+    });
+  }
+
+  rateCards(tenantId: string, projectId?: string) {
+    return this.prisma.rateCard.findMany({
+      where: { tenantId, ...(projectId ? { projectId } : {}), isActive: true },
+    });
+  }
+
+  createRateCard(tenantId: string, dto: { projectId?: string; role: string; hourlyRate: number; currency?: string }) {
+    return this.prisma.rateCard.create({ data: { tenantId, ...dto } });
+  }
 }

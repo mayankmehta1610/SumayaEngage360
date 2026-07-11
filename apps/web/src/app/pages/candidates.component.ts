@@ -2,24 +2,32 @@ import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 
 // The talent pool: every candidate ever captured, their parse status,
 // application history and best job matches.
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent],
+  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent],
   template: `
-    <div class="toolbar"><h1>Talent pool (candidates)</h1>
-      <span style="display:inline-flex;gap:.4rem">
+    <e360-module-shell
+      title="Talent pool"
+      description="Candidates, resume parsing, and job matching."
+      icon="user-search"
+      moduleKey="candidates"
+      auditEntityType="CANDIDATE"
+      rolesHint="TENANT_ADMIN, HR, INTERVIEWER"
+      [breadcrumbs]="[{ label: 'Recruitment' }, { label: 'Talent pool' }]"
+    >
+      <div actions class="e360-toolbar" style="margin:0;gap:.4rem">
         <button class="secondary" (click)="parseNow()" [disabled]="busy">
           {{ busy ? 'Parsing…' : '⚙ Run offline resume parser now' }}
         </button>
         <export-bar [rows]="candidates" [cols]="exportCols" name="candidates" />
-      </span>
-    </div>
-    @if (parseInfo) { <div class="card" style="border-color:#22c55e">{{ parseInfo }}</div> }
-    @if (error) { <div class="error">{{ error }}</div> }
+      </div>
+@if (parseInfo) { <div class="card" style="border-color:#22c55e">{{ parseInfo }}</div> }
+    @if (error) { <div class="e360-error">{{ error }}</div> }
     <div class="card">
       <table>
         <tr><th>Name</th><th>Email</th><th>Skills</th><th>Resume</th><th>Parsed</th><th>Applications</th><th>Matches</th><th>Added</th><th></th></tr>
@@ -74,6 +82,8 @@ import { ExportBarComponent } from '../core/export-bar.component';
         </table>
       </div>
     }
+  
+    </e360-module-shell>
   `,
 })
 export class CandidatesComponent implements OnInit {
