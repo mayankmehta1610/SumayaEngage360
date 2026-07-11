@@ -761,6 +761,52 @@ model AttendanceRegularization {
   @@map("attendance_regularizations")
 }
 
+// ─────────────────────────────── Payroll adjustments & tax ───────────────────────────────
+
+enum AdjustmentType {
+  BONUS
+  INCENTIVE
+  OVERTIME
+  ARREAR
+  RECOVERY
+  LOAN
+  ADVANCE
+}
+
+// One-off or recurring pay adjustments feeding payroll input.
+model PayrollAdjustment {
+  id             String         @id @default(uuid())
+  tenantId       String
+  employeeId     String
+  type           AdjustmentType
+  amount         Decimal
+  period         String // YYYY-MM the adjustment applies to
+  note           String?
+  // for LOAN/ADVANCE: outstanding balance and monthly recovery
+  balance        Decimal?
+  monthlyRecover Decimal?
+  createdAt      DateTime       @default(now())
+
+  @@index([tenantId, employeeId, period])
+  @@map("payroll_adjustments")
+}
+
+// Employee investment/tax declarations (80C, HRA rent, etc.).
+model TaxDeclaration {
+  id         String   @id @default(uuid())
+  tenantId   String
+  employeeId String
+  fiscalYear String // e.g. 2026-27
+  regime     String   @default("NEW") // NEW | OLD
+  items      Json // [{section:"80C", description, amount}]
+  total      Decimal  @default(0)
+  status     String   @default("SUBMITTED") // SUBMITTED | VERIFIED | REJECTED
+  createdAt  DateTime @default(now())
+
+  @@unique([employeeId, fiscalYear])
+  @@map("tax_declarations")
+}
+
 // ─────────────────────────────── Compliance ───────────────────────────────
 
 enum ComplianceCaseType {
