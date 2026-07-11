@@ -1,0 +1,1 @@
+﻿From the tenant admin perspective: Appraisals runs performance review cycles with ratings, feedback, and calibration across the organisation. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

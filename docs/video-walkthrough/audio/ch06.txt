@@ -1,0 +1,1 @@
+﻿From the tenant admin perspective: Settings configures tenant-wide options: branding, approval thresholds, integrations, and feature toggles managed by tenant admins and HR. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

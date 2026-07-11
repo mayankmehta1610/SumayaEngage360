@@ -1,0 +1,1 @@
+﻿From the tenant admin perspective: Reports provides a catalogue of KPI definitions. Select a report code, set filters, and run to generate on-screen analytics with export options. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

@@ -1,0 +1,1 @@
+﻿Staff sign in with tenant subdomain, email, and password. Platform administrators leave the tenant field empty. After authentication, users land in the application shell with modules filtered by their assigned roles.

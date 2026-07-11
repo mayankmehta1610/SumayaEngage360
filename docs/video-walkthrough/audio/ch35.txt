@@ -1,0 +1,1 @@
+﻿From the tenant admin perspective: Notifications configures email and in-app alerts for key events—offers, approvals, and policy updates. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

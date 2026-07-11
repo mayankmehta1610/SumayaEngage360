@@ -761,6 +761,100 @@ model AttendanceRegularization {
   @@map("attendance_regularizations")
 }
 
+// ─────────────────────────────── Compliance ───────────────────────────────
+
+enum ComplianceCaseType {
+  POSH
+  WHISTLEBLOWER
+  DISCIPLINARY
+  INCIDENT
+  CONFLICT_OF_INTEREST
+  GRIEVANCE
+}
+
+enum ComplianceCaseStatus {
+  OPEN
+  UNDER_INVESTIGATION
+  RESOLVED
+  DISMISSED
+}
+
+model ComplianceCase {
+  id                String               @id @default(uuid())
+  tenantId          String
+  type              ComplianceCaseType
+  status            ComplianceCaseStatus @default(OPEN)
+  anonymous         Boolean              @default(false)
+  reporterId        String? // employee id; hidden from output when anonymous
+  subjectEmployeeId String?
+  title             String
+  details           String
+  assigneeId        String? // investigating officer (employee id)
+  resolution        String?
+  legalHold         Boolean              @default(false)
+  createdAt         DateTime             @default(now())
+  resolvedAt        DateTime?
+
+  @@index([tenantId, status])
+  @@map("compliance_cases")
+}
+
+model RetentionPolicy {
+  id           String  @id @default(uuid())
+  tenantId     String
+  entity       String // e.g. CANDIDATE, AUDIT_LOG, ATTENDANCE
+  retainMonths Int
+  purgeEnabled Boolean @default(false)
+
+  @@unique([tenantId, entity])
+  @@map("retention_policies")
+}
+
+// ─────────────────────────────── Surveys & eNPS ───────────────────────────────
+
+enum SurveyType {
+  PULSE
+  ENGAGEMENT
+  ENPS
+}
+
+enum SurveyStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+model Survey {
+  id        String       @id @default(uuid())
+  tenantId  String
+  title     String
+  type      SurveyType
+  status    SurveyStatus @default(DRAFT)
+  anonymous Boolean      @default(true)
+  // [{q:"...", kind:"SCALE"|"TEXT"}] — eNPS surveys auto-add the 0-10 question
+  questions Json
+  createdAt DateTime     @default(now())
+  closesAt  DateTime?
+
+  responses SurveyResponse[]
+
+  @@index([tenantId, status])
+  @@map("surveys")
+}
+
+model SurveyResponse {
+  id         String   @id @default(uuid())
+  tenantId   String
+  surveyId   String
+  survey     Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  employeeId String? // null when the survey is anonymous
+  answers    Json // [{q, value}] — SCALE values are 0-10
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, surveyId])
+  @@map("survey_responses")
+}
+
 // ─────────────────────────────── Appraisals ───────────────────────────────
 
 enum CycleFrequency {

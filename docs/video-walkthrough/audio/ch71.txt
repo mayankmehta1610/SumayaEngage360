@@ -1,0 +1,1 @@
+﻿From the employee perspective: Goals supports OKRs and targets aligned to appraisal cycles, visible to employees and their reporting managers. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

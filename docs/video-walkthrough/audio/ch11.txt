@@ -1,0 +1,1 @@
+﻿From the tenant admin perspective: User accounts creates staff logins for HR, managers, interviewers, and BGC vendors—separate from employee records created through hiring. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

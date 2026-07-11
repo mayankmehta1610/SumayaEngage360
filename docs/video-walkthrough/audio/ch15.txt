@@ -1,0 +1,1 @@
+﻿From the tenant admin perspective: Applications is the ATS pipeline—track status from applied through interview, offer, onboarding, and hired, with interview evidence. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

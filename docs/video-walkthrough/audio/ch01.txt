@@ -1,0 +1,1 @@
+﻿Welcome to Sumaya Engage 360, an enterprise platform for hiring, onboarding, and managing the full employee lifecycle. This multi-tenant SaaS gives each company an isolated workspace. The landing page introduces the product and links to login and public careers.

@@ -23,6 +23,8 @@ const shellChildren = [
   { path: 'workflows', loadComponent: () => import('./pages/workflows.component').then((m) => m.WorkflowsComponent) },
   { path: 'preboarding-admin', loadComponent: () => import('./pages/preboarding-admin.component').then((m) => m.PreboardingAdminComponent) },
   { path: 'privacy', loadComponent: () => import('./pages/privacy.component').then((m) => m.PrivacyComponent) },
+  { path: 'surveys', loadComponent: () => import('./pages/surveys.component').then((m) => m.SurveysComponent) },
+  { path: 'compliance', loadComponent: () => import('./pages/compliance.component').then((m) => m.ComplianceComponent) },
   { path: 'profile', loadComponent: () => import('./pages/profile.component').then((m) => m.ProfileComponent) },
   { path: 'users', loadComponent: () => import('./pages/users.component').then((m) => m.UsersComponent) },
   { path: 'candidates', loadComponent: () => import('./pages/candidates.component').then((m) => m.CandidatesComponent) },

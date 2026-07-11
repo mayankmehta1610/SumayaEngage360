@@ -28,6 +28,8 @@ import { ExitModule } from './modules/exit/exit.module';
 import { MatchingModule } from './modules/matching/matching.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
+import { SurveysModule } from './modules/surveys/surveys.module';
+import { ComplianceModule } from './modules/compliance/compliance.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { PlatformModule } from './modules/platform/platform.module';
@@ -88,6 +90,8 @@ import { HealthController } from './health.controller';
     ManpowerModule,
     PreboardingModule,
     MastersModule,
+    SurveysModule,
+    ComplianceModule,
   ],
   controllers: [HealthController],
   providers: [

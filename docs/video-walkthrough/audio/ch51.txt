@@ -1,0 +1,1 @@
+﻿From the manager perspective: Manpower planning views allocation across projects, highlighting bench, utilization, and demand versus supply. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

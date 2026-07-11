@@ -74,6 +74,7 @@ export const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/appraisals', label: 'Appraisals', roles: ['TENANT_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'], icon: 'star', group: 'performance' },
   { path: '/trainings', label: 'Trainings', roles: ['TENANT_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'], icon: 'graduation-cap', group: 'performance' },
   { path: '/recognition', label: 'Recognition', roles: ['TENANT_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'], icon: 'award', group: 'performance' },
+  { path: '/surveys', label: 'Surveys & eNPS', roles: ['TENANT_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'], icon: 'bar-chart-3', group: 'performance' },
 
   { path: '/approvals', label: 'Approvals inbox', roles: ['TENANT_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE', 'DEPARTMENT_HEAD'], icon: 'check-square', group: 'workflow' },
   { path: '/workflows', label: 'Workflows', roles: ['TENANT_ADMIN', 'HR'], icon: 'git-branch', group: 'workflow' },
@@ -82,6 +83,7 @@ export const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/org-masters', label: 'Org masters', roles: ['TENANT_ADMIN', 'HR'], icon: 'building', group: 'admin' },
   { path: '/masters', label: 'Masters', roles: ['TENANT_ADMIN', 'HR', 'MANAGER'], icon: 'database', group: 'admin' },
   { path: '/privacy', label: 'Privacy & consent', roles: ['TENANT_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'], icon: 'lock', group: 'admin' },
+  { path: '/compliance', label: 'Compliance', roles: ['TENANT_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'], icon: 'shield-alert', group: 'admin' },
   { path: '/bgc-vendor', label: 'BGV cases', roles: ['BGC_VENDOR'], icon: 'microscope', group: 'admin' },
   { path: '/profile', label: 'My profile', roles: ['TENANT_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE', 'INTERVIEWER', 'BGC_VENDOR', 'DEPARTMENT_HEAD'], icon: 'user', group: 'personal' },
 ];

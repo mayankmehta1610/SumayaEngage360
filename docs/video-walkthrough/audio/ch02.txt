@@ -1,0 +1,1 @@
+﻿Candidates apply through public careers pages, one per hiring client. Each job card shows title, location, skills, and an Apply Now form. Applications flow directly into HR's pipeline without requiring a login.

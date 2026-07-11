@@ -1,0 +1,1 @@
+﻿From the tenant admin perspective: Execution evidence captures proof that configured workflows and controls were exercised, supporting audits and go-live checklists. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

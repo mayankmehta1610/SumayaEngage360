@@ -1,0 +1,1 @@
+﻿From the employee perspective: Attendance and leave covers holiday calendars, leave balances, requests, and manager approvals in one module. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

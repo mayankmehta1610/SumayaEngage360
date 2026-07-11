@@ -1,0 +1,1 @@
+﻿From the tenant admin perspective: Catalogues hold reference data seeded for the tenant—skills, document types, policy templates, and other master lists used across modules. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

@@ -1,0 +1,1 @@
+﻿From the tenant admin perspective: Hiring clients represent who you recruit for—internal business units or external staffing clients—each with its own public careers URL. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

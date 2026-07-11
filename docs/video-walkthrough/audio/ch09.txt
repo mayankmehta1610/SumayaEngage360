@@ -1,0 +1,1 @@
+﻿From the tenant admin perspective: The audit trail records privileged actions across the tenant—who changed what and when—for governance and security reviews. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

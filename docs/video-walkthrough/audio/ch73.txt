@@ -1,0 +1,1 @@
+﻿From the employee perspective: Trainings catalogues courses, schedules sessions, and tracks completion for compliance and skill development. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.
