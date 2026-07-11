@@ -2,6 +2,7 @@ import {
   IsBoolean,
   IsEnum,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   Min,
@@ -40,6 +41,7 @@ export class GiveFeedbackDto {
   @IsBoolean()
   anonymous?: boolean;
 
+  @IsObject()
   content: Record<string, unknown>;
 
   @IsOptional()

@@ -68,6 +68,7 @@ export class CreateQuizDto {
   passingScore?: number;
 
   // [{q:"…",options:["a","b","c"],answerIndex:0},…]
+  @IsArray()
   questions: { q: string; options: string[]; answerIndex: number }[];
 }
 

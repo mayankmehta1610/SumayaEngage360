@@ -98,6 +98,7 @@ export class SalaryStructureDto {
   annualCtc: number;
 
   // [{code,name,monthly,type:"EARNING"|"DEDUCTION"|"TAX"},…]
+  @IsArray()
   components: Record<string, unknown>[];
 
   @IsDateString()

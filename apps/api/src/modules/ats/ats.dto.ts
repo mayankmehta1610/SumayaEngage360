@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsObject,
   IsDateString,
   IsEnum,
   IsInt,
@@ -173,6 +174,7 @@ export class ApplyDto {
 
   // dob, gender, address, nationality…
   @IsOptional()
+  @IsObject()
   demographics?: Record<string, unknown>;
 
   // Skills are tagged at application time (carried into onboarding).
@@ -264,6 +266,7 @@ export class CreateOfferDto {
   annualCtc: number;
 
   // component breakdown — becomes the employee's first SalaryStructure
+  @IsObject()
   salaryBreakup: Record<string, unknown>;
 
   @IsDateString()

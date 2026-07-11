@@ -1,6 +1,7 @@
 import {
   IsDateString,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
 } from 'class-validator';
@@ -33,6 +34,7 @@ export class DelegateClearanceDto {
 
 export class FnfDto {
   // earnings, deductions, notice recovery, leave encashment…
+  @IsObject()
   breakup: Record<string, unknown>;
 
   @IsNumber()

@@ -1,6 +1,7 @@
 import {
   IsDateString,
   IsEnum,
+  IsObject,
   IsOptional,
   IsString,
 } from 'class-validator';
@@ -20,14 +21,17 @@ export class CreateCycleDto {
   endDate: string;
 
   // Fully customizable template: sections, KRAs, competencies, rating scale.
+  @IsObject()
   template: Record<string, unknown>;
 }
 
 export class SelfReviewDto {
+  @IsObject()
   review: Record<string, unknown>;
 }
 
 export class ManagerReviewDto {
+  @IsObject()
   review: Record<string, unknown>;
 
   @IsOptional()
@@ -41,5 +45,6 @@ export class FinalizeDto {
 
   // increment %, promotion, benefits granted…
   @IsOptional()
+  @IsObject()
   outcome?: Record<string, unknown>;
 }
