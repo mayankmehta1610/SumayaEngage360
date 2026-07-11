@@ -5,9 +5,14 @@ export const routes: Routes = [
   // Public marketing/landing page
   { path: '', pathMatch: 'full', loadComponent: () => import('./pages/landing.component').then((m) => m.LandingComponent) },
   { path: 'login', loadComponent: () => import('./pages/login.component').then((m) => m.LoginComponent) },
-  // Public, client-branded careers pages
+  // Public, company-scoped careers pages: /careers/<company>/<client-page>.
+  // The company is part of the URL, so a link always shows exactly one
+  // tenant's data no matter who opens it.
+  { path: 'careers/:tenant/:slug', loadComponent: () => import('./pages/careers.component').then((m) => m.CareersComponent) },
+  // Legacy single-segment link (pre-tenant-scoped URLs)
   { path: 'careers/:slug', loadComponent: () => import('./pages/careers.component').then((m) => m.CareersComponent) },
-  // Secure onboarding portal for new joiners (token from offer-acceptance email)
+  // Secure onboarding portal, company-scoped: /onboarding/<company>/<token>
+  { path: 'onboarding/:tenant/:token', loadComponent: () => import('./pages/onboarding-portal.component').then((m) => m.OnboardingPortalComponent) },
   { path: 'onboarding/:token', loadComponent: () => import('./pages/onboarding-portal.component').then((m) => m.OnboardingPortalComponent) },
   {
     path: '',

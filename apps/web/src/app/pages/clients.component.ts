@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { AuthService } from '../core/auth.service';
 import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
@@ -27,7 +28,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
         @for (c of clients; track c.id) {
           <tr>
             <td>{{ c.name }}</td>
-            <td><a [href]="'/careers/' + c.slug" target="_blank">/careers/{{ c.slug }}</a></td>
+            <td><a [href]="'/careers/' + auth.tenant + '/' + c.slug" target="_blank">/careers/{{ auth.tenant }}/{{ c.slug }}</a></td>
             <td>{{ c.isInternal ? 'internal' : 'client' }}</td>
             <td><span class="badge" [class.ok]="c.isActive">{{ c.isActive ? 'active' : 'inactive' }}</span></td>
           </tr>
@@ -38,6 +39,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
 })
 export class ClientsComponent implements OnInit {
   private api = inject(ApiService);
+  auth = inject(AuthService);
   clients: any[] = [];
   error = '';
   f: any = {};

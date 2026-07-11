@@ -57,7 +57,7 @@ import { RouterLink } from '@angular/router';
         </p>
         <div class="cta">
           <a class="btn" routerLink="/login">Login to your workspace</a>
-          <a class="btn secondary" routerLink="/careers/sumaya-internal">View open roles</a>
+          <a class="btn secondary" routerLink="/careers/sumaya/sumaya-internal">View open roles</a>
         </div>
       </div>
       <div aria-hidden="true">

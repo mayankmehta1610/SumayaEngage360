@@ -214,7 +214,7 @@ export class OffersService {
       `<p>Dear ${offer.application.candidate.firstName},</p>
        <p>Welcome aboard! Please complete your onboarding — upload your identity
        documents, confirm your skills, and acknowledge company policies:</p>
-       <p><a href="${APP_BASE_URL}/onboarding/${onboardingToken}">Complete onboarding</a></p>
+       <p><a href="${APP_BASE_URL}/onboarding/${tenant.subdomain}/${onboardingToken}">Complete onboarding</a></p>
        <p>— ${tenant.name} HR</p>`,
     );
     return { status: 'ACCEPTED', onboardingToken };

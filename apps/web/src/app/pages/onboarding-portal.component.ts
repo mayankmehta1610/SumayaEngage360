@@ -81,6 +81,7 @@ import { environment } from '../../environments/environment';
 export class OnboardingPortalComponent implements OnInit {
   private api = inject(ApiService);
   @Input() token = '';
+  @Input() tenant = ''; // company segment of the URL
 
   portal: any = null;
   error = '';
@@ -90,9 +91,11 @@ export class OnboardingPortalComponent implements OnInit {
   busy = false;
   done = false;
 
+  private get t() { return this.tenant || undefined; }
+
   async ngOnInit() { await this.load(); }
   async load() {
-    try { this.portal = await this.api.get<any>(`/public/onboarding/${this.token}`); }
+    try { this.portal = await this.api.get<any>(`/public/onboarding/${this.token}`, undefined, this.t); }
     catch (e) { this.error = errMsg(e); }
   }
   async uploadDoc(code: string, ev: Event) {
@@ -101,9 +104,11 @@ export class OnboardingPortalComponent implements OnInit {
     try {
       const form = new FormData();
       form.append('file', file);
-      const up = await fetch(`${environment.apiBase}/files`, { method: 'POST', body: form })
+      const headers: Record<string, string> = {};
+      if (this.t) headers['x-tenant-id'] = this.t;
+      const up = await fetch(`${environment.apiBase}/files`, { method: 'POST', body: form, headers })
         .then((r) => r.json());
-      await this.api.post(`/public/onboarding/${this.token}/documents`, { code, fileId: up.id });
+      await this.api.post(`/public/onboarding/${this.token}/documents`, { code, fileId: up.id }, this.t);
       await this.load();
     } catch (e) { this.error = errMsg(e); }
   }
@@ -111,14 +116,14 @@ export class OnboardingPortalComponent implements OnInit {
     const skills = this.newSkills.split(',').map((s) => s.trim()).filter(Boolean);
     if (!skills.length) return;
     try {
-      await this.api.post(`/public/onboarding/${this.token}/skills`, { skills });
+      await this.api.post(`/public/onboarding/${this.token}/skills`, { skills }, this.t);
       this.newSkills = '';
       await this.load();
     } catch (e) { this.error = errMsg(e); }
   }
   async ack(policyId: string) {
     try {
-      await this.api.post(`/public/onboarding/${this.token}/policies/${policyId}/acknowledge`);
+      await this.api.post(`/public/onboarding/${this.token}/policies/${policyId}/acknowledge`, {}, this.t);
       await this.load();
     } catch (e) { this.error = errMsg(e); }
   }
@@ -126,7 +131,7 @@ export class OnboardingPortalComponent implements OnInit {
     this.submitError = '';
     this.busy = true;
     try {
-      await this.api.post(`/public/onboarding/${this.token}/complete`, { password: this.password });
+      await this.api.post(`/public/onboarding/${this.token}/complete`, { password: this.password }, this.t);
       this.done = true;
     } catch (e) { this.submitError = errMsg(e); }
     finally { this.busy = false; }

@@ -74,6 +74,7 @@ import { environment } from '../../environments/environment';
 export class CareersComponent implements OnInit {
   private api = inject(ApiService);
   @Input() slug = ''; // from route param via withComponentInputBinding
+  @Input() tenant = ''; // company segment of the URL — scopes every request
 
   client: any = null;
   jobs: any[] = [];
@@ -89,7 +90,9 @@ export class CareersComponent implements OnInit {
 
   async ngOnInit() {
     try {
-      const page = await this.api.get<any>(`/public/careers/${this.slug}`);
+      const page = await this.api.get<any>(
+        `/public/careers/${this.slug}`, undefined, this.tenant || undefined,
+      );
       this.client = page.client;
       this.jobs = page.jobs;
     } catch (e) {
@@ -116,7 +119,7 @@ export class CareersComponent implements OnInit {
         const form = new FormData();
         form.append('file', this.resume);
         const headers: Record<string, string> = {};
-        const ten = localStorage.getItem('e360.tenant');
+        const ten = this.tenant || localStorage.getItem('e360.tenant');
         if (ten) headers['x-tenant-id'] = ten;
         const up = await fetch(`${environment.apiBase}/files`, {
           method: 'POST', body: form, headers,
@@ -130,7 +133,7 @@ export class CareersComponent implements OnInit {
           : undefined;
       await this.api.post(`/public/careers/jobs/${job.id}/apply`, {
         ...this.f, skills, experiences, resumeFileId,
-      });
+      }, this.tenant || undefined);
       this.applied = true;
       this.f = {}; this.exp = {}; this.skillsText = ''; this.resume = null;
     } catch (e) {

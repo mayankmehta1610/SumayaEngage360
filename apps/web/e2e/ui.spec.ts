@@ -43,7 +43,7 @@ test('employees table is API-backed and offers Excel/PDF export', async ({ page 
 });
 
 test('public careers page renders jobs from the API', async ({ page }) => {
-  await page.goto(`/careers/sumaya-internal`);
+  await page.goto(`/careers/${TENANT}/sumaya-internal`);
   // Header comes from the hiring-client record in the database
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Careers');
 });

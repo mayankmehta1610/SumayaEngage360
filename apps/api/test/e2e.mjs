@@ -342,6 +342,37 @@ const main = async () => {
   const pool = await req('GET', '/candidates', { ...t });
   check('talent pool endpoint lists candidates', Array.isArray(pool.data) && pool.data.length >= 1);
 
+  // ─── Multi-tenant isolation ───────────────────────────────────────
+  console.log('\n[15] Tenant isolation — data never crosses companies');
+  const T2 = `iso-${RUN}`;
+  await req('POST', '/tenants', { token: admin, body: {
+    name: `Isolation Co ${RUN}`, subdomain: T2, country: 'IN',
+    adminEmail: `owner@${T2}.test`, adminPassword: 'Owner@12345',
+    adminFirstName: 'Iso', adminLastName: 'Owner' } });
+  const o2 = await req('POST', '/auth/login', { tenant: T2, body: {
+    email: `owner@${T2}.test`, password: 'Owner@12345' } });
+  const t2 = { token: o2.data.accessToken, tenant: T2 };
+
+  const jobs2 = await req('GET', '/jobs', { ...t2 });
+  const emps2b = await req('GET', '/employees', { ...t2 });
+  const cands2 = await req('GET', '/candidates', { ...t2 });
+  check('new tenant sees ZERO jobs of other tenants', jobs2.data?.length === 0);
+  check('new tenant sees ZERO employees of other tenants', emps2b.data?.length === 0);
+  check('new tenant sees ZERO candidates of other tenants', cands2.data?.length === 0);
+
+  // Tenant A's token used against tenant B must be rejected outright.
+  const cross = await req('GET', '/jobs', { token: owner, tenant: T2 });
+  check('tenant A token rejected on tenant B (401)', cross.status === 401, `got ${cross.status}`);
+
+  // Tenant A's public careers page does not exist under tenant B.
+  const crossCareers = await req('GET', '/public/careers/acme', { tenant: T2 });
+  check('tenant A careers page invisible under tenant B (404)', crossCareers.status === 404);
+
+  // KPIs of the new tenant are all zero — nothing leaks into aggregates.
+  const kpis2 = await req('GET', '/dashboard/kpis', { ...t2 });
+  check('KPI aggregates are tenant-scoped (all zero for new tenant)',
+    kpis2.data?.business?.applicationsTotal === 0 && kpis2.data?.business?.employeesTotal === 0);
+
   console.log(`\n==== ${passed} passed, ${failed} failed ====`);
   process.exit(failed ? 1 : 0);
 };
