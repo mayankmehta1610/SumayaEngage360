@@ -27,7 +27,7 @@ class ModulesGridScreen extends StatelessWidget {
               children: [
                 for (final item in entry.value)
                   ActionChip(
-                    avatar: Icon(item.icon, size: 18),
+                    avatar: Icon(item.icon, size: 18, color: Theme.of(context).colorScheme.primary),
                     label: Text(item.label, style: const TextStyle(fontSize: 12)),
                     onPressed: () => openModule(context, item.path),
                   ),

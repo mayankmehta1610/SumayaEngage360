@@ -123,7 +123,7 @@ test.describe.serial('full lifecycle UI data generation', () => {
 
     const title = `E2E Job ${RUN}`;
     await page.getByPlaceholder(/senior backend engineer/i).fill(title);
-    await page.locator('label:has-text("Location") + input, input').nth(2).fill('Remote');
+    await page.getByLabel('Location').fill('Remote');
     await page.locator('textarea').first().fill('Automated UI test job');
     await page.getByPlaceholder(/screening, technical/i).fill('Screening, Technical');
     const empSelect = page.locator('label:has-text("Employment type") + select').first();

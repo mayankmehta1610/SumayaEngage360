@@ -30,7 +30,7 @@ export interface TableColumn {
     <e360-empty-state [title]="emptyTitle" [message]="emptyMessage" />
   } @else {
     <div class="e360-table-wrap">
-      <table class="e360-table">
+      <table class="e360-table e360-table-zebra">
         <thead>
           <tr>
             @for (col of columns; track col.key) {

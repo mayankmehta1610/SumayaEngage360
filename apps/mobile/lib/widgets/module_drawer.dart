@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/api_client.dart';
 import '../core/auth_service.dart';
 import '../core/rbac.dart';
 import '../core/theme.dart';
@@ -10,9 +11,19 @@ class ModuleDrawer extends StatelessWidget {
 
   const ModuleDrawer({super.key, required this.onNavigate, required this.onLogout});
 
+  String _initials() {
+    final name = AuthService.displayName();
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+    }
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
+
   @override
   Widget build(BuildContext context) {
     final groups = groupedNav(AuthService.roles);
+    final tenant = ApiClient.tenant ?? '';
     return Drawer(
       backgroundColor: E360Theme.navy,
       child: SafeArea(
@@ -21,21 +32,72 @@ class ModuleDrawer extends StatelessWidget {
           children: [
             DrawerHeader(
               decoration: const BoxDecoration(color: E360Theme.navy),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(color: E360Theme.brand, borderRadius: BorderRadius.circular(12)),
-                    child: const Text('S3', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [E360Theme.primary, E360Theme.accent],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.dashboard_outlined, color: Colors.white, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text('Engage360',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  Text(AuthService.displayName(),
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
-                  Text(AuthService.roles.join(' · '),
-                      style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                  if (tenant.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: E360Theme.accent.withValues(alpha: .2),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: E360Theme.accent.withValues(alpha: .35)),
+                      ),
+                      child: Text(tenant.toUpperCase(),
+                          style: const TextStyle(
+                              color: Color(0xFFA5B4FC), fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: E360Theme.primary,
+                        child: Text(_initials(),
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(AuthService.displayName(),
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
+                                overflow: TextOverflow.ellipsis),
+                            Text(AuthService.roles.join(' · '),
+                                style: const TextStyle(color: Colors.white70, fontSize: 10),
+                                overflow: TextOverflow.ellipsis),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -46,13 +108,15 @@ class ModuleDrawer extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                       child: Text(entry.key.toUpperCase(),
-                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: Colors.white54)),
+                          style: const TextStyle(
+                              fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: Colors.white54)),
                     ),
                     for (final item in entry.value)
                       ListTile(
                         leading: Icon(item.icon, color: Colors.white70, size: 22),
                         title: Text(item.label, style: const TextStyle(color: Colors.white, fontSize: 14)),
                         dense: true,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         onTap: () {
                           Navigator.pop(context);
                           onNavigate(item.path);

@@ -4,24 +4,36 @@ import { Router } from '@angular/router';
 import { errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { homeForRoles } from '../core/rbac';
+import { IconComponent } from '../ui/icon.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, IconComponent],
   template: `
-    <div style="max-width:420px;margin:8vh auto;padding:0 1rem">
-      <div class="card">
-        <h1 style="margin-top:0">SumayaEngage360</h1>
-        <p class="muted">Sign in to your workspace</p>
-        <label>Tenant (subdomain — leave empty for platform admin)</label>
+    <div class="e360-login-page">
+      <div class="e360-login-card">
+        <div class="e360-login-brand">
+          <div class="logo" aria-hidden="true">
+            <e360-icon name="layout-dashboard" [size]="28" />
+          </div>
+          <h1>SumayaEngage360</h1>
+          <p>Sign in to your enterprise workspace</p>
+        </div>
+
+        <label class="e360-label">Tenant (subdomain — leave empty for platform admin)</label>
         <input [(ngModel)]="tenant" placeholder="acme" autocomplete="organization" />
-        <label>Email</label>
+        <label class="e360-label">Email</label>
         <input [(ngModel)]="email" type="email" autocomplete="username" />
-        <label>Password</label>
-        <input [(ngModel)]="password" type="password" autocomplete="current-password"
-               (keyup.enter)="submit()" />
+        <label class="e360-label">Password</label>
+        <input
+          [(ngModel)]="password"
+          type="password"
+          autocomplete="current-password"
+          (keyup.enter)="submit()"
+        />
         @if (error) { <div class="error">{{ error }}</div> }
-        <button (click)="submit()" [disabled]="busy" style="width:100%">
+        <button (click)="submit()" [disabled]="busy" style="width:100%;margin-top:0.5rem">
+          @if (!busy) { <e360-icon name="log-in" [size]="16" /> }
           {{ busy ? 'Signing in…' : 'Sign in' }}
         </button>
       </div>
