@@ -73,6 +73,14 @@ API:
 - `GET/POST /contracts`
 - `GET/POST/PATCH /contractors`
 
+## Segment logins & landing
+
+Each tenant type has a dedicated branded login URL (`/login/company`, `/login/agency`,
+`/login/staffing`, `/login/recruiter`, plus `/login/platform` for the operator console).
+The landing page (`/`) presents all four segment entry cards with their workflows.
+Demo workspaces + credentials: `apps/api/scripts/seed-segments.mjs` and
+[`docs/URLS-AND-LOGINS.md`](URLS-AND-LOGINS.md).
+
 ## Navigation & RBAC
 
 Shell navigation filters routes by `enabledPortals` (from `GET /tenant/me`). Agency and Staffing nav groups appear only when the corresponding portal is enabled.

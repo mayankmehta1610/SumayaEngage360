@@ -5,30 +5,42 @@
   --e360-font: 'Inter', 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', sans-serif;
   --e360-font-mono: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', monospace;
 
-  /* Brand palette — blue primary, indigo accent */
-  --e360-primary: #3b82f6;
-  --e360-primary-hover: #2563eb;
-  --e360-primary-soft: #eff6ff;
-  --e360-accent: #6366f1;
-  --e360-accent-soft: #eef2ff;
-  --e360-accent-hover: #4f46e5;
+  /* Brand palette — professional indigo primary, teal accent */
+  --e360-primary: #4f46e5;
+  --e360-primary-hover: #4338ca;
+  --e360-primary-soft: #eef2ff;
+  --e360-accent: #0d9488;
+  --e360-accent-soft: #f0fdfa;
+  --e360-accent-hover: #0f766e;
+
+  /* Business-segment accents (login/landing entry points) */
+  --e360-seg-company: #4f46e5;
+  --e360-seg-company-deep: #312e81;
+  --e360-seg-agency: #7c3aed;
+  --e360-seg-agency-deep: #4c1d95;
+  --e360-seg-staffing: #0d9488;
+  --e360-seg-staffing-deep: #134e4a;
+  --e360-seg-recruiter: #d97706;
+  --e360-seg-recruiter-deep: #78350f;
+  --e360-seg-platform: #64748b;
+  --e360-seg-platform-deep: #1e293b;
 
   /* Surface hierarchy */
-  --surface-0: #e8edf3;
+  --surface-0: #eef1f6;
   --surface-1: #ffffff;
-  --surface-2: #f1f5f9;
-  --surface-3: #e2e8f0;
+  --surface-2: #f4f6fa;
+  --surface-3: #e4e8f0;
   --e360-bg: var(--surface-0);
   --e360-surface: var(--surface-1);
   --e360-surface-raised: var(--surface-1);
 
-  /* Sidebar (dark enterprise) */
-  --e360-sidebar-bg: #0f172a;
-  --e360-sidebar-border: #1e293b;
-  --e360-sidebar-text: #94a3b8;
+  /* Sidebar (dark enterprise, indigo-tinted navy) */
+  --e360-sidebar-bg: #131735;
+  --e360-sidebar-border: #232a55;
+  --e360-sidebar-text: #9aa3c7;
   --e360-sidebar-text-active: #f8fafc;
-  --e360-sidebar-hover: #1e293b;
-  --e360-sidebar-active: #1e3a5f;
+  --e360-sidebar-hover: #1d234a;
+  --e360-sidebar-active: #2b3566;
   --e360-sidebar-width: 248px;
   --e360-sidebar-width-compact: 68px;
 
@@ -78,7 +90,7 @@
   --e360-space-xl: var(--e360-space-8);
 
   /* Focus ring */
-  --e360-focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.35);
+  --e360-focus-ring: 0 0 0 3px rgba(79, 70, 229, 0.3);
 
   /* Radius */
   --e360-radius-sm: 6px;
@@ -95,32 +107,36 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --e360-primary-soft: rgba(59, 130, 246, 0.18);
-  --e360-accent-soft: rgba(99, 102, 241, 0.18);
+  --e360-primary: #6366f1;
+  --e360-primary-hover: #4f46e5;
+  --e360-primary-soft: rgba(99, 102, 241, 0.18);
+  --e360-accent: #14b8a6;
+  --e360-accent-hover: #0d9488;
+  --e360-accent-soft: rgba(20, 184, 166, 0.15);
 
-  --surface-0: #0f172a;
-  --surface-1: #1e293b;
-  --surface-2: #334155;
-  --surface-3: #475569;
+  --surface-0: #0c0f1e;
+  --surface-1: #171b30;
+  --surface-2: #202541;
+  --surface-3: #2c3255;
   --e360-bg: var(--surface-0);
   --e360-surface: var(--surface-1);
-  --e360-surface-raised: #243044;
+  --e360-surface-raised: #1d2239;
 
-  --e360-sidebar-bg: #020617;
-  --e360-sidebar-border: #1e293b;
-  --e360-sidebar-text: #94a3b8;
+  --e360-sidebar-bg: #080b1a;
+  --e360-sidebar-border: #1d2344;
+  --e360-sidebar-text: #9aa3c7;
   --e360-sidebar-text-active: #f8fafc;
-  --e360-sidebar-hover: #1e293b;
-  --e360-sidebar-active: #1e3a5f;
+  --e360-sidebar-hover: #171d3d;
+  --e360-sidebar-active: #262f5e;
 
-  --e360-border: #334155;
-  --e360-border-strong: #475569;
+  --e360-border: #2c3255;
+  --e360-border-strong: #414870;
 
   --e360-label-color: #e2e8f0;
-  --e360-input-bg: #0f172a;
-  --e360-input-border: #475569;
-  --e360-placeholder: #94a3b8;
-  --e360-card-border: #334155;
+  --e360-input-bg: #0c0f1e;
+  --e360-input-border: #414870;
+  --e360-placeholder: #9aa3c7;
+  --e360-card-border: #2c3255;
 
   --e360-text: #f1f5f9;
   --e360-text-secondary: #cbd5e1;
@@ -135,7 +151,7 @@
   --e360-info: #60a5fa;
   --e360-info-bg: rgba(29, 78, 216, 0.25);
 
-  --e360-focus-ring: 0 0 0 3px rgba(96, 165, 250, 0.35);
+  --e360-focus-ring: 0 0 0 3px rgba(129, 140, 248, 0.35);
 
   --e360-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.2);
   --e360-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.4);
@@ -541,56 +557,188 @@ input[type="radio"] {
   border: 1px solid rgba(99, 102, 241, 0.35);
 }
 
-/* ── Login page ───────────────────────────────────────────────────── */
+/* ── Login page (segmented, split-panel) ─────────────────────────────── */
 .e360-login-page {
+  --seg: var(--e360-seg-company);
+  --seg-deep: var(--e360-seg-company-deep);
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--e360-space-6);
-  background: linear-gradient(160deg, var(--e360-sidebar-bg) 0%, var(--e360-sidebar-border) 45%, var(--e360-bg) 45%);
+  background:
+    radial-gradient(1200px 600px at 85% -10%, color-mix(in srgb, var(--seg) 16%, transparent), transparent 60%),
+    var(--e360-bg);
   position: relative;
 }
+.e360-login-page[data-segment="agency"] { --seg: var(--e360-seg-agency); --seg-deep: var(--e360-seg-agency-deep); }
+.e360-login-page[data-segment="staffing"] { --seg: var(--e360-seg-staffing); --seg-deep: var(--e360-seg-staffing-deep); }
+.e360-login-page[data-segment="recruiter"] { --seg: var(--e360-seg-recruiter); --seg-deep: var(--e360-seg-recruiter-deep); }
+.e360-login-page[data-segment="platform"] { --seg: var(--e360-seg-platform); --seg-deep: var(--e360-seg-platform-deep); }
 .e360-login-theme-toggle {
   position: absolute;
   top: var(--e360-space-4);
   right: var(--e360-space-4);
+  color: var(--e360-text);
 }
-.e360-login-theme-toggle.e360-theme-toggle {
-  color: var(--e360-sidebar-text-active);
-  border-color: rgba(148, 163, 184, 0.35);
+.e360-login-shell {
+  display: grid;
+  grid-template-columns: 400px 440px;
+  width: 100%;
+  max-width: 860px;
+  border-radius: var(--e360-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--e360-shadow-lg);
+  border: 1px solid var(--e360-border);
+  background: var(--e360-surface);
 }
-.e360-login-theme-toggle.e360-theme-toggle:hover {
-  background: rgba(30, 41, 59, 0.65);
+.e360-login-aside {
+  display: flex;
+  flex-direction: column;
+  padding: var(--e360-space-8) var(--e360-space-6);
+  color: #eef0fb;
+  background:
+    radial-gradient(700px 420px at -10% 110%, color-mix(in srgb, var(--seg) 55%, transparent), transparent 62%),
+    linear-gradient(155deg, var(--seg-deep) 0%, #101322 78%);
+}
+.e360-login-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   color: #fff;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+.e360-login-home:hover { color: #fff; text-decoration: none; opacity: 0.9; }
+.e360-login-home strong { font-weight: 800; }
+.e360-login-home .brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--seg) 80%, #fff 5%);
+  color: #fff;
+}
+.e360-login-aside-body { margin: auto 0; padding: var(--e360-space-8) 0; }
+.e360-login-aside-body .seg-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  margin-bottom: var(--e360-space-4);
+  background: color-mix(in srgb, var(--seg) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--seg) 60%, transparent);
+  color: #fff;
+}
+.e360-login-aside-body h2 {
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.4rem;
+  color: #fff;
+}
+.e360-login-aside-body .tagline {
+  color: rgba(238, 240, 251, 0.75);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  margin: 0 0 var(--e360-space-4);
+}
+.e360-login-aside-body .workflow {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.e360-login-aside-body .workflow li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.83rem;
+  color: rgba(238, 240, 251, 0.88);
+}
+.e360-login-aside-body .step-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex-shrink: 0;
+  border-radius: var(--e360-radius-full);
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--seg) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--seg) 70%, transparent);
+  color: #fff;
+}
+.e360-login-aside-foot {
+  font-size: 0.72rem;
+  color: rgba(238, 240, 251, 0.5);
+  border-top: 1px solid rgba(238, 240, 251, 0.12);
+  padding-top: var(--e360-space-3);
 }
 .e360-login-card {
   width: 100%;
-  max-width: 420px;
   background: var(--e360-surface);
-  border: 1px solid var(--e360-border-strong);
-  border-radius: var(--e360-radius-lg);
   padding: var(--e360-space-8) var(--e360-space-6);
-  box-shadow: var(--e360-shadow-lg);
-}
-.e360-login-brand {
-  text-align: center;
-  margin-bottom: var(--e360-space-6);
-}
-.e360-login-brand .logo {
-  width: 56px;
-  height: 56px;
-  margin: 0 auto var(--e360-space-3);
-  border-radius: var(--e360-radius-md);
-  background: linear-gradient(135deg, var(--e360-primary), var(--e360-accent));
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
 }
-.e360-login-brand h1 { font-size: 1.35rem; margin-bottom: 0.25rem; }
-.e360-login-brand p { color: var(--e360-text-secondary); font-size: 0.875rem; margin: 0; }
+.e360-login-brand { margin-bottom: var(--e360-space-4); }
+.e360-login-brand h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+.e360-login-brand p { color: var(--e360-text-secondary); font-size: 0.85rem; margin: 0; }
+.e360-seg-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: var(--e360-space-4);
+}
+.e360-seg-switch .seg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--e360-radius-full);
+  border: 1px solid var(--e360-border-strong);
+  background: var(--surface-2);
+  color: var(--e360-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.e360-seg-switch .seg-chip:hover { text-decoration: none; border-color: var(--seg); color: var(--e360-text); }
+.e360-seg-switch .seg-chip.active {
+  background: color-mix(in srgb, var(--seg) 14%, transparent);
+  border-color: var(--seg);
+  color: var(--e360-text);
+}
+.e360-login-submit {
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.5rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.875rem;
+  background: var(--seg);
+}
+.e360-login-submit:hover:not(:disabled) { background: color-mix(in srgb, var(--seg) 85%, #000); }
+.e360-login-alt {
+  margin: var(--e360-space-4) 0 0;
+  font-size: 0.78rem;
+  color: var(--e360-text-muted);
+  text-align: center;
+}
+@media (max-width: 900px) {
+  .e360-login-shell { grid-template-columns: 1fr; max-width: 460px; }
+  .e360-login-aside { display: none; }
+}
 
 /* ── Utility ────────────────────────────────────────────────────────── */
 .error, .e360-error { color: var(--e360-danger); font-size: 0.875rem; margin: var(--e360-space-sm) 0; }

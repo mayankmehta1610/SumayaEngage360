@@ -53,6 +53,7 @@ const shellChildren = [
 export const routes: Routes = [
   { path: '', pathMatch: 'full', loadComponent: () => import('./pages/landing.component').then((m) => m.LandingComponent) },
   { path: 'login', loadComponent: () => import('./pages/login.component').then((m) => m.LoginComponent) },
+  { path: 'login/:segment', loadComponent: () => import('./pages/login.component').then((m) => m.LoginComponent) },
   { path: 'careers/:tenant/:slug', loadComponent: () => import('./pages/careers.component').then((m) => m.CareersComponent) },
   { path: 'careers/:slug', loadComponent: () => import('./pages/careers.component').then((m) => m.CareersComponent) },
   { path: 'onboarding/:tenant/:token', loadComponent: () => import('./pages/onboarding-portal.component').then((m) => m.OnboardingPortalComponent) },

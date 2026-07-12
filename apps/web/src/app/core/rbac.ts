@@ -1,6 +1,6 @@
 /**
  * RBAC matrix — maps modules/routes to allowed roles.
- * PLATFORM_ADMIN bypasses all checks (enforced in guards).
+ * Platform access is granted explicitly per route, never as a tenant-role bypass.
  *
  * Roles: PLATFORM_ADMIN | TENANT_ADMIN | HR | MANAGER | EMPLOYEE |
  *        INTERVIEWER | BGC_VENDOR | DEPARTMENT_HEAD
@@ -64,6 +64,91 @@ export const TENANT_TYPE_LABELS: Record<TenantType, string> = {
   STAFFING_COMPANY: 'Staffing company',
   INDIVIDUAL_RECRUITER: 'Individual recruiter',
 };
+
+/**
+ * Business segments — each gets its own branded login URL (/login/:segment),
+ * landing entry point, and post-login workspace.
+ */
+export interface Segment {
+  key: string;
+  tenantType: TenantType | null; // null = platform operator
+  label: string;
+  shortLabel: string;
+  tagline: string;
+  icon: string;
+  /** CSS var suffix for the segment accent (see styles.css --e360-seg-*) */
+  accent: string;
+  /** Headline workflow steps shown on login/landing */
+  workflow: string[];
+  /** Route to land on after login */
+  home: string;
+}
+
+export const SEGMENTS: Segment[] = [
+  {
+    key: 'company',
+    tenantType: 'COMPANY',
+    label: 'Company workspace',
+    shortLabel: 'Company',
+    tagline: 'Complete employee lifecycle — hire, onboard, manage, pay, grow and exit.',
+    icon: 'building-2',
+    accent: 'company',
+    workflow: ['Recruit & interview', 'Digital onboarding & BGV', 'Projects, timesheets & leave', 'Payroll & benefits', 'Appraisals & trainings', 'Governed exits'],
+    home: '/dashboard',
+  },
+  {
+    key: 'agency',
+    tenantType: 'RECRUITMENT_AGENCY',
+    label: 'Recruitment agency',
+    shortLabel: 'Agency',
+    tagline: 'Source talent, submit candidates to clients, and track every placement.',
+    icon: 'user-search',
+    accent: 'agency',
+    workflow: ['Talent pool & jobs', 'Client submissions', 'Contact CRM', 'Interview coordination', 'Placement tracking'],
+    home: '/dashboard',
+  },
+  {
+    key: 'staffing',
+    tenantType: 'STAFFING_COMPANY',
+    label: 'Staffing & contracting',
+    shortLabel: 'Staffing',
+    tagline: 'Run contracts, deploy contractors and bill client work end to end.',
+    icon: 'hard-hat',
+    accent: 'staffing',
+    workflow: ['Client contracts', 'Contractor assignments', 'Deployment & bench', 'Timesheets & billing'],
+    home: '/dashboard',
+  },
+  {
+    key: 'recruiter',
+    tenantType: 'INDIVIDUAL_RECRUITER',
+    label: 'Independent recruiter',
+    shortLabel: 'Recruiter',
+    tagline: 'A lightweight personal desk for sourcing, submitting and placing candidates.',
+    icon: 'contact',
+    accent: 'recruiter',
+    workflow: ['Personal talent pipeline', 'Client submissions', 'Contact book'],
+    home: '/dashboard',
+  },
+  {
+    key: 'platform',
+    tenantType: null,
+    label: 'Platform operations',
+    shortLabel: 'Platform',
+    tagline: 'Engage360 operator console — provision and govern client tenants.',
+    icon: 'shield-check',
+    accent: 'platform',
+    workflow: ['Tenant provisioning', 'Requirements & catalogues', 'Platform governance'],
+    home: '/tenants',
+  },
+];
+
+export function segmentByKey(key: string | null | undefined): Segment | null {
+  return SEGMENTS.find((s) => s.key === key) ?? null;
+}
+
+export function segmentForTenantType(type: TenantType | null | undefined): Segment {
+  return SEGMENTS.find((s) => s.tenantType === type) ?? SEGMENTS[0];
+}
 
 export interface RouteAccess {
   path: string;
@@ -180,7 +265,6 @@ export function rolesForPath(path: string): AppRole[] | null {
 }
 
 export function canAccess(roles: string[], path: string): boolean {
-  if (roles.includes('PLATFORM_ADMIN')) return true;
   const required = rolesForPath(path);
   if (!required) return true;
   return required.some((r) => roles.includes(r));

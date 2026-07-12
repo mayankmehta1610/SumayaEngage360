@@ -4,6 +4,43 @@
 
 ---
 
+## Segment logins (business-type workspaces)
+
+Every business segment has a dedicated, branded login URL. Seed the demo workspaces with
+`node apps/api/scripts/seed-segments.mjs` (idempotent; local or `API_URL=… node …` for Render).
+
+| Segment | Login URL | Tenant (Organization ID) | Admin login | Password |
+|---------|-----------|--------------------------|-------------|----------|
+| **Company** (hire-to-exit) | `/login/company` | `acme` | `admin@acme.demo` | `Acme@12345` |
+| **Recruitment agency** | `/login/agency` | `talentbridge` | `admin@talentbridge.demo` | `Talent@12345` |
+| **Staffing / contracting** | `/login/staffing` | `staffpro` | `admin@staffpro.demo` | `Staff@12345` |
+| **Individual recruiter** | `/login/recruiter` | `jane-recruits` | `jane@janerecruits.demo` | `Jane@12345` |
+| **Platform operations** | `/login/platform` | *(none)* | `admin@engage360.com` | `Admin@12345` |
+
+Additional seeded users (same password as their tenant admin):
+
+| Tenant | Email | Roles |
+|--------|-------|-------|
+| `acme` | `hr@acme.demo` | HR |
+| `acme` | `manager@acme.demo` | MANAGER, EMPLOYEE |
+| `acme` | `employee@acme.demo` | EMPLOYEE |
+| `talentbridge` | `recruiter@talentbridge.demo` | HR |
+| `staffpro` | `ops@staffpro.demo` | HR |
+| `staffpro` | `manager@staffpro.demo` | MANAGER, EMPLOYEE |
+
+Per-segment workspaces (navigation is filtered by tenant type + enabled portals):
+
+- **Company** → Recruitment (ATS), Workforce & HR, Operations, Compensation, Performance, Workflow, Administration
+- **Recruitment agency** → Recruitment (ATS), Agency CRM (client submissions, contacts), Workflow, Administration
+- **Staffing company** → Recruitment (ATS), Staffing (contracts, contractors), Operations, Workflow, Administration
+- **Individual recruiter** → Recruitment (ATS), Agency CRM, Workflow, Administration
+- **Platform operations** → Tenants, Requirements (lands on `/tenants`)
+
+`/login` (no segment) defaults to the Company form with a segment switcher; the landing page (`/`)
+shows all four segment entry cards.
+
+---
+
 ## Quick copy-paste cheat sheet
 
 ### Render (production demo)
