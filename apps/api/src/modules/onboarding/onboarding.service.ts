@@ -252,19 +252,37 @@ export class OnboardingService {
     });
   }
 
-  listCases(tenantId: string) {
-    return this.prisma.onboardingCase.findMany({
-      where: { tenantId },
-      include: {
-        employee: {
-          include: {
-            user: { select: { email: true, firstName: true, lastName: true } },
-            documents: true,
-          },
+  async listCases(tenantId: string, page?: number, pageSize?: number) {
+    const where = { tenantId };
+    const include = {
+      employee: {
+        include: {
+          user: { select: { email: true, firstName: true, lastName: true } },
+          documents: true,
         },
       },
-      orderBy: { createdAt: 'desc' },
-    });
+    };
+    const orderBy = { createdAt: 'desc' as const };
+    const paginated = page !== undefined || pageSize !== undefined;
+    if (!paginated) {
+      return this.prisma.onboardingCase.findMany({ where, include, orderBy });
+    }
+    const p = Math.max(1, page ?? 1);
+    const ps = Math.min(200, Math.max(1, pageSize ?? 50));
+    const [data, total] = await Promise.all([
+      this.prisma.onboardingCase.findMany({
+        where,
+        include,
+        orderBy,
+        skip: (p - 1) * ps,
+        take: ps,
+      }),
+      this.prisma.onboardingCase.count({ where }),
+    ]);
+    return {
+      data,
+      meta: { total, page: p, pageSize: ps, totalPages: Math.ceil(total / ps) || 1 },
+    };
   }
 
   async verifyDocument(

@@ -117,31 +117,65 @@ export class ApplicationsService {
     return application;
   }
 
-  findAll(
+  async findAll(
     tenantId: string,
     jobId?: string,
     status?: ApplicationStatus,
     interviewerId?: string,
+    page?: number,
+    pageSize?: number,
   ) {
-    return this.prisma.application.findMany({
-      where: {
-        tenantId,
-        ...(jobId ? { jobId } : {}),
-        ...(status ? { status } : {}),
-        ...(interviewerId
-          ? { interviews: { some: { interviewerId } } }
-          : {}),
+    const where = {
+      tenantId,
+      ...(jobId ? { jobId } : {}),
+      ...(status ? { status } : {}),
+      ...(interviewerId
+        ? { interviews: { some: { interviewerId } } }
+        : {}),
+    };
+    const orderBy = { createdAt: 'desc' as const };
+    const paginated = page !== undefined || pageSize !== undefined;
+    const include = paginated
+      ? {
+          candidate: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+          job: { select: { id: true, title: true } },
+        }
+      : {
+          candidate: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+          job: { select: { id: true, title: true } },
+          interviews: { orderBy: { level: 'asc' as const } },
+          offer: true,
+        };
+
+    if (!paginated) {
+      return this.prisma.application.findMany({ where, include, orderBy });
+    }
+
+    const p = Math.max(1, page ?? 1);
+    const ps = Math.min(200, Math.max(1, pageSize ?? 50));
+    const [data, total] = await Promise.all([
+      this.prisma.application.findMany({
+        where,
+        include,
+        orderBy,
+        skip: (p - 1) * ps,
+        take: ps,
+      }),
+      this.prisma.application.count({ where }),
+    ]);
+    return {
+      data,
+      meta: {
+        total,
+        page: p,
+        pageSize: ps,
+        totalPages: Math.ceil(total / ps) || 1,
       },
-      include: {
-        candidate: {
-          select: { id: true, firstName: true, lastName: true, email: true },
-        },
-        job: { select: { id: true, title: true } },
-        interviews: { orderBy: { level: 'asc' } },
-        offer: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    };
   }
 
   async findOne(tenantId: string, id: string, interviewerId?: string) {

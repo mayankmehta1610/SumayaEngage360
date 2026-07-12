@@ -42,3 +42,17 @@ export function errMsg(e: unknown): string {
   const m = anyE?.error?.message ?? anyE?.message ?? 'Request failed';
   return Array.isArray(m) ? m.join('; ') : String(m);
 }
+
+export interface PaginatedMeta {
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export function unwrapPaginated<T>(
+  res: T[] | { data: T[]; meta: PaginatedMeta },
+): { items: T[]; meta?: PaginatedMeta } {
+  if (Array.isArray(res)) return { items: res };
+  return { items: res.data, meta: res.meta };
+}

@@ -30,8 +30,16 @@ export class OnboardingAdminController {
   }
 
   @Get('cases')
-  listCases(@TenantId() tenantId: string) {
-    return this.onboarding.listCases(tenantId);
+  async listCases(
+    @TenantId() tenantId: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.onboarding.listCases(
+      tenantId,
+      page !== undefined && page !== '' ? parseInt(page, 10) : undefined,
+      pageSize !== undefined && pageSize !== '' ? parseInt(pageSize, 10) : undefined,
+    );
   }
 
   @Post('documents/:id/verify')

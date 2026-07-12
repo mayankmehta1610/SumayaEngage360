@@ -1,16 +1,15 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService, errMsg } from '../core/api.service';
+import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { AuthService } from '../core/auth.service';
 
-// The talent pool: every candidate ever captured, their parse status,
-// application history and best job matches.
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="Talent pool"
@@ -29,75 +28,102 @@ import { AuthService } from '../core/auth.service';
         }
         <export-bar [rows]="candidates" [cols]="exportCols" name="candidates" />
       </div>
-@if (parseInfo) { <div class="card" style="border-color:#22c55e">{{ parseInfo }}</div> }
-    @if (error) { <div class="e360-error">{{ error }}</div> }
-    <div class="card">
-      <table>
-        <tr><th>Name</th><th>Email</th><th>Skills</th><th>Resume</th><th>Parsed</th><th>Applications</th><th>Matches</th><th>Added</th><th></th></tr>
-        @for (c of candidates; track c.id) {
-          <tr>
-            <td>{{ c.firstName }} {{ c.lastName }}</td>
-            <td>{{ c.email }}</td>
-            <td>@for (s of c.skills; track s.skill.name) { <span class="badge" style="margin-right:.2rem">{{ s.skill.name }}</span> }</td>
-            <td>{{ c.resumeFileId ? '📄' : '—' }}</td>
-            <td>
-              @if (c.parsedResume) { <span class="badge ok">{{ c.parsedResume.method === 'AI' ? 'AI parsed' : 'parsed' }}</span> }
-              @else if (c.resumeFileId) { <span class="badge warn">pending</span> }
-              @else { — }
-            </td>
-            <td>{{ c._count.applications }}</td>
-            <td>{{ c._count.matches }}</td>
-            <td>{{ c.createdAt | date }}</td>
-            <td><button class="secondary" (click)="detailFor = detailFor === c.id ? null : c.id; loadDetail(c.id)">
-              {{ detailFor === c.id ? 'Hide' : 'View' }}</button></td>
-          </tr>
-        } @empty { <tr><td colspan="9" class="muted">No candidates yet — they appear when people apply on the careers pages.</td></tr> }
-      </table>
-    </div>
 
-    @if (detailFor && detail) {
+      @if (parseInfo) { <div class="card" style="border-color:#22c55e">{{ parseInfo }}</div> }
+      @if (error) { <div class="e360-error">{{ error }}</div> }
+
       <div class="card">
-        <h2 style="margin-top:0">{{ detail.firstName }} {{ detail.lastName }} — profile</h2>
-        @if (detail.parsedResume) {
-          <div class="row">
-            <div><label>Parsed by</label><div>{{ detail.parsedResume.method }}</div></div>
-            <div><label>Experience</label><div>{{ detail.parsedResume.totalYearsExperience ?? '—' }} years</div></div>
-            <div><label>Phone</label><div>{{ detail.parsedResume.phone ?? detail.phone ?? '—' }}</div></div>
+        <div class="e360-toolbar">
+          <h2 style="margin:0">Candidates ({{ total }})</h2>
+        </div>
+        <e360-data-table
+          [columns]="tableCols"
+          [rows]="tableRows"
+          [page]="page"
+          [pageSize]="pageSize"
+          [total]="total"
+          [loading]="loading"
+          [searchable]="false"
+          [filterable]="true"
+          [stickyHeader]="true"
+          [rowClickable]="true"
+          [selectedId]="detailFor"
+          (pageChange)="onPageChange($event)"
+          (pageSizeChange)="onPageSizeChange($event)"
+          (rowClick)="onRowClick($event)"
+          emptyMessage="No candidates yet — they appear when people apply on the careers pages."
+        >
+          <div filters>
+            <div>
+              <label>Search</label>
+              <input [(ngModel)]="search" (ngModelChange)="onSearchChange()" placeholder="Name or email…" />
+            </div>
           </div>
-          @if (detail.parsedResume.summary) { <p class="muted">{{ detail.parsedResume.summary }}</p> }
-        }
-        <h2>Application history</h2>
-        <table>
-          <tr><th>Role</th><th>Status</th><th>Source</th><th>Date</th></tr>
-          @for (a of detail.applications; track a.id) {
-            <tr><td>{{ a.job.title }}</td><td><span class="badge">{{ a.status }}</span></td>
-                <td>{{ a.source ?? '—' }}</td><td>{{ a.createdAt | date }}</td></tr>
-          }
-        </table>
-        <h2>Job match scores</h2>
-        <table>
-          <tr><th>Job</th><th>Rule %</th><th>AI %</th><th>Final %</th><th>Shortlisted</th></tr>
-          @for (m of detail.matches; track m.id) {
-            <tr><td>{{ m.job.title }}</td><td>{{ m.ruleScore ?? '—' }}</td><td>{{ m.aiScore ?? '—' }}</td>
-                <td><strong>{{ m.finalScore }}</strong></td>
-                <td>@if (m.shortlisted) { <span class="badge ok">yes</span> } @else { no }</td></tr>
-          }
-        </table>
+        </e360-data-table>
       </div>
-    }
-  
+
+      @if (detailFor && detail) {
+        <div class="card">
+          <h2 style="margin-top:0">{{ detail.firstName }} {{ detail.lastName }} — profile</h2>
+          @if (detail.parsedResume) {
+            <div class="row">
+              <div><label>Parsed by</label><div>{{ detail.parsedResume.method }}</div></div>
+              <div><label>Experience</label><div>{{ detail.parsedResume.totalYearsExperience ?? '—' }} years</div></div>
+              <div><label>Phone</label><div>{{ detail.parsedResume.phone ?? detail.phone ?? '—' }}</div></div>
+            </div>
+            @if (detail.parsedResume.summary) { <p class="e360-muted">{{ detail.parsedResume.summary }}</p> }
+          }
+          <h2>Application history</h2>
+          <div class="e360-table-wrap">
+            <table class="e360-table">
+              <tr><th>Role</th><th>Status</th><th>Source</th><th>Date</th></tr>
+              @for (a of detail.applications; track a.id) {
+                <tr>
+                  <td>{{ a.job.title }}</td>
+                  <td><span class="badge">{{ a.status }}</span></td>
+                  <td>{{ a.source ?? '—' }}</td>
+                  <td>{{ a.createdAt | date }}</td>
+                </tr>
+              }
+            </table>
+          </div>
+          <h2>Job match scores</h2>
+          <div class="e360-table-wrap">
+            <table class="e360-table">
+              <tr><th>Job</th><th>Rule %</th><th>AI %</th><th>Final %</th><th>Shortlisted</th></tr>
+              @for (m of detail.matches; track m.id) {
+                <tr>
+                  <td>{{ m.job.title }}</td>
+                  <td>{{ m.ruleScore ?? '—' }}</td>
+                  <td>{{ m.aiScore ?? '—' }}</td>
+                  <td><strong>{{ m.finalScore }}</strong></td>
+                  <td>@if (m.shortlisted) { <span class="badge ok">yes</span> } @else { no }</td>
+                </tr>
+              }
+            </table>
+          </div>
+        </div>
+      }
     </e360-module-shell>
   `,
 })
 export class CandidatesComponent implements OnInit {
   private api = inject(ApiService);
   auth = inject(AuthService);
+
   candidates: any[] = [];
   detail: any = null;
   detailFor: string | null = null;
   error = '';
   parseInfo = '';
   busy = false;
+  loading = false;
+  page = 1;
+  pageSize = 25;
+  total = 0;
+  search = '';
+  private searchTimer?: ReturnType<typeof setTimeout>;
+
   exportCols = [
     { key: 'firstName', label: 'First name' },
     { key: 'lastName', label: 'Last name' },
@@ -106,17 +132,87 @@ export class CandidatesComponent implements OnInit {
     { key: '_count.matches', label: 'Matches' },
     { key: 'createdAt', label: 'Added' },
   ];
+  tableCols: TableColumn[] = [
+    { key: 'name', label: 'Name', sortable: true },
+    { key: 'email', label: 'Email', sortable: true },
+    { key: 'skills', label: 'Skills' },
+    { key: 'resume', label: 'Resume' },
+    { key: 'parsed', label: 'Parsed' },
+    { key: 'applications', label: 'Apps', sortable: true },
+    { key: 'matches', label: 'Matches', sortable: true },
+    { key: 'added', label: 'Added', sortable: true },
+  ];
+
+  get tableRows() {
+    return this.candidates.map((c) => ({
+      id: c.id,
+      name: `${c.firstName} ${c.lastName}`,
+      email: c.email,
+      skills: (c.skills ?? []).map((s: any) => s.skill?.name).filter(Boolean).join(', ') || '—',
+      resume: c.resumeFileId ? 'Yes' : '—',
+      parsed: c.parsedResume
+        ? (c.parsedResume.method === 'AI' ? 'AI parsed' : 'Parsed')
+        : (c.resumeFileId ? 'Pending' : '—'),
+      applications: c._count?.applications ?? 0,
+      matches: c._count?.matches ?? 0,
+      added: c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—',
+    }));
+  }
 
   async ngOnInit() { await this.load(); }
-  async load() {
-    try { this.candidates = await this.api.get<any[]>('/candidates'); }
-    catch (e) { this.error = errMsg(e); }
+
+  onSearchChange() {
+    clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => {
+      this.page = 1;
+      this.load();
+    }, 300);
   }
+
+  onPageChange(p: number) {
+    this.page = p;
+    this.load();
+  }
+
+  onPageSizeChange(ps: number) {
+    this.pageSize = ps;
+    this.page = 1;
+    this.load();
+  }
+
+  async onRowClick(row: Record<string, unknown>) {
+    const id = String(row['id'] ?? '');
+    if (this.detailFor === id) {
+      this.detailFor = null;
+      this.detail = null;
+      return;
+    }
+    this.detailFor = id;
+    await this.loadDetail(id);
+  }
+
+  async load() {
+    this.loading = true;
+    try {
+      const params: Record<string, string> = {
+        page: String(this.page),
+        pageSize: String(this.pageSize),
+      };
+      if (this.search.trim()) params.search = this.search.trim();
+      const res = await this.api.get<any>('/candidates', params);
+      const { items, meta } = unwrapPaginated(res);
+      this.candidates = items;
+      this.total = meta?.total ?? items.length;
+      this.error = '';
+    } catch (e) { this.error = errMsg(e); }
+    finally { this.loading = false; }
+  }
+
   async loadDetail(id: string) {
-    if (this.detailFor !== id) { this.detail = null; return; }
     try { this.detail = await this.api.get<any>(`/candidates/${id}`); }
     catch (e) { this.error = errMsg(e); }
   }
+
   async parseNow() {
     this.busy = true;
     this.parseInfo = '';

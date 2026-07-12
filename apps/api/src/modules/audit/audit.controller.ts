@@ -16,12 +16,16 @@ export class AuditController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('limit') limit?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
     return this.audit.list(tenantId, {
       entityType,
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
+      page: page !== undefined && page !== '' ? parseInt(page, 10) : undefined,
+      pageSize: pageSize !== undefined && pageSize !== '' ? parseInt(pageSize, 10) : undefined,
     });
   }
 }

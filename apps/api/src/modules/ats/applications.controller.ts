@@ -24,6 +24,8 @@ export class ApplicationsController {
     @TenantId() tenantId: string,
     @Query('jobId') jobId?: string,
     @Query('status') status?: ApplicationStatus,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
     @CurrentUser() user?: JwtPayload,
   ) {
     return this.applications.findAll(
@@ -31,6 +33,8 @@ export class ApplicationsController {
       jobId,
       status,
       this.interviewerScope(user),
+      page !== undefined && page !== '' ? parseInt(page, 10) : undefined,
+      pageSize !== undefined && pageSize !== '' ? parseInt(pageSize, 10) : undefined,
     );
   }
 

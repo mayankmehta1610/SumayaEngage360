@@ -32,7 +32,14 @@ export class AuditService {
 
   async list(
     tenantId: string,
-    opts: { entityType?: string; from?: Date; to?: Date; limit?: number } = {},
+    opts: {
+      entityType?: string;
+      from?: Date;
+      to?: Date;
+      limit?: number;
+      page?: number;
+      pageSize?: number;
+    } = {},
   ) {
     const where: Prisma.AuditLogWhereInput = { tenantId };
     if (opts.entityType) where.entityType = opts.entityType;
@@ -41,10 +48,29 @@ export class AuditService {
       if (opts.from) where.createdAt.gte = opts.from;
       if (opts.to) where.createdAt.lte = opts.to;
     }
-    return this.prisma.auditLog.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: opts.limit ?? 200,
-    });
+    const orderBy = { createdAt: 'desc' as const };
+    const paginated = opts.page !== undefined || opts.pageSize !== undefined;
+    if (!paginated) {
+      return this.prisma.auditLog.findMany({
+        where,
+        orderBy,
+        take: opts.limit ?? 200,
+      });
+    }
+    const p = Math.max(1, opts.page ?? 1);
+    const ps = Math.min(200, Math.max(1, opts.pageSize ?? 50));
+    const [data, total] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where,
+        orderBy,
+        skip: (p - 1) * ps,
+        take: ps,
+      }),
+      this.prisma.auditLog.count({ where }),
+    ]);
+    return {
+      data,
+      meta: { total, page: p, pageSize: ps, totalPages: Math.ceil(total / ps) || 1 },
+    };
   }
 }

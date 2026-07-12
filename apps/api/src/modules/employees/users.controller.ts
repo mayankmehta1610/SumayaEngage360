@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
@@ -90,19 +91,41 @@ export class UsersController {
   }
 
   @Get()
-  list(@TenantId() tenantId: string) {
-    return this.prisma.users.findMany({
-      where: { tenantId },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        roles: true,
-        isActive: true,
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+  async list(
+    @TenantId() tenantId: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    const where = { tenantId };
+    const select = {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      roles: true,
+      isActive: true,
+    };
+    const orderBy = { createdAt: 'asc' as const };
+    const paginated = page !== undefined || pageSize !== undefined;
+    if (!paginated) {
+      return this.prisma.users.findMany({ where, select, orderBy });
+    }
+    const p = Math.max(1, page ? parseInt(page, 10) : 1);
+    const ps = Math.min(200, Math.max(1, pageSize ? parseInt(pageSize, 10) : 50));
+    const [data, total] = await Promise.all([
+      this.prisma.users.findMany({
+        where,
+        select,
+        orderBy,
+        skip: (p - 1) * ps,
+        take: ps,
+      }),
+      this.prisma.users.count({ where }),
+    ]);
+    return {
+      data,
+      meta: { total, page: p, pageSize: ps, totalPages: Math.ceil(total / ps) || 1 },
+    };
   }
 
   @Patch(':id/access')

@@ -1,13 +1,14 @@
-import { DatePipe, JsonPipe } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
-import { ApiService, errMsg } from '../core/api.service';
+import { FormsModule } from '@angular/forms';
+import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 
 @Component({
   standalone: true,
-  imports: [ExportBarComponent, DatePipe, JsonPipe, ModuleShellComponent],
+  imports: [ExportBarComponent, ModuleShellComponent, DataTableComponent, FormsModule],
   template: `
     <e360-module-shell
       title="Audit log"
@@ -19,23 +20,25 @@ import { ExportBarComponent } from '../core/export-bar.component';
       [breadcrumbs]="[{ label: 'Platform' }, { label: 'Audit trail' }]"
     >
       <div actions><export-bar [rows]="rows" [cols]="cols" name="audit-log" /></div>
-@if (error) { <div class="e360-error">{{ error }}</div> }
+      @if (error) { <div class="e360-error">{{ error }}</div> }
 
-    <div class="card">
-      <table>
-        <tr><th>When</th><th>Actor</th><th>Action</th><th>Entity</th><th>Details</th></tr>
-        @for (r of rows; track r.id) {
-          <tr>
-            <td class="muted" style="font-size:.78rem">{{ r.createdAt | date:'short' }}</td>
-            <td>{{ r.actorEmail ?? r.actorId ?? '—' }}</td>
-            <td>{{ r.action }}</td>
-            <td>{{ r.entityType }} {{ r.entityId ? '#' + r.entityId.slice(0,8) : '' }}</td>
-            <td class="muted" style="font-size:.75rem;max-width:280px;overflow:hidden;text-overflow:ellipsis">{{ r.details | json }}</td>
-          </tr>
-        }
-      </table>
-    </div>
-  
+      <div class="card">
+        <div class="e360-toolbar">
+          <h2 style="margin:0">Audit entries ({{ total }})</h2>
+        </div>
+        <e360-data-table
+          [columns]="tableCols"
+          [rows]="tableRows"
+          [page]="page"
+          [pageSize]="pageSize"
+          [total]="total"
+          [loading]="loading"
+          [searchable]="true"
+          [stickyHeader]="true"
+          (pageChange)="onPageChange($event)"
+          (pageSizeChange)="onPageSizeChange($event)"
+        />
+      </div>
     </e360-module-shell>
   `,
 })
@@ -44,16 +47,60 @@ export class AuditComponent implements OnInit {
   auth = inject(AuthService);
   rows: any[] = [];
   error = '';
+  loading = false;
+  page = 1;
+  pageSize = 25;
+  total = 0;
   cols = [
     { key: 'createdAt', label: 'When' },
     { key: 'action', label: 'Action' },
     { key: 'entityType', label: 'Entity' },
   ];
+  tableCols: TableColumn[] = [
+    { key: 'when', label: 'When', sortable: true },
+    { key: 'actor', label: 'Actor', sortable: true },
+    { key: 'action', label: 'Action', sortable: true },
+    { key: 'entity', label: 'Entity', sortable: true },
+    { key: 'details', label: 'Details' },
+  ];
+
+  get tableRows() {
+    return this.rows.map((r) => ({
+      when: r.createdAt ? new Date(r.createdAt).toLocaleString() : '—',
+      actor: r.actorEmail ?? r.actorId ?? '—',
+      action: r.action,
+      entity: `${r.entityType}${r.entityId ? ' #' + String(r.entityId).slice(0, 8) : ''}`,
+      details: r.details ? JSON.stringify(r.details) : (r.metadata ? JSON.stringify(r.metadata) : '—'),
+    }));
+  }
 
   async ngOnInit() {
     if (!this.auth.hasRole('TENANT_ADMIN', 'HR')) return;
+    await this.load();
+  }
+
+  onPageChange(p: number) {
+    this.page = p;
+    this.load();
+  }
+
+  onPageSizeChange(ps: number) {
+    this.pageSize = ps;
+    this.page = 1;
+    this.load();
+  }
+
+  async load() {
+    this.loading = true;
     try {
-      this.rows = await this.api.get<any[]>('/audit?limit=100');
+      const res = await this.api.get<any>('/audit', {
+        page: String(this.page),
+        pageSize: String(this.pageSize),
+      });
+      const { items, meta } = unwrapPaginated(res);
+      this.rows = items;
+      this.total = meta?.total ?? items.length;
     } catch (e) { this.error = errMsg(e); }
+    finally { this.loading = false; }
   }
 }

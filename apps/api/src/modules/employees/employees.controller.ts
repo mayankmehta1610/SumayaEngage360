@@ -35,8 +35,15 @@ export class EmployeesController {
   findAll(
     @TenantId() tenantId: string,
     @Query('status') status?: EmployeeStatus,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    return this.employees.findAll(tenantId, status);
+    return this.employees.findAll(
+      tenantId,
+      status,
+      page !== undefined && page !== '' ? parseInt(page, 10) : undefined,
+      pageSize !== undefined && pageSize !== '' ? parseInt(pageSize, 10) : undefined,
+    );
   }
 
   // Company directory — any signed-in user (needed to pick colleagues for

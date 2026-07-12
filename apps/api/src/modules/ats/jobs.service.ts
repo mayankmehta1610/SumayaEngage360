@@ -35,16 +35,39 @@ export class JobsService {
     });
   }
 
-  findAll(tenantId: string, status?: JobStatus) {
-    return this.prisma.job.findMany({
-      where: { tenantId, ...(status ? { status } : {}) },
-      include: {
-        hiringClient: { select: { id: true, name: true, slug: true } },
-        skills: { include: { skill: true } },
-        _count: { select: { applications: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  async findAll(
+    tenantId: string,
+    status?: JobStatus,
+    page?: number,
+    pageSize?: number,
+  ) {
+    const where = { tenantId, ...(status ? { status } : {}) };
+    const include = {
+      hiringClient: { select: { id: true, name: true, slug: true } },
+      skills: { include: { skill: true } },
+      _count: { select: { applications: true } },
+    };
+    const orderBy = { createdAt: 'desc' as const };
+    const paginated = page !== undefined || pageSize !== undefined;
+    if (!paginated) {
+      return this.prisma.job.findMany({ where, include, orderBy });
+    }
+    const p = Math.max(1, page ?? 1);
+    const ps = Math.min(200, Math.max(1, pageSize ?? 50));
+    const [data, total] = await Promise.all([
+      this.prisma.job.findMany({
+        where,
+        include,
+        orderBy,
+        skip: (p - 1) * ps,
+        take: ps,
+      }),
+      this.prisma.job.count({ where }),
+    ]);
+    return {
+      data,
+      meta: { total, page: p, pageSize: ps, totalPages: Math.ceil(total / ps) || 1 },
+    };
   }
 
   async findOne(tenantId: string, id: string) {

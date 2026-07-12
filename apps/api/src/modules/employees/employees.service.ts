@@ -63,15 +63,38 @@ export class EmployeesService {
     });
   }
 
-  findAll(tenantId: string, status?: EmployeeStatus) {
-    return this.prisma.employee.findMany({
-      where: { tenantId, ...(status ? { status } : {}) },
-      include: {
-        user: { select: { email: true, firstName: true, lastName: true } },
-        department: { select: { name: true } },
-      },
-      orderBy: { employeeCode: 'asc' },
-    });
+  async findAll(
+    tenantId: string,
+    status?: EmployeeStatus,
+    page?: number,
+    pageSize?: number,
+  ) {
+    const where = { tenantId, ...(status ? { status } : {}) };
+    const include = {
+      user: { select: { email: true, firstName: true, lastName: true } },
+      department: { select: { name: true } },
+    };
+    const orderBy = { employeeCode: 'asc' as const };
+    const paginated = page !== undefined || pageSize !== undefined;
+    if (!paginated) {
+      return this.prisma.employee.findMany({ where, include, orderBy });
+    }
+    const p = Math.max(1, page ?? 1);
+    const ps = Math.min(200, Math.max(1, pageSize ?? 50));
+    const [data, total] = await Promise.all([
+      this.prisma.employee.findMany({
+        where,
+        include,
+        orderBy,
+        skip: (p - 1) * ps,
+        take: ps,
+      }),
+      this.prisma.employee.count({ where }),
+    ]);
+    return {
+      data,
+      meta: { total, page: p, pageSize: ps, totalPages: Math.ceil(total / ps) || 1 },
+    };
   }
 
   async findOne(tenantId: string, id: string) {

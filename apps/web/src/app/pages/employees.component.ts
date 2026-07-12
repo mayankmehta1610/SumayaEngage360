@@ -1,6 +1,6 @@
 import { Component, Input, OnChanges, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ApiService, errMsg } from '../core/api.service';
+import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { HasRoleDirective } from '../core/has-role.directive';
 import { ModuleShellComponent } from '../ui/module-shell.component';
@@ -43,7 +43,7 @@ import { IconComponent } from '../ui/icon.component';
           <div><label>Join date</label><input type="date" [(ngModel)]="f.joinDate" /></div>
           <div>
             <label>Status filter</label>
-            <select [(ngModel)]="statusFilter" (ngModelChange)="load()">
+            <select [(ngModel)]="statusFilter" (ngModelChange)="page = 1; load()">
               <option value="">All statuses</option>
               <option value="ACTIVE">Active</option>
               <option value="ONBOARDING">Onboarding</option>
@@ -57,12 +57,22 @@ import { IconComponent } from '../ui/icon.component';
 
       <div class="card">
         <div class="e360-toolbar">
-          <h2 style="margin:0">Employee directory ({{ employees.length }})</h2>
+          <h2 style="margin:0">Employee directory ({{ total }})</h2>
           @if (statusFilter) {
             <span class="e360-badge warning">Filtered: {{ statusFilter }}</span>
           }
         </div>
-        <e360-data-table [columns]="tableCols" [rows]="tableRows" [pageSize]="20" />
+        <e360-data-table
+          [columns]="tableCols"
+          [rows]="tableRows"
+          [page]="page"
+          [pageSize]="pageSize"
+          [total]="total"
+          [loading]="loading"
+          [stickyHeader]="true"
+          (pageChange)="onPageChange($event)"
+          (pageSizeChange)="onPageSizeChange($event)"
+        />
       </div>
     </e360-module-shell>
   `,
@@ -73,6 +83,10 @@ export class EmployeesComponent implements OnInit, OnChanges {
   employees: any[] = [];
   error = '';
   statusFilter = '';
+  loading = false;
+  page = 1;
+  pageSize = 25;
+  total = 0;
   f: any = {};
   exportCols = [
     { key: 'employeeCode', label: 'Code' },
@@ -112,14 +126,37 @@ export class EmployeesComponent implements OnInit, OnChanges {
   }
   ngOnChanges() {
     this.statusFilter = this.status ?? '';
+    this.page = 1;
     this.load();
   }
+
+  onPageChange(p: number) {
+    this.page = p;
+    this.load();
+  }
+
+  onPageSizeChange(ps: number) {
+    this.pageSize = ps;
+    this.page = 1;
+    this.load();
+  }
+
   async load() {
+    this.loading = true;
     try {
       const q = this.statusFilter || this.status;
-      this.employees = await this.api.get<any[]>(q ? `/employees?status=${q}` : '/employees');
+      const params: Record<string, string> = {
+        page: String(this.page),
+        pageSize: String(this.pageSize),
+      };
+      if (q) params.status = q;
+      const res = await this.api.get<any>('/employees', params);
+      const { items, meta } = unwrapPaginated(res);
+      this.employees = items;
+      this.total = meta?.total ?? items.length;
       this.error = '';
     } catch (e) { this.error = errMsg(e); }
+    finally { this.loading = false; }
   }
   async create() {
     try {

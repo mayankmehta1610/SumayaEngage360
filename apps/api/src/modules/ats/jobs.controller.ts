@@ -24,8 +24,18 @@ export class JobsController {
   }
 
   @Get()
-  findAll(@TenantId() tenantId: string, @Query('status') status?: JobStatus) {
-    return this.jobs.findAll(tenantId, status);
+  findAll(
+    @TenantId() tenantId: string,
+    @Query('status') status?: JobStatus,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.jobs.findAll(
+      tenantId,
+      status,
+      page !== undefined && page !== '' ? parseInt(page, 10) : undefined,
+      pageSize !== undefined && pageSize !== '' ? parseInt(pageSize, 10) : undefined,
+    );
   }
 
   @Get(':id')
