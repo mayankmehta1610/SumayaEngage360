@@ -31,7 +31,11 @@ import { ExportBarComponent } from '../core/export-bar.component';
         <div class="row" style="align-items:flex-end;margin-top:.6rem">
           <div><label>Code</label><input [(ngModel)]="branch.code" /></div>
           <div><label>Name</label><input [(ngModel)]="branch.name" /></div>
-          <div><label>Country</label><input [(ngModel)]="branch.country" placeholder="IN" /></div>
+          <div><label>Country</label>
+            <select [(ngModel)]="branch.country">
+              @for (c of countries; track c.country) { <option [value]="c.country">{{ c.country }}</option> }
+            </select>
+          </div>
           <div style="flex:0"><button (click)="addBranch()">Add branch</button></div>
         </div>
       </div>
@@ -121,6 +125,7 @@ export class SettingsComponent implements OnInit {
   integrations: any[] = [];
   connMap: Record<string, any> = {};
   areas: any[] = [];
+  countries: any[] = [];
   testMsg = '';
   branch = { code: '', name: '', country: 'IN' };
   shift = { code: '', name: '', startTime: '09:00', endTime: '18:00' };
@@ -139,19 +144,21 @@ export class SettingsComponent implements OnInit {
 
   async reload() {
     try {
-      const [branches, shifts, flags, integrations, connections, areas] = await Promise.all([
+      const [branches, shifts, flags, integrations, connections, areas, countries] = await Promise.all([
         this.api.get<any[]>('/config/branches'),
         this.api.get<any[]>('/config/shifts'),
         this.api.get<any[]>('/config/feature-flags'),
         this.api.get<any[]>('/integrations'),
         this.api.get<any[]>('/integrations/connections'),
         this.api.get<any[]>('/config/areas'),
+        this.api.get<any[]>('/masters/country-configs').catch(() => [{ country: 'IN' }]),
       ]);
       this.branches = branches;
       this.shifts = shifts;
       this.flags = flags;
       this.integrations = integrations;
       this.areas = areas;
+      this.countries = countries.length ? countries : [{ country: 'IN' }];
       this.connMap = Object.fromEntries(connections.map((c) => [c.integrationId, c]));
     } catch (e) { this.error = errMsg(e); }
   }

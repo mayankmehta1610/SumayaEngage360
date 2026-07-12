@@ -2,9 +2,62 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GiveFeedbackDto, GiveRecognitionDto } from './engagement.dto';
 
+const BADGE_AREA = 'CFG-009';
+const DEFAULT_BADGES = [
+  'Star Performer', 'Team Player', 'Great Mentor',
+  'Innovation Champion', 'Customer Hero', 'Going the Extra Mile',
+];
+
 @Injectable()
 export class EngagementService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async badgeList(tenantId: string): Promise<string[]> {
+    const item = await this.prisma.tenantConfigItem.findFirst({
+      where: { tenantId, areaId: BADGE_AREA, key: 'recognition-badges', effectiveTo: null },
+    });
+    const stored = (item?.value as { names?: string[] } | null)?.names;
+    if (stored?.length) return stored;
+    await this.prisma.tenantConfigItem.create({
+      data: {
+        tenantId,
+        areaId: BADGE_AREA,
+        key: 'recognition-badges',
+        value: { names: DEFAULT_BADGES },
+        version: 1,
+      },
+    });
+    return [...DEFAULT_BADGES];
+  }
+
+  async listBadges(tenantId: string) {
+    const names = await this.badgeList(tenantId);
+    return names.map((name) => ({ name }));
+  }
+
+  async addBadge(tenantId: string, name: string) {
+    const names = await this.badgeList(tenantId);
+    if (!names.includes(name)) names.push(name);
+    const prev = await this.prisma.tenantConfigItem.findFirst({
+      where: { tenantId, areaId: BADGE_AREA, key: 'recognition-badges', effectiveTo: null },
+    });
+    if (prev) {
+      await this.prisma.tenantConfigItem.update({
+        where: { id: prev.id },
+        data: { effectiveTo: new Date() },
+      });
+    }
+    await this.prisma.tenantConfigItem.create({
+      data: {
+        tenantId,
+        areaId: BADGE_AREA,
+        key: 'recognition-badges',
+        value: { names },
+        version: (prev?.version ?? 0) + 1,
+      },
+    });
+    return { name };
+  }
 
   private async employeeForUser(userId: string) {
     const emp = await this.prisma.employee.findUnique({ where: { userId } });

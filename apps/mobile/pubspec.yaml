@@ -1,7 +1,7 @@
 name: engage360_mobile
-description: SumayaEngage360 employee self-service app
+description: SumayaEngage360 — employee & manager self-service for all roles
 publish_to: "none"
-version: 0.1.0
+version: 1.0.0
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -10,14 +10,16 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.0
-  dio: ^5.4.0
-  flutter_secure_storage: ^9.0.0
-  video_player: ^2.8.0
+  shared_preferences: ^2.2.0
+  intl: ^0.19.0
+  file_picker: ^8.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  integration_test:
+    sdk: flutter
 
 flutter:
   uses-material-design: true

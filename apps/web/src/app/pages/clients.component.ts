@@ -37,7 +37,17 @@ import { ExportBarComponent } from '../core/export-bar.component';
             <td>{{ c.name }}</td>
             <td><a [href]="'/careers/' + auth.tenant + '/' + c.slug" target="_blank">/careers/{{ auth.tenant }}/{{ c.slug }}</a></td>
             <td>{{ c.isInternal ? 'internal' : 'client' }}</td>
-            <td><span class="badge" [class.ok]="c.isActive">{{ c.isActive ? 'active' : 'inactive' }}</span></td>
+            <td>
+              @if (editId === c.id) {
+                <input [(ngModel)]="edit.name" />
+                <button (click)="saveEdit(c.id)">Save</button>
+                <button class="secondary" (click)="editId = null">Cancel</button>
+              } @else {
+                <span class="badge" [class.ok]="c.isActive">{{ c.isActive ? 'active' : 'inactive' }}</span>
+                <button class="secondary" (click)="startEdit(c)">Edit</button>
+                <button class="secondary" (click)="toggleActive(c)">{{ c.isActive ? 'Disable' : 'Enable' }}</button>
+              }
+            </td>
           </tr>
         }
       </table>
@@ -52,6 +62,8 @@ export class ClientsComponent implements OnInit {
   clients: any[] = [];
   error = '';
   f: any = {};
+  editId: string | null = null;
+  edit: any = {};
   exportCols = [
     { key: 'name', label: 'Name' },
     { key: 'slug', label: 'Careers slug' },
@@ -74,6 +86,27 @@ export class ClientsComponent implements OnInit {
     try {
       await this.api.post('/hiring-clients', this.f);
       this.f = {};
+      await this.load();
+    } catch (e) {
+      this.error = errMsg(e);
+    }
+  }
+  startEdit(c: any) {
+    this.editId = c.id;
+    this.edit = { name: c.name, description: c.description ?? '', isInternal: c.isInternal };
+  }
+  async saveEdit(id: string) {
+    try {
+      await this.api.patch(`/hiring-clients/${id}`, this.edit);
+      this.editId = null;
+      await this.load();
+    } catch (e) {
+      this.error = errMsg(e);
+    }
+  }
+  async toggleActive(c: any) {
+    try {
+      await this.api.patch(`/hiring-clients/${c.id}`, { isActive: !c.isActive });
       await this.load();
     } catch (e) {
       this.error = errMsg(e);

@@ -56,7 +56,10 @@ export class OrgMastersController {
     return this.org.grades(t).create(dto);
   }
 
-  @Get('employment-types') listEt(@TenantId() t: string) { return this.org.employmentTypes(t).list(); }
+  @Get('employment-types') async listEt(@TenantId() t: string) {
+    await this.org.ensureDefaultEmploymentTypes(t);
+    return this.org.employmentTypes(t).list();
+  }
   @Post('employment-types') createEt(@TenantId() t: string, @Body() dto: CodeNameDto) {
     return this.org.employmentTypes(t).create(dto);
   }

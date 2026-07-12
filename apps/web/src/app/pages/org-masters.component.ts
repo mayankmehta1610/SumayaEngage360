@@ -9,51 +9,63 @@ import { ApiService, errMsg } from '../core/api.service';
   template: `
     <e360-module-shell
       title="Organization masters"
-      description="CFG-002 — legal entities, locations, grades"
+      description="CFG-002 — legal entities, locations, grades, business units, cost centers, employment types"
       icon="building"
       [showReports]="false"
       rolesHint="TENANT_ADMIN, HR"
       [breadcrumbs]="[{ label: 'Administration' }, { label: 'Org masters' }]"
     >
 @if (error) { <div class="e360-error">{{ error }}</div> }
-    <div class="card">
-      <h2>Legal entities</h2>
-      <input [(ngModel)]="le.code" placeholder="Code" /> <input [(ngModel)]="le.name" placeholder="Name" />
-      <button (click)="addLe()">Add</button>
-      <ul>@for (x of legal; track x.id) { <li>{{ x.code }} — {{ x.name }}</li> }</ul>
+    <div class="grid">
+      @for (s of sections; track s.key) {
+        <div class="card">
+          <h2>{{ s.title }}</h2>
+          <input [(ngModel)]="drafts[s.key].code" placeholder="Code" />
+          <input [(ngModel)]="drafts[s.key].name" placeholder="Name" />
+          <button (click)="add(s)">Add</button>
+          <ul>@for (x of data[s.key]; track x.id) { <li>{{ x.code }} — {{ x.name }}</li> }</ul>
+        </div>
+      }
     </div>
-    <div class="card">
-      <h2>Locations</h2>
-      <input [(ngModel)]="loc.code" placeholder="Code" /> <input [(ngModel)]="loc.name" placeholder="Name" />
-      <button (click)="addLoc()">Add</button>
-      <ul>@for (x of locations; track x.id) { <li>{{ x.code }} — {{ x.name }}</li> }</ul>
-    </div>
-    <div class="card">
-      <h2>Grades</h2>
-      <input [(ngModel)]="gr.code" placeholder="Code" /> <input [(ngModel)]="gr.name" placeholder="Name" />
-      <button (click)="addGr()">Add</button>
-      <ul>@for (x of grades; track x.id) { <li>{{ x.code }} — {{ x.name }}</li> }</ul>
-    </div>
-  
     </e360-module-shell>
   `,
+  styles: [`.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; } .card { background: #fff; padding: 1rem; border-radius: 8px; }`],
 })
 export class OrgMastersComponent implements OnInit {
   private api = inject(ApiService);
-  legal: any[] = []; locations: any[] = []; grades: any[] = [];
-  le: any = {}; loc: any = {}; gr: any = {}; error = '';
+  error = '';
+  sections = [
+    { key: 'legal', title: 'Legal entities', path: '/org-masters/legal-entities' },
+    { key: 'locations', title: 'Locations', path: '/org-masters/locations' },
+    { key: 'grades', title: 'Grades', path: '/org-masters/grades' },
+    { key: 'bu', title: 'Business units', path: '/org-masters/business-units' },
+    { key: 'cc', title: 'Cost centers', path: '/org-masters/cost-centers' },
+    { key: 'et', title: 'Employment types', path: '/org-masters/employment-types' },
+  ] as const;
+  data: Record<string, any[]> = {};
+  drafts: Record<string, { code: string; name: string }> = {};
 
-  async ngOnInit() { await this.load(); }
+  async ngOnInit() {
+    for (const s of this.sections) {
+      this.drafts[s.key] = { code: '', name: '' };
+      this.data[s.key] = [];
+    }
+    await this.load();
+  }
+
   async load() {
     try {
-      [this.legal, this.locations, this.grades] = await Promise.all([
-        this.api.get<any[]>('/org-masters/legal-entities'),
-        this.api.get<any[]>('/org-masters/locations'),
-        this.api.get<any[]>('/org-masters/grades'),
-      ]);
+      await Promise.all(this.sections.map(async (s) => {
+        this.data[s.key] = await this.api.get<any[]>(s.path);
+      }));
     } catch (e) { this.error = errMsg(e); }
   }
-  async addLe() { await this.api.post('/org-masters/legal-entities', this.le); this.le = {}; await this.load(); }
-  async addLoc() { await this.api.post('/org-masters/locations', this.loc); this.loc = {}; await this.load(); }
-  async addGr() { await this.api.post('/org-masters/grades', this.gr); this.gr = {}; await this.load(); }
+
+  async add(s: (typeof this.sections)[number]) {
+    try {
+      await this.api.post(s.path, this.drafts[s.key]);
+      this.drafts[s.key] = { code: '', name: '' };
+      this.data[s.key] = await this.api.get<any[]>(s.path);
+    } catch (e) { this.error = errMsg(e); }
+  }
 }

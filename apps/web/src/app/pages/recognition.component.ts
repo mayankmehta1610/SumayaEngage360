@@ -101,8 +101,8 @@ export class RecognitionComponent implements OnInit {
   feed: any[] = [];
   received: any[] = [];
   error = '';
-  badges = ['Star Performer', 'Team Player', 'Great Mentor', 'Innovation Champion', 'Customer Hero', 'Going the Extra Mile'];
-  r: any = { badge: 'Star Performer', points: 50, isPublic: true };
+  badges: string[] = [];
+  r: any = { points: 50, isPublic: true };
   fb: any = { type: 'PEER', anonymous: false };
   feedCols = [
     { key: 'badge', label: 'Badge' },
@@ -118,11 +118,16 @@ export class RecognitionComponent implements OnInit {
     try { this.directory = await this.api.get<any[]>('/employees/directory'); } catch {}
     try { this.feed = await this.api.get<any[]>('/recognitions/feed'); } catch {}
     try { this.received = await this.api.get<any[]>('/feedback/mine'); } catch { this.received = []; }
+    try {
+      const list = await this.api.get<{ name: string }[]>('/recognition-badges');
+      this.badges = list.map((b) => b.name);
+      if (this.badges.length && !this.r.badge) this.r.badge = this.badges[0];
+    } catch { this.badges = []; }
   }
   async recognize() {
     try {
       await this.api.post('/recognitions', { ...this.r, points: Number(this.r.points) });
-      this.r = { badge: 'Star Performer', points: 50, isPublic: true };
+      this.r = { badge: this.badges[0], points: 50, isPublic: true };
       await this.load();
     } catch (e) { this.error = errMsg(e); }
   }

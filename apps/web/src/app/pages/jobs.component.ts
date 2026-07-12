@@ -46,9 +46,8 @@ import { IconComponent } from '../ui/icon.component';
           <div><label>Vacancies</label><input type="number" [(ngModel)]="f.vacancies" min="1" /></div>
           <div><label>Employment type</label>
             <select [(ngModel)]="f.employmentType">
-              <option value="FULL_TIME">Full time</option>
-              <option value="PART_TIME">Part time</option>
-              <option value="CONTRACT">Contract</option>
+              <option [ngValue]="undefined">choose…</option>
+              @for (et of employmentTypes; track et.id) { <option [value]="et.code">{{ et.name }}</option> }
             </select>
           </div>
           <div><label>Status filter</label>
@@ -127,6 +126,7 @@ export class JobsComponent implements OnInit, OnChanges {
   @Input() status?: string;
   jobs: any[] = [];
   clients: any[] = [];
+  employmentTypes: any[] = [];
   error = '';
   statusFilter = '';
   exportCols = [
@@ -145,7 +145,7 @@ export class JobsComponent implements OnInit, OnChanges {
     { key: 'applications', label: 'Applications', sortable: true },
     { key: 'status', label: 'Status', sortable: true },
   ];
-  f: any = { vacancies: 1, employmentType: 'FULL_TIME' };
+  f: any = { vacancies: 1 };
   skills = '';
   rounds = '';
   matchesFor: string | null = null;
@@ -194,6 +194,12 @@ export class JobsComponent implements OnInit, OnChanges {
     this.statusFilter = this.status ?? '';
     await this.load();
     try { this.clients = await this.api.get<any[]>('/hiring-clients'); } catch { /* optional */ }
+    try {
+      this.employmentTypes = await this.api.get<any[]>('/org-masters/employment-types');
+      if (this.employmentTypes.length && !this.f.employmentType) {
+        this.f.employmentType = this.employmentTypes[0].code;
+      }
+    } catch { /* optional */ }
   }
   ngOnChanges() {
     this.statusFilter = this.status ?? '';
@@ -216,7 +222,7 @@ export class JobsComponent implements OnInit, OnChanges {
           .map((name, i) => ({ level: i + 1, name })),
       };
       await this.api.post('/jobs', body);
-      this.f = { vacancies: 1, employmentType: 'FULL_TIME' };
+      this.f = { vacancies: 1, employmentType: this.employmentTypes[0]?.code };
       this.skills = this.rounds = '';
       await this.load();
     } catch (e) { this.error = errMsg(e); }

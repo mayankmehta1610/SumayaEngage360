@@ -25,6 +25,18 @@ export class OrgMastersService {
   grades(tenantId: string) { return this.crud('grade', tenantId); }
   employmentTypes(tenantId: string) { return this.crud('employmentType', tenantId); }
 
+  async ensureDefaultEmploymentTypes(tenantId: string) {
+    const count = await this.prisma.employmentType.count({ where: { tenantId } });
+    if (count > 0) return;
+    await this.prisma.employmentType.createMany({
+      data: [
+        { tenantId, code: 'FULL_TIME', name: 'Full time' },
+        { tenantId, code: 'PART_TIME', name: 'Part time' },
+        { tenantId, code: 'CONTRACT', name: 'Contract' },
+      ],
+    });
+  }
+
   listHolidays(tenantId: string) {
     return this.prisma.holidayCalendar.findMany({ where: { tenantId, isActive: true } });
   }
