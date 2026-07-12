@@ -97,6 +97,20 @@ List endpoints return:
 
 Query params: `page`, `pageSize`, `sortBy`, `sortDir`, `search`, `filter` (JSON), multi-value filters via repeated keys.
 
+## Gap closure status (2026-07-12)
+
+All tenant-type expansion gaps are implemented:
+
+| Gap | Status |
+|-----|--------|
+| Pagination envelope on list APIs | Core ATS, workforce, agency, staffing, audit, onboarding, and tenant-field-definitions endpoints return `{ data, meta }` with `page`, `pageSize`, `sortBy`, `sortDir`, `search`, `filter`. Web data-tables on employees, users, jobs, candidates, applications, audit, onboarding, contractors, contracts, agency submissions/contacts use server-side paging. |
+| Self-serve onboarding wizard | `/tenant-onboarding` — tenant admin configures type, portals, questionnaire via `POST /tenant/onboarding-wizard`. Linked from Settings. |
+| Custom field admin UI | Settings → Custom field definitions — CRUD via `/tenant-field-definitions`. |
+| Applications detail | Agency submissions tab; resume/cover letter upload via `/files` + candidate/profile APIs. |
+| Staffing contractor dropdowns | Contractors form loads employees, candidates, contracts from API. |
+| Cross-tenant agency | `GET /agency/client-tenants` + client tenant picker on submissions (and application detail tab). |
+| Playwright ui-full | 6/6 lifecycle tests with `e360-select-field` helpers. |
+
 ## Migration
 
 `20260712180000_tenant_types_expansion`

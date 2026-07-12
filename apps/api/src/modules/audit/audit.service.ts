@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { contains, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
+import { contains, paginatedResponse, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface AuditEntry {
@@ -102,10 +102,7 @@ export class AuditService {
       }),
       this.prisma.auditLog.count({ where }),
     ]);
-    return {
-      data,
-      meta: { total, page: p, pageSize: ps, totalPages: Math.ceil(total / ps) || 1 },
-    };
+    return paginatedResponse(data, total, p, ps, opts.sortBy, dir);
   }
 
   private async userIdsByEmail(tenantId: string, needle: string): Promise<string[]> {

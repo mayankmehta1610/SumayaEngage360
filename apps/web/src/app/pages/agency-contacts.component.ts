@@ -1,9 +1,10 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ApiService, errMsg } from '../core/api.service';
+import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
+import { tableListParams, TableSort } from '../core/table-query.util';
 
 @Component({
   standalone: true,
@@ -37,7 +38,19 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
       </div>
 
       <div class="card">
-        <e360-data-table [columns]="cols" [rows]="rows" [paginated]="false" [stickyHeader]="true" />
+        <e360-data-table
+          [columns]="cols"
+          [rows]="rows"
+          [page]="page"
+          [pageSize]="pageSize"
+          [total]="total"
+          [loading]="loading"
+          [stickyHeader]="true"
+          (pageChange)="onPageChange($event)"
+          (pageSizeChange)="onPageSizeChange($event)"
+          (sortChange)="onSortChange($event)"
+          (filterChange)="onFilterChange($event)"
+        />
       </div>
     </e360-module-shell>
   `,
@@ -46,6 +59,12 @@ export class AgencyContactsComponent implements OnInit {
   private api = inject(ApiService);
   contacts: any[] = [];
   error = '';
+  loading = false;
+  page = 1;
+  pageSize = 25;
+  total = 0;
+  sort: TableSort | null = null;
+  columnFilters: Record<string, string> = {};
   form: any = { type: 'CLIENT' };
 
   typeOptions: SelectOption[] = [
@@ -74,11 +93,44 @@ export class AgencyContactsComponent implements OnInit {
     await this.load();
   }
 
+  onPageChange(p: number) {
+    this.page = p;
+    this.load();
+  }
+
+  onPageSizeChange(ps: number) {
+    this.pageSize = ps;
+    this.page = 1;
+    this.load();
+  }
+
+  onSortChange(s: { key: string; dir: 'asc' | 'desc' }) {
+    this.sort = s;
+    this.page = 1;
+    this.load();
+  }
+
+  onFilterChange(f: Record<string, string>) {
+    this.columnFilters = f;
+    this.page = 1;
+    this.load();
+  }
+
   async load() {
+    this.loading = true;
     try {
-      this.contacts = await this.api.get<any[]>('/agency/contacts');
+      const res = await this.api.get<any>(
+        '/agency/contacts',
+        tableListParams(this.page, this.pageSize, {}, this.sort, this.columnFilters),
+      );
+      const { items, meta } = unwrapPaginated(res);
+      this.contacts = items;
+      this.total = meta?.total ?? items.length;
+      this.error = '';
     } catch (e) {
       this.error = errMsg(e);
+    } finally {
+      this.loading = false;
     }
   }
 

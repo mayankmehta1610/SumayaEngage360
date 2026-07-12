@@ -4,7 +4,7 @@ import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
-import { tableListParams } from '../core/table-query.util';
+import { tableListParams, TableSort } from '../core/table-query.util';
 
 @Component({
   standalone: true,
@@ -29,7 +29,14 @@ import { tableListParams } from '../core/table-query.util';
             [options]="candidateOptions"
             [(ngModel)]="form.candidateId"
           />
-          <div><label>Client name</label><input [(ngModel)]="form.clientName" placeholder="Acme Corp" /></div>
+          <e360-select-field
+            label="Client tenant"
+            placeholder="Link company tenant"
+            [options]="clientTenantOptions"
+            [(ngModel)]="form.clientTenantId"
+            (ngModelChange)="onClientTenantChange($event)"
+          />
+          <div><label>Client name</label><input [(ngModel)]="form.clientName" placeholder="Display name" /></div>
           <e360-select-field
             label="Job (optional)"
             placeholder="Link to job"
@@ -49,7 +56,10 @@ import { tableListParams } from '../core/table-query.util';
           [total]="total"
           [loading]="loading"
           [stickyHeader]="true"
-          (pageChange)="page = $event; load()"
+          (pageChange)="onPageChange($event)"
+          (pageSizeChange)="onPageSizeChange($event)"
+          (sortChange)="onSortChange($event)"
+          (filterChange)="onFilterChange($event)"
         >
           <ng-template #rowTemplate let-row>
             <td>{{ row.candidate }}</td>
@@ -74,9 +84,12 @@ export class AgencySubmissionsComponent implements OnInit {
   page = 1;
   pageSize = 25;
   total = 0;
+  sort: TableSort | null = null;
+  columnFilters: Record<string, string> = {};
   submissions: any[] = [];
   candidates: any[] = [];
   jobs: any[] = [];
+  clientTenants: any[] = [];
   form: any = {};
 
   cols: TableColumn[] = [
@@ -93,7 +106,7 @@ export class AgencySubmissionsComponent implements OnInit {
       candidate: s.candidate
         ? `${s.candidate.firstName} ${s.candidate.lastName}`
         : '—',
-      client: s.clientName ?? s.clientTenantId ?? '—',
+      client: s.clientName ?? this.clientTenantLabel(s.clientTenantId),
       status: s.status,
       submitted: s.submittedAt
         ? new Date(s.submittedAt).toLocaleDateString()
@@ -112,8 +125,33 @@ export class AgencySubmissionsComponent implements OnInit {
     return this.jobs.map((j) => ({ value: j.id, label: j.title }));
   }
 
+  get clientTenantOptions(): SelectOption[] {
+    return this.clientTenants.map((t) => ({
+      value: t.id,
+      label: `${t.name} (${t.subdomain})`,
+    }));
+  }
+
+  clientTenantLabel(id?: string) {
+    if (!id) return '—';
+    const t = this.clientTenants.find((x) => x.id === id);
+    return t ? `${t.name} (${t.subdomain})` : id;
+  }
+
+  onClientTenantChange(id: string | null) {
+    if (!id) return;
+    const t = this.clientTenants.find((x) => x.id === id);
+    if (t && !this.form.clientName) this.form.clientName = t.name;
+  }
+
   async ngOnInit() {
-    await Promise.all([this.load(), this.loadCandidates(), this.loadJobs()]);
+    await Promise.all([this.load(), this.loadCandidates(), this.loadJobs(), this.loadClientTenants()]);
+  }
+
+  async loadClientTenants() {
+    try {
+      this.clientTenants = await this.api.get<any[]>('/agency/client-tenants');
+    } catch { this.clientTenants = []; }
   }
 
   async loadCandidates() {
@@ -130,10 +168,33 @@ export class AgencySubmissionsComponent implements OnInit {
     } catch { /* optional */ }
   }
 
+  onPageChange(p: number) {
+    this.page = p;
+    this.load();
+  }
+
+  onPageSizeChange(ps: number) {
+    this.pageSize = ps;
+    this.page = 1;
+    this.load();
+  }
+
+  onSortChange(s: { key: string; dir: 'asc' | 'desc' }) {
+    this.sort = s;
+    this.page = 1;
+    this.load();
+  }
+
+  onFilterChange(f: Record<string, string>) {
+    this.columnFilters = f;
+    this.page = 1;
+    this.load();
+  }
+
   async load() {
     this.loading = true;
     try {
-      const params = tableListParams(this.page, this.pageSize);
+      const params = tableListParams(this.page, this.pageSize, {}, this.sort, this.columnFilters);
       const res = await this.api.get<any>('/agency/submissions', params);
       const { items, meta } = unwrapPaginated(res);
       this.submissions = items;

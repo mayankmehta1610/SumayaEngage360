@@ -6,6 +6,7 @@ const shellChildren = [
   { path: 'dashboard', loadComponent: () => import('./pages/dashboard.component').then((m) => m.DashboardComponent) },
   { path: 'reports', loadComponent: () => import('./pages/reports.component').then((m) => m.ReportsComponent) },
   { path: 'settings', loadComponent: () => import('./pages/settings.component').then((m) => m.SettingsComponent) },
+  { path: 'tenant-onboarding', loadComponent: () => import('./pages/tenant-onboarding.component').then((m) => m.TenantOnboardingComponent) },
   { path: 'catalogues', loadComponent: () => import('./pages/catalogues.component').then((m) => m.CataloguesComponent) },
   { path: 'requirements', loadComponent: () => import('./pages/requirements.component').then((m) => m.RequirementsComponent) },
   { path: 'audit', loadComponent: () => import('./pages/audit.component').then((m) => m.AuditComponent) },

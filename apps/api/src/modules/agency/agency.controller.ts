@@ -12,6 +12,7 @@ import {
   AgencyContactType,
   AgencySubmissionStatus,
   Role,
+  TenantType,
 } from '@prisma/client';
 import {
   IsEmail,
@@ -20,7 +21,8 @@ import {
   IsString,
   IsUUID,
 } from 'class-validator';
-import { paginatedResponse, parseSortDir } from '../../common/http/list-sort-filter';
+import { paginatedResponse, parseFilterJson, parseSortDir, contains } from '../../common/http/list-sort-filter';
+import { parseListPaging } from '../../common/http/prisma-list';
 import { Roles } from '../../common/auth/roles.decorator';
 import { TenantId } from '../../common/tenant/tenant.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -86,12 +88,48 @@ class UpsertContactDto {
 export class AgencyController {
   constructor(private readonly prisma: PrismaService) {}
 
-  @Get('clients')
-  listClients(@TenantId() tenantId: string) {
-    return this.prisma.hiringClient.findMany({
-      where: { tenantId, isActive: true },
+  @Get('client-tenants')
+  listClientTenants(@TenantId() tenantId: string) {
+    return this.prisma.tenant.findMany({
+      where: {
+        isActive: true,
+        tenantType: TenantType.COMPANY,
+        NOT: { id: tenantId },
+      },
+      select: { id: true, name: true, subdomain: true },
       orderBy: { name: 'asc' },
     });
+  }
+
+  @Get('clients')
+  async listClients(
+    @TenantId() tenantId: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
+    @Query('search') search?: string,
+    @Query('filter') filter?: string,
+  ) {
+    const filters = parseFilterJson(filter);
+    const q = filters.__search ?? search?.trim();
+    const where = {
+      tenantId,
+      isActive: true,
+      ...(filters.name ? { name: contains(filters.name) } : {}),
+      ...(q ? { name: contains(q) } : {}),
+    };
+    const dir = parseSortDir(sortDir);
+    const orderBy = sortBy === 'name' ? { name: dir } : { createdAt: dir };
+    const { paginated, p, ps } = parseListPaging(page, pageSize);
+    if (!paginated) {
+      return this.prisma.hiringClient.findMany({ where, orderBy });
+    }
+    const [data, total] = await Promise.all([
+      this.prisma.hiringClient.findMany({ where, orderBy, skip: (p - 1) * ps, take: ps }),
+      this.prisma.hiringClient.count({ where }),
+    ]);
+    return paginatedResponse(data, total, p, ps, sortBy, dir);
   }
 
   @Get('submissions')
@@ -100,15 +138,31 @@ export class AgencyController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('status') status?: string,
+    @Query('candidateId') candidateId?: string,
     @Query('sortBy') sortBy?: string,
     @Query('sortDir') sortDir?: string,
+    @Query('search') search?: string,
+    @Query('filter') filter?: string,
   ) {
+    const filters = parseFilterJson(filter);
+    const q = filters.__search ?? search?.trim();
     const p = Math.max(1, page ? parseInt(page, 10) : 1);
     const ps = Math.min(200, Math.max(1, pageSize ? parseInt(pageSize, 10) : 50));
     const dir = parseSortDir(sortDir);
     const where = {
       agencyTenantId: tenantId,
       ...(status ? { status: status.toUpperCase() as AgencySubmissionStatus } : {}),
+      ...(candidateId ? { candidateId } : {}),
+      ...(filters.client ? { clientName: contains(filters.client) } : {}),
+      ...(q
+        ? {
+            OR: [
+              { clientName: contains(q) },
+              { candidate: { firstName: contains(q) } },
+              { candidate: { lastName: contains(q) } },
+            ],
+          }
+        : {}),
     };
     const orderBy = sortBy === 'status' ? { status: dir } : { createdAt: dir };
     const [data, total] = await Promise.all([
@@ -173,11 +227,45 @@ export class AgencyController {
   }
 
   @Get('contacts')
-  listContacts(@TenantId() tenantId: string) {
-    return this.prisma.agencyContact.findMany({
-      where: { tenantId, isActive: true },
-      orderBy: { name: 'asc' },
-    });
+  async listContacts(
+    @TenantId() tenantId: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
+    @Query('search') search?: string,
+    @Query('filter') filter?: string,
+  ) {
+    const filters = parseFilterJson(filter);
+    const q = filters.__search ?? search?.trim();
+    const where = {
+      tenantId,
+      isActive: true,
+      ...(filters.name ? { name: contains(filters.name) } : {}),
+      ...(filters.company ? { company: contains(filters.company) } : {}),
+      ...(filters.type ? { type: filters.type.toUpperCase() as AgencyContactType } : {}),
+      ...(q
+        ? {
+            OR: [
+              { name: contains(q) },
+              { email: contains(q) },
+              { company: contains(q) },
+            ],
+          }
+        : {}),
+    };
+    const dir = parseSortDir(sortDir);
+    const orderBy =
+      sortBy === 'name' ? { name: dir } : sortBy === 'company' ? { company: dir } : { createdAt: dir };
+    const { paginated, p, ps } = parseListPaging(page, pageSize);
+    if (!paginated) {
+      return this.prisma.agencyContact.findMany({ where, orderBy });
+    }
+    const [data, total] = await Promise.all([
+      this.prisma.agencyContact.findMany({ where, orderBy, skip: (p - 1) * ps, take: ps }),
+      this.prisma.agencyContact.count({ where }),
+    ]);
+    return paginatedResponse(data, total, p, ps, sortBy, dir);
   }
 
   @Post('contacts')

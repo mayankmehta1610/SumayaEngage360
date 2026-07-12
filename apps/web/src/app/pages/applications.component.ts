@@ -165,10 +165,47 @@ import { AuthService } from '../core/auth.service';
 
           @if (profileTab === 'documents') {
             <div class="e360-detail-panel">
-              <p>Resume: {{ selectedApp.candidate.resumeFileId ? 'Uploaded' : '—' }}</p>
-              <label>Cover letter file ID</label>
-              <input [(ngModel)]="profile.coverLetterFileId" />
-              @if (isHr) { <button style="margin-top:.5rem" (click)="saveProfile()">Save documents</button> }
+              <label>Resume</label>
+              @if (selectedApp.candidate.resumeFileId) {
+                <p class="e360-muted">Uploaded ({{ selectedApp.candidate.resumeFileId }})</p>
+              } @else {
+                <p class="e360-muted">No resume on file.</p>
+              }
+              @if (isHr) {
+                <input type="file" accept=".pdf,.doc,.docx" (change)="resumeFile = fileOf($event)" />
+                @if (resumeFile) {
+                  <button style="margin-top:.35rem" (click)="uploadResume()">Upload resume</button>
+                }
+              }
+              <label style="margin-top:.75rem;display:block">Cover letter</label>
+              @if (profile.coverLetterFileId) {
+                <p class="e360-muted">Uploaded ({{ profile.coverLetterFileId }})</p>
+              }
+              @if (isHr) {
+                <input type="file" accept=".pdf,.doc,.docx" (change)="coverLetterFile = fileOf($event)" />
+                @if (coverLetterFile) {
+                  <button style="margin-top:.35rem" (click)="uploadCoverLetter()">Upload cover letter</button>
+                }
+              }
+            </div>
+          }
+
+          @if (profileTab === 'agency') {
+            <div class="e360-detail-panel">
+              <h3 style="margin-top:0">Client submissions</h3>
+              @if (isHr) {
+                <div class="row" style="align-items:flex-end;margin-bottom:.75rem">
+                  <div><label>Client name</label><input [(ngModel)]="submissionForm.clientName" /></div>
+                  <e360-select-field
+                    label="Client tenant"
+                    placeholder="Link platform tenant (optional)"
+                    [options]="clientTenantOptions"
+                    [(ngModel)]="submissionForm.clientTenantId"
+                  />
+                  <div style="flex:0"><button (click)="createSubmission()">Create draft</button></div>
+                </div>
+              }
+              <e360-data-table [columns]="submissionCols" [rows]="submissionRows" [paginated]="false" [stickyHeader]="true" />
             </div>
           }
 
@@ -335,6 +372,7 @@ export class ApplicationsComponent implements OnInit, OnChanges {
     { key: 'experience', label: 'Experience' },
     { key: 'education', label: 'Education' },
     { key: 'documents', label: 'Documents' },
+    { key: 'agency', label: 'Agency submissions' },
     { key: 'contacts', label: 'Contacts' },
     { key: 'custom', label: 'Custom fields' },
     { key: 'pipeline', label: 'Pipeline & offers' },
@@ -407,7 +445,17 @@ export class ApplicationsComponent implements OnInit, OnChanges {
   resultRound: any = null;
   res: any = { result: 'PASSED' };
   screenshotFile: File | null = null;
+  resumeFile: File | null = null;
+  coverLetterFile: File | null = null;
   interviewers: any[] = [];
+  agencySubmissions: any[] = [];
+  clientTenants: any[] = [];
+  submissionForm: any = {};
+  submissionCols: TableColumn[] = [
+    { key: 'client', label: 'Client' },
+    { key: 'status', label: 'Status' },
+    { key: 'submitted', label: 'Submitted' },
+  ];
 
   get statusOptions(): SelectOption[] {
     return [...this.statuses].sort().map((s) => ({ value: s, label: s.replace(/_/g, ' ') }));
@@ -419,6 +467,19 @@ export class ApplicationsComponent implements OnInit, OnChanges {
     return this.interviewers.map((i) => ({
       value: i.id,
       label: `${i.firstName} ${i.lastName}`,
+    }));
+  }
+  get clientTenantOptions(): SelectOption[] {
+    return this.clientTenants.map((t) => ({
+      value: t.id,
+      label: `${t.name} (${t.subdomain})`,
+    }));
+  }
+  get submissionRows() {
+    return this.agencySubmissions.map((s) => ({
+      client: s.clientName ?? s.clientTenant?.name ?? s.clientTenantId ?? '—',
+      status: s.status,
+      submitted: s.submittedAt ? new Date(s.submittedAt).toLocaleDateString() : '—',
     }));
   }
   get isHr() { return this.auth.hasRole('TENANT_ADMIN', 'HR'); }
@@ -516,7 +577,10 @@ export class ApplicationsComponent implements OnInit, OnChanges {
       full._status = full.status;
       full._roundMode = 'TEAMS';
       this.selectedApp = full;
-      await Promise.all([this.loadProfile(a.id), this.loadFieldDefs()]);
+      await Promise.all([this.loadProfile(a.id), this.loadFieldDefs(), this.loadAgencySubmissions(a)]);
+      try {
+        this.clientTenants = await this.api.get<any[]>('/agency/client-tenants');
+      } catch { this.clientTenants = []; }
     } catch (e) { this.error = errMsg(e); }
   }
 
@@ -539,6 +603,66 @@ export class ApplicationsComponent implements OnInit, OnChanges {
         this.fieldDefs = await this.api.get<any[]>('/tenant-field-definitions');
       } catch { this.fieldDefs = []; }
     }
+  }
+
+  async loadAgencySubmissions(a: any) {
+    try {
+      const res = await this.api.get<any>('/agency/submissions', {
+        candidateId: a.candidate?.id ?? a.candidateId,
+        page: '1',
+        pageSize: '50',
+      });
+      this.agencySubmissions = unwrapPaginated(res).items;
+    } catch {
+      this.agencySubmissions = [];
+    }
+  }
+
+  async createSubmission() {
+    if (!this.selectedApp) return;
+    try {
+      await this.api.post('/agency/submissions', {
+        candidateId: this.selectedApp.candidate.id,
+        clientName: this.submissionForm.clientName,
+        clientTenantId: this.submissionForm.clientTenantId || undefined,
+        jobId: this.selectedApp.job?.id,
+      });
+      this.submissionForm = {};
+      await this.loadAgencySubmissions(this.selectedApp);
+    } catch (e) { this.error = errMsg(e); }
+  }
+
+  async uploadResume() {
+    if (!this.resumeFile || !this.selectedApp) return;
+    try {
+      const fileId = await this.uploadFile(this.resumeFile);
+      await this.api.patch(`/candidates/${this.selectedApp.candidate.id}`, { resumeFileId: fileId });
+      this.selectedApp.candidate.resumeFileId = fileId;
+      this.resumeFile = null;
+    } catch (e) { this.error = errMsg(e); }
+  }
+
+  async uploadCoverLetter() {
+    if (!this.coverLetterFile || !this.selectedId) return;
+    try {
+      const fileId = await this.uploadFile(this.coverLetterFile);
+      this.profile.coverLetterFileId = fileId;
+      await this.api.post(`/applications/${this.selectedId}/profile`, {
+        coverLetterFileId: fileId,
+      });
+      this.coverLetterFile = null;
+    } catch (e) { this.error = errMsg(e); }
+  }
+
+  private async uploadFile(file: File): Promise<string> {
+    const form = new FormData();
+    form.append('file', file);
+    const up = await fetch(`${environment.apiBase}/files`, {
+      method: 'POST',
+      body: form,
+      headers: this.uploadHeaders(),
+    }).then((r) => r.json());
+    return up.id;
   }
 
   async saveProfile() {

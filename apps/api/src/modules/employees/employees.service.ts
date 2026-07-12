@@ -6,7 +6,7 @@ import {
 import { EmployeeStatus, Prisma, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
-import { contains, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
+import { contains, paginatedResponse, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AddSkillsDto,
@@ -135,10 +135,7 @@ export class EmployeesService {
       }),
       this.prisma.employee.count({ where }),
     ]);
-    return {
-      data,
-      meta: { total, page: p, pageSize: ps, totalPages: Math.ceil(total / ps) || 1 },
-    };
+    return paginatedResponse(data, total, p, ps, sortBy, dir);
   }
 
   async findOne(tenantId: string, id: string) {

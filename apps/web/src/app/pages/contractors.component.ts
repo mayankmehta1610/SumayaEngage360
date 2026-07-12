@@ -3,11 +3,12 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
-import { tableListParams } from '../core/table-query.util';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
+import { tableListParams, TableSort } from '../core/table-query.util';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ModuleShellComponent, DataTableComponent],
+  imports: [FormsModule, ModuleShellComponent, DataTableComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Contractor assignments"
@@ -22,6 +23,24 @@ import { tableListParams } from '../core/table-query.util';
       <div class="card">
         <h2 style="margin-top:0">Assign contractor</h2>
         <div class="row" style="align-items:flex-end">
+          <e360-select-field
+            label="Employee"
+            placeholder="Select employee"
+            [options]="employeeOptions"
+            [(ngModel)]="form.employeeId"
+          />
+          <e360-select-field
+            label="Candidate"
+            placeholder="Or select candidate"
+            [options]="candidateOptions"
+            [(ngModel)]="form.candidateId"
+          />
+          <e360-select-field
+            label="Contract"
+            placeholder="Select contract"
+            [options]="contractOptions"
+            [(ngModel)]="form.contractId"
+          />
           <div><label>Role</label><input [(ngModel)]="form.role" /></div>
           <div><label>Client ref</label><input [(ngModel)]="form.clientRef" /></div>
           <div><label>Rate</label><input type="number" [(ngModel)]="form.rate" /></div>
@@ -40,7 +59,10 @@ import { tableListParams } from '../core/table-query.util';
           [total]="total"
           [loading]="loading"
           [stickyHeader]="true"
-          (pageChange)="page = $event; load()"
+          (pageChange)="onPageChange($event)"
+          (pageSizeChange)="onPageSizeChange($event)"
+          (sortChange)="onSortChange($event)"
+          (filterChange)="onFilterChange($event)"
         />
       </div>
     </e360-module-shell>
@@ -49,14 +71,20 @@ import { tableListParams } from '../core/table-query.util';
 export class ContractorsComponent implements OnInit {
   private api = inject(ApiService);
   contractors: any[] = [];
+  employees: any[] = [];
+  candidates: any[] = [];
+  contracts: any[] = [];
   error = '';
   loading = false;
   page = 1;
   pageSize = 25;
   total = 0;
+  sort: TableSort | null = null;
+  columnFilters: Record<string, string> = {};
   form: any = {};
 
   cols: TableColumn[] = [
+    { key: 'person', label: 'Person' },
     { key: 'role', label: 'Role' },
     { key: 'client', label: 'Client' },
     { key: 'rate', label: 'Rate' },
@@ -64,8 +92,30 @@ export class ContractorsComponent implements OnInit {
     { key: 'status', label: 'Status' },
   ];
 
+  get employeeOptions(): SelectOption[] {
+    return this.employees.map((e) => ({
+      value: e.id,
+      label: `${e.user?.firstName ?? ''} ${e.user?.lastName ?? ''} (${e.employeeCode})`.trim(),
+    }));
+  }
+
+  get candidateOptions(): SelectOption[] {
+    return this.candidates.map((c) => ({
+      value: c.id,
+      label: `${c.firstName} ${c.lastName} (${c.email})`,
+    }));
+  }
+
+  get contractOptions(): SelectOption[] {
+    return this.contracts.map((c) => ({
+      value: c.id,
+      label: `${c.project?.name ?? 'Contract'} — ${c.clientRef ?? c.id.slice(0, 8)}`,
+    }));
+  }
+
   get rows() {
     return this.contractors.map((c) => ({
+      person: this.personLabel(c),
       role: c.role ?? '—',
       client: c.clientRef ?? '—',
       rate: c.rate ? `${c.rate} ${c.currency}/${c.rateType}` : '—',
@@ -74,14 +124,67 @@ export class ContractorsComponent implements OnInit {
     }));
   }
 
+  personLabel(c: any): string {
+    if (c.employeeId) {
+      const e = this.employees.find((x) => x.id === c.employeeId);
+      if (e?.user) return `${e.user.firstName} ${e.user.lastName}`;
+      return `Employee ${c.employeeId.slice(0, 8)}`;
+    }
+    if (c.candidateId) {
+      const cand = this.candidates.find((x) => x.id === c.candidateId);
+      if (cand) return `${cand.firstName} ${cand.lastName}`;
+      return `Candidate ${c.candidateId.slice(0, 8)}`;
+    }
+    return '—';
+  }
+
   async ngOnInit() {
-    await this.load();
+    await Promise.all([this.loadLookups(), this.load()]);
+  }
+
+  async loadLookups() {
+    try {
+      const [empRes, candRes, contractRes] = await Promise.all([
+        this.api.get<any>('/employees', { page: '1', pageSize: '200' }),
+        this.api.get<any>('/candidates', { page: '1', pageSize: '200' }),
+        this.api.get<any>('/contracts', { page: '1', pageSize: '200' }),
+      ]);
+      this.employees = unwrapPaginated(empRes).items;
+      this.candidates = unwrapPaginated(candRes).items;
+      this.contracts = unwrapPaginated(contractRes).items;
+    } catch { /* optional */ }
+  }
+
+  onPageChange(p: number) {
+    this.page = p;
+    this.load();
+  }
+
+  onPageSizeChange(ps: number) {
+    this.pageSize = ps;
+    this.page = 1;
+    this.load();
+  }
+
+  onSortChange(s: { key: string; dir: 'asc' | 'desc' }) {
+    this.sort = s;
+    this.page = 1;
+    this.load();
+  }
+
+  onFilterChange(f: Record<string, string>) {
+    this.columnFilters = f;
+    this.page = 1;
+    this.load();
   }
 
   async load() {
     this.loading = true;
     try {
-      const res = await this.api.get<any>('/contractors', tableListParams(this.page, this.pageSize));
+      const res = await this.api.get<any>(
+        '/contractors',
+        tableListParams(this.page, this.pageSize, {}, this.sort, this.columnFilters),
+      );
       const { items, meta } = unwrapPaginated(res);
       this.contractors = items;
       this.total = meta?.total ?? items.length;

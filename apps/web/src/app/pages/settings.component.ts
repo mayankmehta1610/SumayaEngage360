@@ -1,14 +1,16 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ApiService, errMsg } from '../core/api.service';
+import { RouterLink } from '@angular/router';
+import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent, ModuleShellComponent, SelectFieldComponent],
+  imports: [FormsModule, RouterLink, ExportBarComponent, ModuleShellComponent, SelectFieldComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="Settings & configuration"
@@ -18,6 +20,12 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
       rolesHint="TENANT_ADMIN, HR"
       [breadcrumbs]="[{ label: 'Platform' }, { label: 'Settings' }]"
     >
+    @if (auth.hasRole('TENANT_ADMIN')) {
+      <div class="card" style="margin-bottom:.75rem">
+        <a routerLink="/tenant-onboarding">Tenant onboarding wizard</a>
+        <span class="e360-muted"> — configure tenant type and portals</span>
+      </div>
+    }
 @if (error) { <div class="e360-error">{{ error }}</div> }
 
     <div class="row">
@@ -56,6 +64,33 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
           <div><label>End</label><input [(ngModel)]="shift.endTime" placeholder="18:00" /></div>
           <div style="flex:0"><button (click)="addShift()">Add shift</button></div>
         </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0">🧩 Custom field definitions</h2>
+      <p class="e360-muted">Configure extra fields on applications and candidates.</p>
+      <e360-data-table [columns]="fieldCols" [rows]="fieldRows" [paginated]="false" [stickyHeader]="true">
+        <ng-template #rowTemplate let-row>
+          <td>{{ row.entity }}</td>
+          <td>{{ row.key }}</td>
+          <td>{{ row.label }}</td>
+          <td>{{ row.type }}</td>
+          <td>{{ row.required }}</td>
+          <td>
+            <button class="secondary sm" (click)="deactivateField(row.id)">Remove</button>
+          </td>
+        </ng-template>
+      </e360-data-table>
+      <div class="row" style="align-items:flex-end;margin-top:.6rem">
+        <e360-select-field label="Entity" [options]="entityOptions" [(ngModel)]="fieldForm.entity" [clearable]="false" />
+        <div><label>Field key</label><input [(ngModel)]="fieldForm.fieldKey" placeholder="visa_status" /></div>
+        <div><label>Label</label><input [(ngModel)]="fieldForm.label" placeholder="Visa status" /></div>
+        <e360-select-field label="Type" [options]="fieldTypeOptions" [(ngModel)]="fieldForm.type" [clearable]="false" />
+        <label style="display:flex;align-items:center;gap:.35rem">
+          <input type="checkbox" [(ngModel)]="fieldForm.required" /> Required
+        </label>
+        <div style="flex:0"><button (click)="addFieldDef()">Add field</button></div>
       </div>
     </div>
 
@@ -131,6 +166,34 @@ export class SettingsComponent implements OnInit {
   branch = { code: '', name: '', country: 'IN' };
   shift = { code: '', name: '', startTime: '09:00', endTime: '18:00' };
   flag = { code: '', name: '' };
+  fieldDefs: any[] = [];
+  fieldForm: any = { entity: 'APPLICATION', type: 'TEXT', required: false };
+  entityOptions: SelectOption[] = [
+    { value: 'APPLICATION', label: 'Application' },
+    { value: 'CANDIDATE', label: 'Candidate' },
+  ];
+  fieldTypeOptions: SelectOption[] = [
+    'TEXT', 'NUMBER', 'DATE', 'BOOLEAN', 'SELECT',
+  ].map((v) => ({ value: v, label: v }));
+  fieldCols: TableColumn[] = [
+    { key: 'entity', label: 'Entity' },
+    { key: 'key', label: 'Key' },
+    { key: 'label', label: 'Label' },
+    { key: 'type', label: 'Type' },
+    { key: 'required', label: 'Required' },
+    { key: 'actions', label: '', sortable: false, filterable: false },
+  ];
+
+  get fieldRows() {
+    return this.fieldDefs.map((f) => ({
+      id: f.id,
+      entity: f.entity,
+      key: f.fieldKey,
+      label: f.label,
+      type: f.type,
+      required: f.required ? 'Yes' : 'No',
+    }));
+  }
 
   get countryOptions(): SelectOption[] {
     return this.countries.map((c) => ({ value: c.country, label: c.country }));
@@ -149,7 +212,7 @@ export class SettingsComponent implements OnInit {
 
   async reload() {
     try {
-      const [branches, shifts, flags, integrations, connections, areas, countries] = await Promise.all([
+      const [branches, shifts, flags, integrations, connections, areas, countries, fieldDefs] = await Promise.all([
         this.api.get<any[]>('/config/branches'),
         this.api.get<any[]>('/config/shifts'),
         this.api.get<any[]>('/config/feature-flags'),
@@ -157,6 +220,7 @@ export class SettingsComponent implements OnInit {
         this.api.get<any[]>('/integrations/connections'),
         this.api.get<any[]>('/config/areas'),
         this.api.get<any[]>('/masters/country-configs').catch(() => [{ country: 'IN' }]),
+        this.api.get<any>('/tenant-field-definitions').then((r) => unwrapPaginated(r).items),
       ]);
       this.branches = branches;
       this.shifts = shifts;
@@ -164,6 +228,7 @@ export class SettingsComponent implements OnInit {
       this.integrations = integrations;
       this.areas = areas;
       this.countries = countries.length ? countries : [{ country: 'IN' }];
+      this.fieldDefs = fieldDefs;
       this.connMap = Object.fromEntries(connections.map((c) => [c.integrationId, c]));
     } catch (e) { this.error = errMsg(e); }
   }
@@ -202,5 +267,20 @@ export class SettingsComponent implements OnInit {
       const r = await this.api.post<any>(`/integrations/connections/${id}/test`, {});
       this.testMsg = `${id}: ${r.message} (${r.ok ? 'OK' : 'check config'})`;
     } catch (e) { this.testMsg = errMsg(e); }
+  }
+
+  async addFieldDef() {
+    try {
+      await this.api.post('/tenant-field-definitions', this.fieldForm);
+      this.fieldForm = { entity: 'APPLICATION', type: 'TEXT', required: false };
+      await this.reload();
+    } catch (e) { this.error = errMsg(e); }
+  }
+
+  async deactivateField(id: string) {
+    try {
+      await this.api.patch(`/tenant-field-definitions/${id}`, { isActive: false });
+      await this.reload();
+    } catch (e) { this.error = errMsg(e); }
   }
 }

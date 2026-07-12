@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { JobStatus, Prisma } from '@prisma/client';
-import { contains, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
+import { contains, paginatedResponse, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MatchingService } from '../matching/matching.service';
 import { CreateJobDto, UpdateJobDto } from './ats.dto';
@@ -96,10 +96,7 @@ export class JobsService {
       }),
       this.prisma.job.count({ where }),
     ]);
-    return {
-      data,
-      meta: { total, page: p, pageSize: ps, totalPages: Math.ceil(total / ps) || 1 },
-    };
+    return paginatedResponse(data, total, p, ps, sortBy, dir);
   }
 
   async findOne(tenantId: string, id: string) {

@@ -16,7 +16,8 @@ import {
   IsString,
   IsUUID,
 } from 'class-validator';
-import { paginatedResponse, parseSortDir } from '../../common/http/list-sort-filter';
+import { paginatedResponse, parseFilterJson, parseSortDir, contains } from '../../common/http/list-sort-filter';
+import { parseListPaging } from '../../common/http/prisma-list';
 import { Roles } from '../../common/auth/roles.decorator';
 import { TenantId } from '../../common/tenant/tenant.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -114,12 +115,41 @@ export class StaffingController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get('contracts')
-  listContracts(@TenantId() tenantId: string) {
-    return this.prisma.projectContract.findMany({
-      where: { tenantId },
-      include: { project: { select: { id: true, name: true, code: true } } },
-      orderBy: { startDate: 'desc' },
-    });
+  async listContracts(
+    @TenantId() tenantId: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
+    @Query('search') search?: string,
+    @Query('filter') filter?: string,
+  ) {
+    const filters = parseFilterJson(filter);
+    const q = filters.__search ?? search?.trim();
+    const where = {
+      tenantId,
+      ...(filters.clientRef ? { clientRef: contains(filters.clientRef) } : {}),
+      ...(q ? { clientRef: contains(q) } : {}),
+    };
+    const dir = parseSortDir(sortDir);
+    const orderBy =
+      sortBy === 'client' ? { clientRef: dir } : sortBy === 'value' ? { value: dir } : { startDate: dir };
+    const include = { project: { select: { id: true, name: true, code: true } } };
+    const { paginated, p, ps } = parseListPaging(page, pageSize);
+    if (!paginated) {
+      return this.prisma.projectContract.findMany({ where, include, orderBy });
+    }
+    const [data, total] = await Promise.all([
+      this.prisma.projectContract.findMany({
+        where,
+        include,
+        orderBy,
+        skip: (p - 1) * ps,
+        take: ps,
+      }),
+      this.prisma.projectContract.count({ where }),
+    ]);
+    return paginatedResponse(data, total, p, ps, sortBy, dir);
   }
 
   @Post('contracts')

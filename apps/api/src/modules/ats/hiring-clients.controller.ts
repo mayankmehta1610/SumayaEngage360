@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Role } from '@prisma/client';
+import { contains, paginatedResponse, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import { Roles } from '../../common/auth/roles.decorator';
 import { TenantId } from '../../common/tenant/tenant.decorator';
 import { CreateHiringClientDto, UpdateHiringClientDto } from './ats.dto';
@@ -16,8 +17,16 @@ export class HiringClientsController {
   }
 
   @Get()
-  findAll(@TenantId() tenantId: string) {
-    return this.clients.findAll(tenantId);
+  findAll(
+    @TenantId() tenantId: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
+    @Query('search') search?: string,
+    @Query('filter') filter?: string,
+  ) {
+    return this.clients.findAll(tenantId, page, pageSize, sortBy, sortDir, search, filter);
   }
 
   @Get(':id')

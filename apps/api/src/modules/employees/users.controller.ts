@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
-import { contains, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
+import { contains, paginatedResponse, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -156,10 +156,7 @@ export class UsersController {
       }),
       this.prisma.users.count({ where }),
     ]);
-    return {
-      data,
-      meta: { total, page: p, pageSize: ps, totalPages: Math.ceil(total / ps) || 1 },
-    };
+    return paginatedResponse(data, total, p, ps, sortBy, dir);
   }
 
   @Patch(':id/access')

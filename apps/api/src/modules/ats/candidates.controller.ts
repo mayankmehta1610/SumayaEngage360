@@ -1,5 +1,6 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Patch, Query } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
+import { IsOptional, IsString } from 'class-validator';
 import { contains, paginatedResponse, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import { parseMultiQuery } from '../../common/http/parse-multi-query';
 import { Roles } from '../../common/auth/roles.decorator';
@@ -7,6 +8,12 @@ import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { TenantId } from '../../common/tenant/tenant.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
+
+class PatchCandidateDto {
+  @IsOptional()
+  @IsString()
+  resumeFileId?: string;
+}
 
 // Talent pool: every candidate ever captured, with parse status and history.
 @Controller('candidates')
@@ -85,6 +92,22 @@ export class CandidatesController {
       this.prisma.candidate.count({ where }),
     ]);
     return paginatedResponse(data, total, p, ps, sortBy, dir);
+  }
+
+  @Patch(':id')
+  async patch(
+    @TenantId() tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: PatchCandidateDto,
+  ) {
+    const existing = await this.prisma.candidate.findFirst({ where: { id, tenantId } });
+    if (!existing) throw new NotFoundException('Candidate not found');
+    return this.prisma.candidate.update({
+      where: { id },
+      data: {
+        ...(dto.resumeFileId !== undefined ? { resumeFileId: dto.resumeFileId } : {}),
+      },
+    });
   }
 
   @Get(':id')

@@ -11,7 +11,7 @@ import {
   VerificationStatus,
 } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
-import { contains, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
+import { contains, paginatedResponse, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalsService } from '../approvals/approvals.service';
 import {
@@ -318,10 +318,7 @@ export class OnboardingService {
       }),
       this.prisma.onboardingCase.count({ where }),
     ]);
-    return {
-      data,
-      meta: { total, page: p, pageSize: ps, totalPages: Math.ceil(total / ps) || 1 },
-    };
+    return paginatedResponse(data, total, p, ps, sortBy, dir);
   }
 
   async verifyDocument(
