@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -157,7 +158,19 @@ export class EmployeesService {
   }
 
   async update(tenantId: string, id: string, dto: UpdateEmployeeDto) {
-    await this.ensureExists(tenantId, id);
+    const employee = await this.findOne(tenantId, id);
+    if (dto.status && dto.status !== employee.status) {
+      const allowed: Partial<Record<EmployeeStatus, EmployeeStatus[]>> = {
+        [EmployeeStatus.ONBOARDING]: [EmployeeStatus.ACTIVE],
+        [EmployeeStatus.ACTIVE]: [EmployeeStatus.ON_NOTICE],
+        [EmployeeStatus.ON_NOTICE]: [EmployeeStatus.ACTIVE],
+      };
+      if (!allowed[employee.status]?.includes(dto.status)) {
+        throw new BadRequestException(
+          `Employee status cannot move from ${employee.status} to ${dto.status}; use the exit workflow for release`,
+        );
+      }
+    }
     return this.prisma.employee.update({ where: { id }, data: dto });
   }
 

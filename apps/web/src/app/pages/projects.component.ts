@@ -34,6 +34,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
           [(ngModel)]="f.hiringClientId"
         />
         <div><label>Deployment location</label><input [(ngModel)]="f.location" /></div>
+        <div><label>Required skills</label><input [(ngModel)]="f.requiredSkillsText" placeholder="Angular, PostgreSQL" /></div>
         <e360-select-field
           label="Project manager"
           placeholder="choose…"
@@ -108,11 +109,16 @@ export class ProjectsComponent implements OnInit {
     } catch (e) { this.error = errMsg(e); }
   }
   async create() {
-    try { await this.api.post('/projects', {
-      ...this.f,
-      hiringClientId: this.f.hiringClientId || undefined,
-      managerId: this.f.managerId || undefined,
-    }); this.f = {}; await this.load(); }
+    try {
+      const { requiredSkillsText, ...project } = this.f;
+      await this.api.post('/projects', {
+        ...project,
+        hiringClientId: this.f.hiringClientId || undefined,
+        managerId: this.f.managerId || undefined,
+        requiredSkills: String(requiredSkillsText ?? '').split(',').map((skill) => skill.trim()).filter(Boolean),
+      });
+      this.f = {}; await this.load();
+    }
     catch (e) { this.error = errMsg(e); }
   }
   async allocate(p: any) {

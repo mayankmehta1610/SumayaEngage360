@@ -25,7 +25,10 @@ class _OffersScreenState extends State<OffersScreen> {
   }
 
   Future<void> _load() async {
-    setState(() { loading = true; error = null; });
+    setState(() {
+      loading = true;
+      error = null;
+    });
     try {
       final all = asList(await ApiClient.get('/applications'));
       items = all.where((a) {
@@ -50,7 +53,10 @@ class _OffersScreenState extends State<OffersScreen> {
             : error != null && items.isEmpty
                 ? ListView(children: [ErrorState(error!, onRetry: _load)])
                 : items.isEmpty
-                    ? ListView(children: const [EmptyState('No offers yet.', icon: Icons.local_offer_outlined)])
+                    ? ListView(children: const [
+                        EmptyState('No offers yet.',
+                            icon: Icons.local_offer_outlined)
+                      ])
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: items.length,
@@ -59,17 +65,22 @@ class _OffersScreenState extends State<OffersScreen> {
                           final offer = a['offer'];
                           return Card(
                             child: ListTile(
-                              title: Text('${a['candidate']?['firstName']} ${a['candidate']?['lastName']}',
-                                  style: const TextStyle(fontWeight: FontWeight.w600)),
+                              title: Text(
+                                  '${a['candidate']?['firstName']} ${a['candidate']?['lastName']}',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600)),
                               subtitle: Text(
                                 offer != null
                                     ? '${str(offer['designation'])} · ₹ ${offer['annualCtc']}'
                                     : str(a['job']?['title']),
                               ),
-                              trailing: StatusBadge(str(offer?['status'] ?? a['status'])),
+                              trailing: StatusBadge(
+                                  str(offer?['status'] ?? a['status'])),
                               onTap: () => Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => ApplicationDetailScreen(applicationId: a['id'] as String)),
+                                MaterialPageRoute(
+                                    builder: (_) => ApplicationDetailScreen(
+                                        applicationId: a['id'] as String)),
                               ),
                             ),
                           );

@@ -82,3 +82,15 @@
 | 78 | ch78 | `78-employee-profile.png` | Employee Profile |
 | 79 | ch79 | `79-bgc-vendor-portal.png` | Bgc Vendor Portal |
 | 80 | ch80 | `80-bgc-vendor-profile.png` | Bgc Vendor Profile |
+| 81 | ch81 | `81-platform-admin-tenants.png` | Platform Admin Tenant Provisioning |
+| 82 | ch82 | `82-tenant-admin-surveys.png` | Tenant Admin Surveys and eNPS |
+| 83 | ch83 | `83-tenant-admin-compliance.png` | Tenant Admin Compliance Case Board |
+| 84 | ch84 | `84-tenant-admin-payroll-extras.png` | Payroll Adjustments and Tax Verification |
+| 85 | ch85 | `85-tenant-admin-project-skills.png` | Project Skill Requirements |
+| 86 | ch86 | `86-manager-bench-skill-match.png` | Manager Bench and Skill Matching |
+| 87 | ch87 | `87-employee-survey-response.png` | Employee Survey Response |
+| 88 | ch88 | `88-employee-compliance-case.png` | Employee Compliance Reporting |
+| 89 | ch89 | `89-employee-tax-and-adjustments.png` | Employee Payroll Self-Service |
+| 90 | ch90 | `90-interviewer-assigned-applications.png` | Interviewer Assigned Applications |
+| 91 | ch91 | `91-interviewer-assigned-candidates.png` | Interviewer Candidate Scope |
+| 92 | ch92 | `92-second-tenant-isolation.png` | Second Tenant Data Isolation |

@@ -20,14 +20,18 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
 
   Future<void> _load() async {
     setState(() => loading = true);
-    try { pending = asList(await ApiClient.get('/approvals/pending')); } catch (_) {}
+    try {
+      pending = asList(await ApiClient.get('/approvals/pending'));
+    } catch (_) {}
     if (mounted) setState(() => loading = false);
   }
 
   Future<void> _act(String id, String action) async {
     try {
       await ApiClient.post('/approvals/$id/act', {'action': action});
-      if (mounted) showOk(context, action == 'APPROVED' ? 'Approved' : 'Rejected');
+      if (mounted) {
+        showOk(context, action == 'APPROVED' ? 'Approved' : 'Rejected');
+      }
       _load();
     } catch (e) {
       if (mounted) showError(context, e);
@@ -43,25 +47,33 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
           : RefreshIndicator(
               onRefresh: _load,
               child: pending.isEmpty
-                  ? ListView(children: const [EmptyState('Inbox zero — no pending approvals.', icon: Icons.check_circle_outline)])
+                  ? ListView(children: const [
+                      EmptyState('Inbox zero — no pending approvals.',
+                          icon: Icons.check_circle_outline)
+                    ])
                   : ListView.builder(
                       itemCount: pending.length,
                       itemBuilder: (_, i) {
                         final r = pending[i];
                         return Card(
                           child: ListTile(
-                            title: Text('${r['entityType']} — ${r['workflow']?['name'] ?? ''}'),
+                            title: Text(
+                                '${r['entityType']} — ${r['workflow']?['name'] ?? ''}'),
                             subtitle: Text('Step ${r['currentStep']}'),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
-                                  icon: const Icon(Icons.check_circle, color: Colors.green),
-                                  onPressed: () => _act(r['id'].toString(), 'APPROVED'),
+                                  icon: const Icon(Icons.check_circle,
+                                      color: Colors.green),
+                                  onPressed: () =>
+                                      _act(r['id'].toString(), 'APPROVED'),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.cancel, color: Colors.red),
-                                  onPressed: () => _act(r['id'].toString(), 'REJECTED'),
+                                  icon: const Icon(Icons.cancel,
+                                      color: Colors.red),
+                                  onPressed: () =>
+                                      _act(r['id'].toString(), 'REJECTED'),
                                 ),
                               ],
                             ),

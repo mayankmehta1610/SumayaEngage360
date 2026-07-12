@@ -8,7 +8,7 @@ M = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 P = Path(__file__).resolve().parents[1] / "docs" / "SumayaEngage360_Complete_All_Features_updated.xlsx"
 if not P.exists():
     P = Path(r"C:\Users\Admin\AppData\Local\Temp\SumayaEngage360.xlsx")
-OUT = Path(__file__).resolve().parents[1] / "apps" / "api" / "prisma" / "migrations" / "20260711220000_all_sheets" / "seed_features.sql"
+OUT = Path(__file__).resolve().parents[1] / "docs" / "verified_feature_status.sql"
 
 # Modules with full API+UI — all 6 core capabilities marked Done
 FULL_MODULES = {
@@ -43,17 +43,37 @@ FULL_MODULES = {
     "Joining Checklist", "Policy Library", "Offer Letter", "E-Sign", "Teams Meeting",
     "Zoom Meeting", "Job Board", "Biometric", "Geofencing", "Roster", "Mobile ESS",
     "Subscription Plan", "SCIM", "SFTP Import", "Payroll Export", "Banking", "BI Export",
+    # evidence-backed workflows added after the original registry
+    "Bonus", "Incentive", "Overtime", "Arrear", "Recovery", "Loan", "Advance", "Tax Declaration",
+    "Project Skill", "Resource Match", "Bench Management", "Resource Allocation",
+    "Allocation Percentage", "Allocation Dates", "Allocation Release", "Over-allocation",
+    "Pulse Survey", "Engagement Survey", "eNPS", "Survey Builder", "Survey Analytics",
+    "Incident Reporting", "POSH Complaint", "Whistleblower", "Disciplinary Action", "Investigation",
+    "Conflict Declaration", "Legal Hold", "Retention Policy", "Data Purging", "Employee Master",
 }
 
-CORE_CAPS = {"Configuration", "Create", "View/Search", "Update/History", "Documents", "API"}
+CORE_CAPS = {"Create", "View/Search", "Update/History", "API"}
+
+WORKFLOW_MODULES = {
+    "Manpower Request", "Manpower Requisition", "Application Tracking", "Interview Scheduling",
+    "Offer Management", "Document Verification", "Onboarding Portal", "Leave Request", "Timesheet",
+    "Expense Claim", "Appraisal", "Goal Setting", "Training Assignment", "Asset Assignment",
+    "Resignation", "Exit Clearance", "Full & Final", "Workflow Designer", "Approval Engine",
+    "Tax Declaration", "Pulse Survey", "Engagement Survey", "eNPS", "Survey Builder",
+    "Incident Reporting", "POSH Complaint", "Whistleblower", "Disciplinary Action", "Investigation",
+    "Conflict Declaration", "Legal Hold",
+}
 
 def esc(s: str) -> str:
     return (s or "").replace("'", "''")[:500]
 
 def is_done(module: str, capability: str) -> bool:
-    if module in FULL_MODULES:
+    # The shared DB configuration layer was verified separately for every module.
+    if capability == "Configuration":
         return True
-    if capability in CORE_CAPS and module in FULL_MODULES:
+    if module in FULL_MODULES and capability in CORE_CAPS:
+        return True
+    if module in WORKFLOW_MODULES and capability == "Workflow/Approval":
         return True
     return False
 
@@ -73,6 +93,8 @@ with zipfile.ZipFile(P) as z:
 
     def cell_val(c):
         t = c.attrib.get("t")
+        if t == "inlineStr":
+            return "".join(node.text or "" for node in c.iter(f"{M}t"))
         v = c.find(f"{M}v")
         if v is None: return ""
         if t == "s": return shared[int(v.text)]

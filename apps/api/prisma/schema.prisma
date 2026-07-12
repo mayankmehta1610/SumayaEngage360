@@ -725,6 +725,7 @@ model Project {
   name           String
   code           String
   description    String?
+  requiredSkills String[]      @default([])
   location       String? // deployment location
   managerId      String? // employee id of project manager
   startDate      DateTime?

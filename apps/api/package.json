@@ -4,6 +4,7 @@
   "private": true,
   "description": "SumayaEngage360 API — multi-tenant ATS + employee lifecycle management",
   "scripts": {
+    "postinstall": "prisma generate",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "start:dev": "ts-node src/main.ts",

@@ -16,7 +16,9 @@ class ApiClient {
     if (_envUrl.isNotEmpty) return _envUrl;
     if (kIsWeb) return 'http://localhost:3000/api';
     try {
-      return Platform.isAndroid ? 'http://10.0.2.2:3000/api' : 'http://localhost:3000/api';
+      return Platform.isAndroid
+          ? 'http://10.0.2.2:3000/api'
+          : 'http://localhost:3000/api';
     } catch (_) {
       return 'https://engage360-api-qhnr.onrender.com/api';
     }
@@ -36,14 +38,19 @@ class ApiClient {
   static Future<void> restore() async {
     final p = await SharedPreferences.getInstance();
     _token = p.getString('token');
-    _tenant = p.getString('tenant') ?? (_envTenant.isNotEmpty ? _envTenant : null);
+    _tenant =
+        p.getString('tenant') ?? (_envTenant.isNotEmpty ? _envTenant : null);
     final u = p.getString('user');
     if (u != null) user = jsonDecode(u) as Map<String, dynamic>;
   }
 
-  static Future<void> login(String tenant, String email, String password) async {
-    _tenant = tenant.trim().isEmpty ? (_envTenant.isNotEmpty ? _envTenant : null) : tenant.trim();
-    final res = await _send('POST', '/auth/login', body: {'email': email, 'password': password});
+  static Future<void> login(
+      String tenant, String email, String password) async {
+    _tenant = tenant.trim().isEmpty
+        ? (_envTenant.isNotEmpty ? _envTenant : null)
+        : tenant.trim();
+    final res = await _send('POST', '/auth/login',
+        body: {'email': email, 'password': password});
     _token = res['accessToken'] as String;
     user = res['user'] as Map<String, dynamic>;
     final p = await SharedPreferences.getInstance();
@@ -68,18 +75,22 @@ class ApiClient {
   static Future<dynamic> delete(String path) => _send('DELETE', path);
 
   /// Upload a file to POST /files (returns { id, fileName, contentType, sizeBytes }).
-  static Future<Map<String, dynamic>> uploadFile(List<int> bytes, String fileName) async {
+  static Future<Map<String, dynamic>> uploadFile(
+      List<int> bytes, String fileName) async {
     final uri = Uri.parse('$base/files');
     final req = http.MultipartRequest('POST', uri);
     if (_token != null) req.headers['Authorization'] = 'Bearer $_token';
     if (_tenant != null) req.headers['x-tenant-id'] = _tenant!;
-    req.files.add(http.MultipartFile.fromBytes('file', bytes, filename: fileName));
+    req.files
+        .add(http.MultipartFile.fromBytes('file', bytes, filename: fileName));
     final streamed = await req.send();
     final body = await streamed.stream.bytesToString();
     final data = body.isEmpty ? null : jsonDecode(body);
     if (streamed.statusCode >= 400) {
-      final msg = data is Map ? (data['message'] ?? 'Upload failed') : 'Upload failed';
-      throw ApiError(msg is List ? msg.join('; ') : msg.toString(), streamed.statusCode);
+      final msg =
+          data is Map ? (data['message'] ?? 'Upload failed') : 'Upload failed';
+      throw ApiError(
+          msg is List ? msg.join('; ') : msg.toString(), streamed.statusCode);
     }
     return data as Map<String, dynamic>;
   }
@@ -112,8 +123,11 @@ class ApiClient {
     }
     final data = r.body.isEmpty ? null : jsonDecode(r.body);
     if (r.statusCode >= 400) {
-      final msg = data is Map ? (data['message'] ?? 'Request failed') : 'Request failed';
-      throw ApiError(msg is List ? msg.join('; ') : msg.toString(), r.statusCode);
+      final msg = data is Map
+          ? (data['message'] ?? 'Request failed')
+          : 'Request failed';
+      throw ApiError(
+          msg is List ? msg.join('; ') : msg.toString(), r.statusCode);
     }
     return data;
   }

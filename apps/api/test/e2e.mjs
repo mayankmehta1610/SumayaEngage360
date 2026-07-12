@@ -9,6 +9,7 @@
 const BASE = (process.env.API_URL ?? 'http://localhost:3000') + '/api';
 const RUN = Date.now().toString(36);
 const TENANT = `e2e-${RUN}`;
+const VERIFIED_FEATURES = 839;
 let passed = 0;
 let failed = 0;
 
@@ -83,6 +84,8 @@ const main = async () => {
     password: process.env.ADMIN_PASSWORD ?? 'Admin@12345' } });
   check('platform admin login', adminLogin.status === 201 || adminLogin.status === 200, JSON.stringify(adminLogin.data));
   const admin = adminLogin.data.accessToken;
+  check('platform admin denied tenant employee APIs',
+    (await req('GET', '/employees', { token: admin })).status === 403);
 
   const tenantRes = await req('POST', '/tenants', { token: admin, body: {
     name: `E2E Corp ${RUN}`, subdomain: TENANT, country: 'IN',
@@ -149,6 +152,10 @@ const main = async () => {
   const managerAccess = await req('PATCH', `/users/${managerUser.id}/access`, { ...t, body: {
     roles: ['EMPLOYEE', 'MANAGER', 'DEPARTMENT_HEAD'] } });
   check('manager and department-head roles assigned', managerAccess.status === 200);
+  const activateManager = await req('PATCH', `/employees/${mgrEmp.data.id}`, { ...t, body: { status: 'ACTIVE' } });
+  check('direct hire activated through controlled transition', activateManager.data?.status === 'ACTIVE');
+  const skipExit = await req('PATCH', `/employees/${mgrEmp.data.id}`, { ...t, body: { status: 'EXITED' } });
+  check('direct status edit cannot bypass exit workflow', skipExit.status === 400);
   await req('POST', `/departments/${dept.data.id}/head/${mgrEmp.data.id}`, { ...t });
 
   // ─── ATS ──────────────────────────────────────────────────────────
@@ -294,7 +301,7 @@ const main = async () => {
   console.log('\n[7] Projects, allocation, salary');
   const project = await req('POST', '/projects', { ...t, body: {
     name: 'Phoenix', code: `PRJ-${RUN}`, hiringClientId: client.data.id,
-    location: 'Pune', managerId: mgrEmp.data.id } });
+    location: 'Pune', managerId: mgrEmp.data.id, requiredSkills: ['NestJS', 'SQL'] } });
   check('project created', project.status === 201);
   const alloc = await req('POST', `/projects/${project.data.id}/allocations`, { ...t, body: {
     employeeId: hireEmp.id, percentage: 80, startDate: new Date().toISOString() } });
@@ -304,6 +311,10 @@ const main = async () => {
   check('over-allocation (>100%) rejected', over.status === 400);
   const empAfter = await req('GET', `/employees/${hireEmp.id}`, { ...t });
   check('manager auto-assigned on allocation', empAfter.data.managerId === mgrEmp.data.id);
+  const bench = await req('GET', '/resourcing/bench', { ...t });
+  check('bench capacity reflects live allocation', bench.data?.some((e) => e.id === hireEmp.id && e.availablePercent === 20));
+  const resourceMatches = await req('GET', `/resourcing/projects/${project.data.id}/match`, { ...t });
+  check('project skill matching uses configured requirements', resourceMatches.data?.targetSkills?.includes('nestjs') && resourceMatches.data?.candidates?.some((e) => e.id === hireEmp.id));
   const salary = await req('GET', '/employees/me/salary', { ...hire });
   check('offered salary visible to employee', salary.data?.some((s) => s.isOffered));
 
@@ -598,6 +609,16 @@ const main = async () => {
   check('payroll run created', run.status === 201);
   const proc = await req('POST', `/payroll/runs/${run.data.id}/process`, { ...t });
   check('payroll processed', proc.data?.payslipsGenerated >= 1, JSON.stringify(proc.data));
+  const adjustment = await req('POST', '/payroll/adjustments', { ...t, body: {
+    employeeId: mgrEmp.data.id, type: 'BONUS', amount: 25000, period: '2026-07', note: 'Delivery bonus' } });
+  check('payroll adjustment created', adjustment.status === 201);
+  const ownAdjustments = await req('GET', '/payroll/adjustments/mine', { ...mgr });
+  check('employee sees own payroll adjustment', ownAdjustments.data?.some((a) => a.id === adjustment.data.id));
+  const declaration = await req('POST', '/payroll/tax-declarations', { ...mgr, body: {
+    fiscalYear: '2026-27', regime: 'OLD', items: [{ section: '80C', description: 'Investment', amount: 150000 }] } });
+  check('employee submits tax declaration', declaration.status === 201);
+  const verifyTax = await req('POST', `/payroll/tax-declarations/${declaration.data.id}/verify`, { ...t });
+  check('HR verifies tax declaration', verifyTax.data?.status === 'VERIFIED');
   const plan = await req('POST', '/benefits/plans', { ...t, body: { code: 'HLTH', name: 'Health', category: 'HEALTH' } });
   check('benefit plan', plan.status === 201);
   const claim = await req('POST', '/expenses', { ...mgr, body: {
@@ -615,6 +636,26 @@ const main = async () => {
   check('SSO config', ssoCfg.status === 201 || ssoCfg.status === 200);
   const comps = await req('GET', '/payroll/components', { ...t });
   check('salary components', Array.isArray(comps.data) && comps.data.length >= 4);
+
+  const survey = await req('POST', '/surveys', { ...t, body: {
+    title: `eNPS ${RUN}`, type: 'ENPS', anonymous: true,
+    questions: [] } });
+  check('eNPS survey created', survey.status === 201);
+  await req('POST', `/surveys/${survey.data.id}/open`, { ...t });
+  const surveyResponse = await req('POST', `/surveys/${survey.data.id}/respond`, { ...hire, body: {
+    answers: [{ q: 'How likely are you to recommend this company as a place to work? (0-10)', value: 9 }] } });
+  check('employee responds to survey', surveyResponse.status === 201);
+  const surveyAnalytics = await req('GET', `/surveys/${survey.data.id}/analytics`, { ...t });
+  check('survey analytics calculates eNPS', surveyAnalytics.data?.perQuestion?.[0]?.enps === 100);
+
+  const compliance = await req('POST', '/compliance/cases', { ...hire, body: {
+    type: 'GRIEVANCE', title: 'E2E grievance', details: 'Confidential workflow test', anonymous: false } });
+  check('employee raises compliance case', compliance.status === 201);
+  const complianceList = await req('GET', '/compliance/cases', { ...t });
+  check('HR sees tenant compliance case', complianceList.data?.some((c) => c.id === compliance.data.id));
+  const resolved = await req('PATCH', `/compliance/cases/${compliance.data.id}`, { ...t, body: {
+    status: 'RESOLVED', resolution: 'Reviewed in E2E' } });
+  check('HR resolves compliance case', resolved.data?.status === 'RESOLVED');
 
   // ─── Sheets 1-12 completion: adapters, SFTP, roster, SSO, templates ─
   console.log('\n[20] Sheets 1–12 completion');
@@ -641,7 +682,7 @@ const main = async () => {
   const wf = await req('GET', '/approvals/workflows', { ...t });
   check('workflow designer', Array.isArray(wf.data) && wf.data.length >= 1, JSON.stringify(wf.data));
   const featDone = await req('GET', '/requirements/overview', { ...t });
-  check('feature catalogue progress', featDone.data?.sheets?.['01_Feature_Catalogue']?.done >= 2500);
+  check('feature catalogue matches verified ledger', featDone.data?.sheets?.['01_Feature_Catalogue']?.done === VERIFIED_FEATURES);
 
   // ─── All features completion pass ───────────────────────────────────
   console.log('\n[21] All features — masters, delegation, ATS team, platform');
@@ -679,7 +720,7 @@ const main = async () => {
   const calib = await req('POST', '/masters/calibrations', { ...t, body: { name: 'Q1 calibration' } });
   check('calibration session', calib.status === 201);
   const overview = await req('GET', '/requirements/overview', { ...t });
-  check('all features done', overview.data?.sheets?.['01_Feature_Catalogue']?.done === 3000, JSON.stringify(overview.data?.sheets?.['01_Feature_Catalogue']));
+  check('verified feature count is evidence-backed', overview.data?.sheets?.['01_Feature_Catalogue']?.done === VERIFIED_FEATURES, JSON.stringify(overview.data?.sheets?.['01_Feature_Catalogue']));
 
   // ─── RBAC enforcement ───────────────────────────────────────────────
   console.log('\n[RBAC] Role-based access denial');

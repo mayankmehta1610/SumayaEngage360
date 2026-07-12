@@ -6,20 +6,21 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 chapters = json.loads((ROOT / "chapters.json").read_text(encoding="utf-8"))
+chapters += json.loads((ROOT / "audit-chapters.json").read_text(encoding="utf-8"))
 
 script_lines = [
     "# SumayaEngage360 - Video Walkthrough Script",
     "",
     "**Tenant:** sumaya (demo)",
-    "**Roles covered:** TENANT_ADMIN, HR, MANAGER, EMPLOYEE, BGC_VENDOR",
-    "**Platform:** https://engage360-web.onrender.com",
+    "**Roles covered:** PLATFORM_ADMIN, TENANT_ADMIN, HR, MANAGER, EMPLOYEE, INTERVIEWER, BGC_VENDOR, DEPARTMENT_HEAD",
+    "**Verification:** 839 of 3,000 workbook features are marked Done from executable evidence; unverified rows remain Not Started.",
     "",
 ]
 for ch in chapters:
     script_lines += [
         f"## {ch['id']}: {ch['title']}",
         "",
-        f"**Screenshot:** `screenshots/{ch['screenshot']}`",
+        f"**Screenshot:** `{'screenshots-audit' if int(ch['id'][2:]) > 80 else 'screenshots'}/{ch['screenshot']}`",
         "",
         ch["narration"],
         "",

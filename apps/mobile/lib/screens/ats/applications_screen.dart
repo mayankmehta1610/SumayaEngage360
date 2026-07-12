@@ -22,7 +22,10 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() { loading = true; error = null; });
+    setState(() {
+      loading = true;
+      error = null;
+    });
     try {
       items = asList(await ApiClient.get('/applications'));
     } catch (e) {
@@ -42,7 +45,10 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
             : error != null && items.isEmpty
                 ? ListView(children: [ErrorState(error!, onRetry: _load)])
                 : items.isEmpty
-                    ? ListView(children: const [EmptyState('No applications found.', icon: Icons.inbox_outlined)])
+                    ? ListView(children: const [
+                        EmptyState('No applications found.',
+                            icon: Icons.inbox_outlined)
+                      ])
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: items.length,
@@ -50,13 +56,18 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
                           final a = items[i];
                           return Card(
                             child: ListTile(
-                              title: Text('${a['candidate']?['firstName']} ${a['candidate']?['lastName']}'.trim(),
-                                  style: const TextStyle(fontWeight: FontWeight.w600)),
+                              title: Text(
+                                  '${a['candidate']?['firstName']} ${a['candidate']?['lastName']}'
+                                      .trim(),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600)),
                               subtitle: Text(str(a['job']?['title'])),
                               trailing: StatusBadge(str(a['status'])),
                               onTap: () => Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => ApplicationDetailScreen(applicationId: a['id'] as String)),
+                                MaterialPageRoute(
+                                    builder: (_) => ApplicationDetailScreen(
+                                        applicationId: a['id'] as String)),
                               ),
                             ),
                           );

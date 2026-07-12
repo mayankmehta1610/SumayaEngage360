@@ -66,11 +66,13 @@ export class ComplianceController {
 
   // Any employee can raise a case (optionally anonymous).
   @Post('cases')
+  @Roles(Role.TENANT_ADMIN, Role.HR, Role.MANAGER, Role.DEPARTMENT_HEAD, Role.EMPLOYEE)
   report(@TenantId() tenantId: string, @CurrentUser() u: JwtPayload, @Body() dto: ReportCaseDto) {
     return this.compliance.report(tenantId, u.sub, dto);
   }
 
   @Get('cases/mine')
+  @Roles(Role.TENANT_ADMIN, Role.HR, Role.MANAGER, Role.DEPARTMENT_HEAD, Role.EMPLOYEE)
   mine(@TenantId() tenantId: string, @CurrentUser() u: JwtPayload) {
     return this.compliance.myCases(tenantId, u.sub);
   }

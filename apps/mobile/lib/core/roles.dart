@@ -2,8 +2,7 @@ import 'api_client.dart';
 
 bool hasRole(String role) => ApiClient.roles.contains(role);
 
-bool hasAnyRole(List<String> allowed) =>
-    ApiClient.roles.any(allowed.contains);
+bool hasAnyRole(List<String> allowed) => ApiClient.roles.any(allowed.contains);
 
 bool get isPlatformAdmin => hasRole('PLATFORM_ADMIN');
 bool get isTenantAdmin => hasRole('TENANT_ADMIN');

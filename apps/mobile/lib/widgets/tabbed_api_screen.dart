@@ -23,7 +23,8 @@ class ApiTabList extends StatefulWidget {
   State<ApiTabList> createState() => _ApiTabListState();
 }
 
-class _ApiTabListState extends State<ApiTabList> with AutomaticKeepAliveClientMixin {
+class _ApiTabListState extends State<ApiTabList>
+    with AutomaticKeepAliveClientMixin {
   List items = [];
   bool loading = true;
   String? error;
@@ -56,8 +57,12 @@ class _ApiTabListState extends State<ApiTabList> with AutomaticKeepAliveClientMi
   Widget build(BuildContext context) {
     super.build(context);
     if (loading && items.isEmpty) return const LoadingOverlay();
-    if (error != null && items.isEmpty) return ErrorState(error!, onRetry: _load);
-    if (items.isEmpty) return const EmptyState('Nothing here yet.', icon: Icons.inbox_outlined);
+    if (error != null && items.isEmpty) {
+      return ErrorState(error!, onRetry: _load);
+    }
+    if (items.isEmpty) {
+      return const EmptyState('Nothing here yet.', icon: Icons.inbox_outlined);
+    }
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.builder(
@@ -69,8 +74,11 @@ class _ApiTabListState extends State<ApiTabList> with AutomaticKeepAliveClientMi
           final showStatus = status != null && status.isNotEmpty;
           return Card(
             child: ListTile(
-              title: Text(widget.titleOf(item), style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: widget.subtitleOf != null ? Text(widget.subtitleOf!(item)) : null,
+              title: Text(widget.titleOf(item),
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: widget.subtitleOf != null
+                  ? Text(widget.subtitleOf!(item))
+                  : null,
               trailing: showStatus ? StatusBadge(status) : null,
               onTap: widget.onTap != null ? () => widget.onTap!(item) : null,
             ),
@@ -84,7 +92,14 @@ class _ApiTabListState extends State<ApiTabList> with AutomaticKeepAliveClientMi
 /// Tabbed screen with a single app bar.
 class TabbedApiScreen extends StatefulWidget {
   final String title;
-  final List<({String label, String endpoint, StringFn titleOf, StringFn? subtitleOf, StringFn? statusOf})> tabs;
+  final List<
+      ({
+        String label,
+        String endpoint,
+        StringFn titleOf,
+        StringFn? subtitleOf,
+        StringFn? statusOf
+      })> tabs;
 
   const TabbedApiScreen({super.key, required this.title, required this.tabs});
 
@@ -92,7 +107,8 @@ class TabbedApiScreen extends StatefulWidget {
   State<TabbedApiScreen> createState() => _TabbedApiScreenState();
 }
 
-class _TabbedApiScreenState extends State<TabbedApiScreen> with SingleTickerProviderStateMixin {
+class _TabbedApiScreenState extends State<TabbedApiScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tc;
 
   @override

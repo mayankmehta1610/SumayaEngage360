@@ -1,0 +1,1 @@
+﻿Projects now store their own required skill set rather than borrowing unrelated job-requisition skills. Administrators define the project code, manager, dates, location, and comma-separated skill requirements, which are persisted as structured values. These requirements become the source of truth for bench matching and allocation decisions on the manpower screen.

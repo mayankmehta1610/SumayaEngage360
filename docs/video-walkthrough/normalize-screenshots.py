@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-SRC = ROOT / "screenshots"
+SOURCES = [ROOT / "screenshots", ROOT / "screenshots-audit"]
 DST = ROOT / "screenshots-normalized"
 DST.mkdir(exist_ok=True)
 
@@ -14,7 +14,7 @@ VF = (
     "pad=1440:1080:(ow-iw)/2:(oh-ih)/2:color=0xF4F6FA"
 )
 
-for src in sorted(SRC.glob("*.png")):
+for src in sorted(path for source in SOURCES for path in source.glob("*.png")):
     dst = DST / src.name
     if dst.exists() and dst.stat().st_mtime >= src.stat().st_mtime:
         continue

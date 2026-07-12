@@ -105,7 +105,11 @@ Legend: **F** = Full parity (all web actions implemented)
 |--------|--------|---------|
 | Tenants | F | List, create, detail |
 | Requirements | F | View |
-| All routes | F | PLATFORM_ADMIN bypass |
+| Requirements | F | Verified implementation scope |
+
+Platform Admin is explicitly denied tenant business modules such as employees,
+payroll, recruitment, and projects. Mobile, web, and API guards use the same
+explicit route policy; this role is not a global bypass.
 
 ---
 
@@ -145,4 +149,5 @@ flutter build web
 
 ## Remaining gaps
 
-**None** — every web route in `apps/web/src/app/pages/*.component.ts` has equivalent mobile actions matching API contracts and RBAC.
+Parity is evidence-based. A module is complete only when its actions and role
+restrictions have executable coverage; uncovered workflows remain listed as gaps.

@@ -1,5 +1,4 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
@@ -8,7 +7,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ModuleShellComponent, SelectFieldComponent],
+  imports: [FormsModule, ModuleShellComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Surveys & eNPS"

@@ -77,6 +77,19 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
           (filterChange)="onFilterChange($event)"
         />
       </div>
+      <div *hasRole="'TENANT_ADMIN','HR'" class="card">
+        <h2>Employment status actions</h2>
+        <table><tr><th>Employee</th><th>Current status</th><th>Allowed action</th></tr>
+          @for (e of employees; track e.id) {
+            <tr><td>{{ e.user.firstName }} {{ e.user.lastName }}</td><td>{{ e.status }}</td><td>
+              @if (e.status === 'ONBOARDING') { <button class="secondary" (click)="updateStatus(e.id, 'ACTIVE')">Activate</button> }
+              @if (e.status === 'ACTIVE') { <button class="secondary" (click)="updateStatus(e.id, 'ON_NOTICE')">Mark on notice</button> }
+              @if (e.status === 'ON_NOTICE') { <button class="secondary" (click)="updateStatus(e.id, 'ACTIVE')">Reactivate</button> }
+              @if (e.status === 'EXITED') { <span class="muted">Managed by exit workflow</span> }
+            </td></tr>
+          }
+        </table>
+      </div>
     </e360-module-shell>
   `,
 })
@@ -188,5 +201,9 @@ export class EmployeesComponent implements OnInit, OnChanges {
       this.f = {};
       await this.load();
     } catch (e) { this.error = errMsg(e); }
+  }
+  async updateStatus(id: string, status: string) {
+    try { await this.api.patch(`/employees/${id}`, { status }); await this.load(); }
+    catch (e) { this.error = errMsg(e); }
   }
 }

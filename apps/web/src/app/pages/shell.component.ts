@@ -265,8 +265,7 @@ export class ShellComponent implements OnInit {
     const grouped = new Map<string, typeof ROUTE_ACCESS>();
     for (const route of ROUTE_ACCESS) {
       if (route.path === '/profile') continue;
-      if (!isPlatform && !route.roles.some((r) => roles.includes(r))) continue;
-      if (route.path === '/tenants' && !isPlatform) continue;
+      if (!route.roles.some((r) => roles.includes(r))) continue;
       if (
         !isPlatform &&
         !routeVisibleForTenant(route.path, tenant?.tenantType, tenant?.enabledPortals)

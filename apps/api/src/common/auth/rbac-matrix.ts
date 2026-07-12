@@ -3,7 +3,7 @@ import { Role } from '@prisma/client';
 /**
  * API RBAC matrix — documents which roles can access each module.
  * Enforced via @Roles decorator + global RolesGuard.
- * PLATFORM_ADMIN bypasses all checks.
+ * Platform access is granted explicitly per endpoint, never as a tenant-role bypass.
  */
 export interface ModuleRbac {
   module: string;

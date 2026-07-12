@@ -52,9 +52,70 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
           <e360-data-table [columns]="payslipCols" [rows]="payslipRows" [paginated]="false" [stickyHeader]="true" />
         </div>
       }
+
+      <div class="card">
+        <h2>Add payroll adjustment</h2>
+        <div class="row">
+          <div><label>Employee</label><select [(ngModel)]="adjustment.employeeId">
+            <option value="">Choose employee</option>
+            @for (e of employees; track e.id) { <option [value]="e.id">{{ employeeName(e.id) }}</option> }
+          </select></div>
+          <div><label>Type</label><select [(ngModel)]="adjustment.type">
+            @for (type of adjustmentTypes; track type) { <option [value]="type">{{ type }}</option> }
+          </select></div>
+          <div><label>Amount</label><input type="number" min="0" [(ngModel)]="adjustment.amount" /></div>
+          <div><label>Payroll month</label><input type="month" [(ngModel)]="adjustment.period" /></div>
+          @if (adjustment.type === 'LOAN' || adjustment.type === 'ADVANCE') {
+            <div><label>Monthly recovery</label><input type="number" min="0" [(ngModel)]="adjustment.monthlyRecover" /></div>
+          }
+          <div><label>Note</label><input [(ngModel)]="adjustment.note" /></div>
+        </div>
+        <button (click)="createAdjustment()" [disabled]="!adjustment.employeeId || !adjustment.amount || !adjustment.period">Add adjustment</button>
+        <table><tr><th>Employee</th><th>Type</th><th>Period</th><th>Amount</th><th>Balance</th></tr>
+          @for (a of adjustments; track a.id) {
+            <tr><td>{{ employeeName(a.employeeId) }}</td><td>{{ a.type }}</td><td>{{ a.period }}</td><td>{{ a.amount }}</td><td>{{ a.balance ?? '-' }}</td></tr>
+          } @empty { <tr><td colspan="5" class="muted">No payroll adjustments.</td></tr> }
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Tax declaration verification</h2>
+        <table><tr><th>Employee</th><th>Fiscal year</th><th>Regime</th><th>Total</th><th>Status</th><th>Action</th></tr>
+          @for (d of declarations; track d.id) {
+            <tr><td>{{ employeeName(d.employeeId) }}</td><td>{{ d.fiscalYear }}</td><td>{{ d.regime }}</td><td>{{ d.total }}</td><td>{{ d.status }}</td>
+              <td>@if (d.status !== 'VERIFIED') { <button class="secondary" (click)="verifyDeclaration(d.id)">Verify</button> }</td></tr>
+          } @empty { <tr><td colspan="6" class="muted">No tax declarations submitted.</td></tr> }
+        </table>
+      </div>
     } @else {
       <div class="card"><h2>My payslips</h2>
         <e360-data-table [columns]="mySlipCols" [rows]="mySlipRows" [paginated]="false" [stickyHeader]="true" />
+      </div>
+      <div class="card"><h2>My payroll adjustments</h2>
+        <table><tr><th>Type</th><th>Period</th><th>Amount</th><th>Outstanding</th></tr>
+          @for (a of myAdjustments; track a.id) { <tr><td>{{ a.type }}</td><td>{{ a.period }}</td><td>{{ a.amount }}</td><td>{{ a.balance ?? '-' }}</td></tr> }
+          @empty { <tr><td colspan="4" class="muted">No adjustments.</td></tr> }
+        </table>
+      </div>
+      <div class="card"><h2>Tax declaration</h2>
+        <div class="row">
+          <div><label>Fiscal year</label><input [(ngModel)]="tax.fiscalYear" placeholder="2026-27" /></div>
+          <div><label>Regime</label><select [(ngModel)]="tax.regime"><option>NEW</option><option>OLD</option></select></div>
+        </div>
+        @for (item of taxItems; track $index; let i = $index) {
+          <div class="row">
+            <div><label>Section</label><input [(ngModel)]="item.section" placeholder="80C" /></div>
+            <div><label>Description</label><input [(ngModel)]="item.description" placeholder="Investment" /></div>
+            <div><label>Amount</label><input type="number" min="0" [(ngModel)]="item.amount" /></div>
+            <div style="flex:0"><button class="danger" (click)="taxItems.splice(i, 1)" aria-label="Remove declaration item">Remove</button></div>
+          </div>
+        }
+        <button class="secondary" (click)="taxItems.push({ section: '', description: '', amount: 0 })">Add item</button>
+        <button style="margin-left:.5rem" (click)="submitDeclaration()" [disabled]="!tax.fiscalYear">Submit declaration</button>
+        <table><tr><th>Fiscal year</th><th>Regime</th><th>Total</th><th>Status</th></tr>
+          @for (d of myDeclarations; track d.id) { <tr><td>{{ d.fiscalYear }}</td><td>{{ d.regime }}</td><td>{{ d.total }}</td><td>{{ d.status }}</td></tr> }
+          @empty { <tr><td colspan="4" class="muted">No declarations submitted.</td></tr> }
+        </table>
       </div>
     }
   
@@ -65,6 +126,12 @@ export class PayrollComponent implements OnInit {
   private api = inject(ApiService);
   auth = inject(AuthService);
   calendars: any[] = []; runs: any[] = []; payslips: any[] = []; mySlips: any[] = [];
+  employees: any[] = []; adjustments: any[] = []; declarations: any[] = [];
+  myAdjustments: any[] = []; myDeclarations: any[] = [];
+  adjustmentTypes = ['BONUS', 'INCENTIVE', 'OVERTIME', 'ARREAR', 'RECOVERY', 'LOAN', 'ADVANCE'];
+  adjustment: any = { type: 'BONUS', period: new Date().toISOString().slice(0, 7) };
+  tax: any = { regime: 'NEW' };
+  taxItems: any[] = [{ section: '', description: '', amount: 0 }];
   calName = ''; runCalId = ''; periodStart = ''; periodEnd = ''; error = '';
   payslipCols: TableColumn[] = [
     { key: 'employee', label: 'Employee' },
@@ -98,12 +165,19 @@ export class PayrollComponent implements OnInit {
   async ngOnInit() {
     try {
       if (this.auth.hasRole('TENANT_ADMIN', 'HR')) {
-        [this.calendars, this.runs] = await Promise.all([
+        [this.calendars, this.runs, this.employees, this.adjustments, this.declarations] = await Promise.all([
           this.api.get<any[]>('/payroll/calendars'),
           this.api.get<any[]>('/payroll/runs'),
+          this.api.get<any[]>('/employees'),
+          this.api.get<any[]>('/payroll/adjustments'),
+          this.api.get<any[]>('/payroll/tax-declarations'),
         ]);
       } else {
-        this.mySlips = await this.api.get<any[]>('/payroll/payslips/mine');
+        [this.mySlips, this.myAdjustments, this.myDeclarations] = await Promise.all([
+          this.api.get<any[]>('/payroll/payslips/mine'),
+          this.api.get<any[]>('/payroll/adjustments/mine'),
+          this.api.get<any[]>('/payroll/tax-declarations/mine'),
+        ]);
       }
     } catch (e) { this.error = errMsg(e); }
   }
@@ -126,5 +200,31 @@ export class PayrollComponent implements OnInit {
 
   async viewPayslips(id: string) {
     this.payslips = await this.api.get<any[]>(`/payroll/runs/${id}/payslips`);
+  }
+
+  employeeName(id: string) {
+    const employee = this.employees.find((e) => e.id === id);
+    return employee ? `${employee.user.firstName} ${employee.user.lastName}` : id;
+  }
+
+  async createAdjustment() {
+    try {
+      await this.api.post('/payroll/adjustments', { ...this.adjustment, amount: Number(this.adjustment.amount), monthlyRecover: this.adjustment.monthlyRecover ? Number(this.adjustment.monthlyRecover) : undefined });
+      this.adjustments = await this.api.get<any[]>('/payroll/adjustments');
+      this.adjustment = { type: 'BONUS', period: new Date().toISOString().slice(0, 7) };
+    } catch (e) { this.error = errMsg(e); }
+  }
+
+  async verifyDeclaration(id: string) {
+    try { await this.api.post(`/payroll/tax-declarations/${id}/verify`); this.declarations = await this.api.get<any[]>('/payroll/tax-declarations'); }
+    catch (e) { this.error = errMsg(e); }
+  }
+
+  async submitDeclaration() {
+    try {
+      const items = this.taxItems.filter((item) => item.section.trim()).map((item) => ({ ...item, amount: Number(item.amount) }));
+      await this.api.post('/payroll/tax-declarations', { ...this.tax, items });
+      this.myDeclarations = await this.api.get<any[]>('/payroll/tax-declarations/mine');
+    } catch (e) { this.error = errMsg(e); }
   }
 }

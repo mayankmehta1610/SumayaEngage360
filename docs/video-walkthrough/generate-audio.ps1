@@ -15,6 +15,6 @@ foreach ($ch in $chapters) {
   Set-Content -Path $txt -Value $ch.narration -Encoding UTF8
   if (Test-Path $mp3) { Write-Host "Skip $($ch.id) (exists)"; continue }
   Write-Host "TTS $($ch.id): $($ch.title)"
-  edge-tts --voice $Voice --file $txt --write-media $mp3
+  python -m edge_tts --voice $Voice --file $txt --write-media $mp3
 }
 Write-Host "Audio generation complete: $AudioDir"

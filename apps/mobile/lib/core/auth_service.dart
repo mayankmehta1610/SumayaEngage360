@@ -13,7 +13,8 @@ class AuthService {
   static bool get isManager => hasRole(['MANAGER', 'DEPARTMENT_HEAD']);
   static bool get isEmployee => hasRole(['EMPLOYEE']);
   static bool get isVendor => hasRole(['BGC_VENDOR']);
-  static bool get isOps => hasRole(['TENANT_ADMIN', 'HR', 'MANAGER', 'DEPARTMENT_HEAD']);
+  static bool get isOps =>
+      hasRole(['TENANT_ADMIN', 'HR', 'MANAGER', 'DEPARTMENT_HEAD']);
 
   static String displayName() {
     final u = user;

@@ -15,3 +15,5 @@ apps/api/prisma/*.db
 apps/api/uploads/
 apps/web/test-results/
 apps/web/playwright-report/
+.artifacts/
+*.inspect.ndjson

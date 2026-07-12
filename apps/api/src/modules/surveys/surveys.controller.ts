@@ -62,11 +62,13 @@ export class SurveysController {
   }
 
   @Get('open/mine')
+  @Roles(Role.TENANT_ADMIN, Role.HR, Role.MANAGER, Role.DEPARTMENT_HEAD, Role.EMPLOYEE)
   openForMe(@TenantId() tenantId: string, @CurrentUser() u: JwtPayload) {
     return this.surveys.openForMe(tenantId, u.sub);
   }
 
   @Post(':id/respond')
+  @Roles(Role.TENANT_ADMIN, Role.HR, Role.MANAGER, Role.DEPARTMENT_HEAD, Role.EMPLOYEE)
   respond(
     @TenantId() tenantId: string,
     @CurrentUser() u: JwtPayload,

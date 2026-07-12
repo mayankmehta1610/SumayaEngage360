@@ -2,12 +2,14 @@ import {
   IsArray,
   IsDateString,
   IsEmail,
+  IsEnum,
   IsInt,
   IsNumber,
   IsOptional,
   IsString,
   Min,
 } from 'class-validator';
+import { EmployeeStatus } from '@prisma/client';
 
 export class CreateDepartmentDto {
   @IsString()
@@ -64,6 +66,10 @@ export class CreateEmployeeDto {
 }
 
 export class UpdateEmployeeDto {
+  @IsOptional()
+  @IsEnum(EmployeeStatus)
+  status?: EmployeeStatus;
+
   @IsOptional()
   @IsString()
   designation?: string;

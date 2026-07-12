@@ -10,7 +10,8 @@ class ModuleDrawer extends StatelessWidget {
   final void Function(String path) onNavigate;
   final VoidCallback onLogout;
 
-  const ModuleDrawer({super.key, required this.onNavigate, required this.onLogout});
+  const ModuleDrawer(
+      {super.key, required this.onNavigate, required this.onLogout});
 
   String _initials() {
     final name = AuthService.displayName();
@@ -51,27 +52,36 @@ class ModuleDrawer extends StatelessWidget {
                           ),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.dashboard_outlined, color: Colors.white, size: 24),
+                        child: const Icon(Icons.dashboard_outlined,
+                            color: Colors.white, size: 24),
                       ),
                       const SizedBox(width: 12),
                       const Expanded(
                         child: Text('Engage360',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 18)),
                       ),
                     ],
                   ),
                   if (tenant.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: E360Theme.accent.withValues(alpha: .2),
                         borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: E360Theme.accent.withValues(alpha: .35)),
+                        border: Border.all(
+                            color: E360Theme.accent.withValues(alpha: .35)),
                       ),
                       child: Text(tenant.toUpperCase(),
                           style: const TextStyle(
-                              color: Color(0xFFA5B4FC), fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
+                              color: Color(0xFFA5B4FC),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.8)),
                     ),
                   ],
                   const SizedBox(height: 14),
@@ -81,7 +91,10 @@ class ModuleDrawer extends StatelessWidget {
                         radius: 20,
                         backgroundColor: E360Theme.primary,
                         child: Text(_initials(),
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13)),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -89,10 +102,14 @@ class ModuleDrawer extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(AuthService.displayName(),
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14),
                                 overflow: TextOverflow.ellipsis),
                             Text(AuthService.roles.join(' · '),
-                                style: const TextStyle(color: Colors.white70, fontSize: 10),
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 10),
                                 overflow: TextOverflow.ellipsis),
                           ],
                         ),
@@ -110,14 +127,21 @@ class ModuleDrawer extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                       child: Text(entry.key.toUpperCase(),
                           style: const TextStyle(
-                              fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: Colors.white54)),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                              color: Colors.white54)),
                     ),
                     for (final item in entry.value)
                       ListTile(
-                        leading: Icon(item.icon, color: Colors.white70, size: 22),
-                        title: Text(item.label, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                        leading:
+                            Icon(item.icon, color: Colors.white70, size: 22),
+                        title: Text(item.label,
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 14)),
                         dense: true,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
                         onTap: () {
                           Navigator.pop(context);
                           onNavigate(item.path);
@@ -146,7 +170,8 @@ class ModuleDrawer extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.white70),
-              title: const Text('Sign out', style: TextStyle(color: Colors.white)),
+              title:
+                  const Text('Sign out', style: TextStyle(color: Colors.white)),
               onTap: onLogout,
             ),
           ],

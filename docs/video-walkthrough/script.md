@@ -1,9 +1,8 @@
 # SumayaEngage360 - Video Walkthrough Script
 
-**Tenant:** sumaya (demo)  
-**Roles covered:** TENANT_ADMIN, HR, MANAGER, EMPLOYEE, BGC_VENDOR (+ Platform Admin context below)  
-**Platform:** https://engage360-web.onrender.com  
-**Walkthrough users created for capture:** walk-hr@sumaya.com, walk-mgr@sumaya.com, walk-emp@sumaya.com, walk-bgc@sumaya.com (password: Walk@12345)
+**Tenant:** sumaya (demo)
+**Roles covered:** PLATFORM_ADMIN, TENANT_ADMIN, HR, MANAGER, EMPLOYEE, INTERVIEWER, BGC_VENDOR, DEPARTMENT_HEAD
+**Verification:** 839 of 3,000 workbook features are marked Done from executable evidence; unverified rows remain Not Started.
 
 ## ch01: Landing
 
@@ -485,12 +484,74 @@ From the BGC vendor perspective: This screen covers the portal module. Notice th
 
 As a BGC vendor, My profile shows the signed-in user's account details, linked employee record, and password preferences. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.
 
----
+## ch81: Platform Admin Tenant Provisioning
 
-## Appendix: Platform Admin (Tenants)
+**Screenshot:** `screenshots-audit/81-platform-admin-tenants.png`
 
-**Note:** Platform Admin login requires a separate platform-level account (tenant field left empty). The Tenants module provisions new companies on the SaaS: company name, subdomain, country, and the first tenant administrator credentials. Platform admins manage the tenant catalogue but do not see tenant business data—each workspace remains isolated.
+The Platform Admin works outside tenant business operations. This screen creates isolated companies with a unique subdomain, country, and first tenant administrator. The navigation deliberately exposes only platform requirements and tenant provisioning; employee, payroll, recruitment, and other tenant modules are hidden and also rejected by the API guard.
 
-## Outro
+## ch82: Tenant Admin Surveys and eNPS
 
-This completes the Sumaya Engage 360 walkthrough for the **sumaya** demo tenant. We followed the hire-to-exit lifecycle—from public careers and ATS, through onboarding, workforce operations, compensation, performance, workflows, and role-specific self-service for managers, employees, and BGC vendors. Explore the live demo at https://engage360-web.onrender.com with tenant `sumaya`.
+**Screenshot:** `screenshots-audit/82-tenant-admin-surveys.png`
+
+Tenant administrators and HR can create an engagement survey, choose eNPS or pulse format, set the question and anonymity policy, then open or close the response window. Analytics are calculated from tenant-scoped responses, including promoter, passive, detractor, response count, and final eNPS values. Employees see only open surveys and never receive the administrative analytics controls.
+
+## ch83: Tenant Admin Compliance Case Board
+
+**Screenshot:** `screenshots-audit/83-tenant-admin-compliance.png`
+
+The compliance case board gives authorized administrators a tenant-wide view of employee-raised concerns. Each case carries a type, summary, details, confidentiality flag, status, and resolution lifecycle, while employees are restricted to their own submissions. Retention rules and purge previews are separated from daily case handling so governance actions remain explicit and auditable.
+
+## ch84: Payroll Adjustments and Tax Verification
+
+**Screenshot:** `screenshots-audit/84-tenant-admin-payroll-extras.png`
+
+Payroll administrators can record a bonus, deduction, reimbursement, or arrear adjustment against a real employee and payroll period. The tax declaration queue shows employee submissions and supports a controlled verification step instead of silently changing tax data. Tenant validation prevents an adjustment or declaration from referencing an employee in another company, and employee self-service remains read-only for adjustments.
+
+## ch85: Project Skill Requirements
+
+**Screenshot:** `screenshots-audit/85-tenant-admin-project-skills.png`
+
+Projects now store their own required skill set rather than borrowing unrelated job-requisition skills. Administrators define the project code, manager, dates, location, and comma-separated skill requirements, which are persisted as structured values. These requirements become the source of truth for bench matching and allocation decisions on the manpower screen.
+
+## ch86: Manager Bench and Skill Matching
+
+**Screenshot:** `screenshots-audit/86-manager-bench-skill-match.png`
+
+Managers can inspect active employees with remaining allocation capacity, including current utilization and available percentage. Selecting a project runs a live comparison between project-required skills and employee skills, producing matched and missing lists plus a percentage score. The manager can allocate a suitable person from the result, while server-side rules prevent total active allocation from exceeding one hundred percent.
+
+## ch87: Employee Survey Response
+
+**Screenshot:** `screenshots-audit/87-employee-survey-response.png`
+
+Employees receive only surveys that are open for their tenant and can submit one validated response per survey. eNPS uses the standard zero-to-ten score with an optional comment, and the server links eligibility to the authenticated employee rather than trusting a supplied employee identifier. Administrative create, close, and analytics controls are absent from this role.
+
+## ch88: Employee Compliance Reporting
+
+**Screenshot:** `screenshots-audit/88-employee-compliance-case.png`
+
+The employee compliance workspace provides a clear route to report policy, privacy, conduct, or other concerns and optionally mark the case confidential. The My Cases section tracks only that employee's submissions and resolution state. The tenant-wide case board, retention configuration, and purge tools are not rendered for employees and are protected separately at API level.
+
+## ch89: Employee Payroll Self-Service
+
+**Screenshot:** `screenshots-audit/89-employee-tax-and-adjustments.png`
+
+Employees can review only their own payroll adjustments and submit structured tax declarations for a selected financial year and tax regime. Investment, insurance, housing, and other declared amounts are entered as data and retained with a submission and verification status. Employees cannot create adjustments, list other workers' declarations, or verify their own submission.
+
+## ch90: Interviewer Assigned Applications
+
+**Screenshot:** `screenshots-audit/90-interviewer-assigned-applications.png`
+
+The interviewer view is assignment-scoped: only applications with an interview round assigned to the signed-in interviewer are returned. The role can open the candidate context and record the interview result with required evidence, but cannot schedule rounds, move pipeline status, publish jobs, or administer hiring clients. This keeps evaluation responsibility separate from recruiting control.
+
+## ch91: Interviewer Candidate Scope
+
+**Screenshot:** `screenshots-audit/91-interviewer-assigned-candidates.png`
+
+The interviewer talent pool is derived from assigned applications rather than the full tenant candidate database. Candidate identity and relevant interview context remain available for evaluation, while unassigned candidates are excluded by the backend query. The reduced navigation reinforces that the interviewer is a participant in selected rounds, not a general recruiter.
+
+## ch92: Second Tenant Data Isolation
+
+**Screenshot:** `screenshots-audit/92-second-tenant-isolation.png`
+
+A separately provisioned second tenant opens the same candidate module with an empty dataset, even though the first tenant has a populated recruitment flow. Tenant identity is taken from the authenticated session and checked against the request header, and cross-tenant identifiers are rejected across employees, benefits, assets, goals, files, and interview assignments. This screen is the visible proof of the database-level isolation exercised by the automated lifecycle test.

@@ -26,11 +26,17 @@ async function api(
   return { status: response.status(), body };
 }
 
-async function login(page: Page, tenant: string, email: string, landing = '/dashboard') {
+async function login(
+  page: Page,
+  tenant: string,
+  email: string,
+  landing = '/dashboard',
+  password = PASSWORD,
+) {
   await page.goto('/login');
   await page.getByPlaceholder('acme').fill(tenant);
   await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(PASSWORD);
+  await page.locator('input[type="password"]').fill(password);
   await page.getByRole('button', { name: /sign in/i }).click();
   await expect(page).toHaveURL(new RegExp(`${landing.replace('/', '\\/')}$`));
 }
@@ -88,6 +94,17 @@ test.describe.serial('role-controlled two-tenant workflows', () => {
       email: `employee@${TENANT_A}.test`, password: PASSWORD,
       firstName: 'Eli', lastName: 'Employee', designation: 'Engineer',
       departmentId: department.body.id, managerId, joinDate: new Date().toISOString(),
+    }));
+    await api(request, 'PATCH', `/employees/${manager.body.id}`, scoped({ status: 'ACTIVE' }));
+    await api(request, 'PATCH', `/employees/${employee.body.id}`, scoped({ status: 'ACTIVE' }));
+    await api(request, 'POST', `/employees/${employee.body.id}/skills`, scoped({ skills: ['Angular', 'PostgreSQL'] }));
+    await api(request, 'POST', '/projects', scoped({
+      name: 'Atlas Delivery', code: `ATLAS-${RUN}`, managerId,
+      requiredSkills: ['Angular', 'PostgreSQL'], location: 'Remote',
+    }));
+    await api(request, 'POST', '/payroll/adjustments', scoped({
+      employeeId: employee.body.id, type: 'BONUS', amount: 5000,
+      period: '2026-07', note: 'UI workflow seed',
     }));
 
     const users = await api(request, 'GET', '/users', scoped());
@@ -152,6 +169,16 @@ test.describe.serial('role-controlled two-tenant workflows', () => {
     }));
   });
 
+  test('platform admin is isolated to platform modules', async ({ page }) => {
+    await login(page, '', 'admin@engage360.com', '/tenants', 'Admin@12345');
+    await expect(page.getByRole('link', { name: 'Tenants' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Requirements' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Employees' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Payroll' })).toHaveCount(0);
+    await page.goto('/employees');
+    await expect(page).toHaveURL(/\/tenants$/);
+  });
+
   test('tenant admin can administer roles, benefits, and assets', async ({ page }) => {
     await login(page, TENANT_A, `owner@${TENANT_A}.test`);
 
@@ -165,6 +192,14 @@ test.describe.serial('role-controlled two-tenant workflows', () => {
 
     await page.goto('/assets');
     await expect(page.getByRole('button', { name: 'Assign' }).first()).toBeVisible();
+
+    await page.goto('/employees');
+    await expect(page.getByRole('heading', { name: 'Employment status actions' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Mark on notice' }).first()).toBeVisible();
+
+    await page.goto('/payroll');
+    await expect(page.getByRole('heading', { name: 'Add payroll adjustment' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Tax declaration verification' })).toBeVisible();
   });
 
   test('manager gets operational actions but not tenant administration', async ({ page }) => {
@@ -184,6 +219,12 @@ test.describe.serial('role-controlled two-tenant workflows', () => {
     await expect(page.getByRole('heading', { name: 'Assign goal' })).toBeVisible();
     await expect(page.getByRole('cell', { name: 'Eli Employee' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Add KPI' })).toHaveCount(0);
+
+    await page.goto('/manpower');
+    await expect(page.getByRole('heading', { name: 'Bench capacity' })).toBeVisible();
+    await page.getByRole('combobox').selectOption({ label: 'Atlas Delivery' });
+    await page.getByRole('button', { name: 'Find matches' }).click();
+    await expect(page.getByText('Angular, PostgreSQL')).toBeVisible();
   });
 
   test('employee self-service hides all administration controls', async ({ page }) => {
@@ -199,6 +240,16 @@ test.describe.serial('role-controlled two-tenant workflows', () => {
     await page.goto('/approvals');
     await expect(page.getByRole('heading', { name: 'Configure workflow' })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'My pending approvals' })).toBeVisible();
+
+    await page.goto('/payroll');
+    await expect(page.getByRole('heading', { name: 'Tax declaration' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Add payroll adjustment' })).toHaveCount(0);
+
+    await page.goto('/surveys');
+    await expect(page.getByRole('heading', { name: 'Create survey' })).toHaveCount(0);
+
+    await page.goto('/compliance');
+    await expect(page.getByRole('heading', { name: 'Case board (HR / compliance officers)' })).toHaveCount(0);
   });
 
   test('interviewer sees only assigned interview work', async ({ page }) => {

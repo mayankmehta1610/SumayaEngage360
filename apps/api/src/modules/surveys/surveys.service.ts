@@ -15,8 +15,8 @@ const ENPS_QUESTION =
 export class SurveysService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async employeeForUser(userId: string) {
-    const emp = await this.prisma.employee.findUnique({ where: { userId } });
+  private async employeeForUser(tenantId: string, userId: string) {
+    const emp = await this.prisma.employee.findFirst({ where: { tenantId, userId } });
     if (!emp) throw new NotFoundException('No employee record for this user');
     return emp;
   }
@@ -58,7 +58,7 @@ export class SurveysService {
 
   // Surveys the employee can currently answer.
   async openForMe(tenantId: string, userId: string) {
-    const emp = await this.employeeForUser(userId);
+    const emp = await this.employeeForUser(tenantId, userId);
     const open = await this.prisma.survey.findMany({
       where: { tenantId, status: SurveyStatus.OPEN },
       orderBy: { createdAt: 'desc' },
@@ -77,7 +77,7 @@ export class SurveysService {
     surveyId: string,
     answers: { q: string; value: unknown }[],
   ) {
-    const emp = await this.employeeForUser(userId);
+    const emp = await this.employeeForUser(tenantId, userId);
     const survey = await this.prisma.survey.findFirst({
       where: { id: surveyId, tenantId, status: SurveyStatus.OPEN },
     });
@@ -112,7 +112,7 @@ export class SurveysService {
     });
     if (!survey) throw new NotFoundException('Survey not found');
     const responses = await this.prisma.surveyResponse.findMany({
-      where: { surveyId },
+      where: { tenantId, surveyId },
       select: { answers: true },
     });
     const questions = survey.questions as { q: string; kind: string }[];

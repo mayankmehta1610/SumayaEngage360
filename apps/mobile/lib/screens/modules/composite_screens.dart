@@ -25,16 +25,23 @@ class _RecognitionScreenState extends State<RecognitionScreen> {
   }
 
   Future<void> _load() async {
-    try { feed = asList(await ApiClient.get('/recognitions/feed')); } catch (_) {}
-    try { directory = asList(await ApiClient.get('/employees/directory')); } catch (_) {}
-    try { badges = asList(await ApiClient.get('/recognition-badges')); } catch (_) {}
+    try {
+      feed = asList(await ApiClient.get('/recognitions/feed'));
+    } catch (_) {}
+    try {
+      directory = asList(await ApiClient.get('/employees/directory'));
+    } catch (_) {}
+    try {
+      badges = asList(await ApiClient.get('/recognition-badges'));
+    } catch (_) {}
     if (mounted) setState(() {});
   }
 
   Future<void> _give() async {
     if (directory.isEmpty) return;
     String? receiverId = directory.first['id'] as String;
-    String badge = badges.isNotEmpty ? str(badges.first['name']) : 'Star Performer';
+    String badge =
+        badges.isNotEmpty ? str(badges.first['name']) : 'Star Performer';
     final message = TextEditingController();
     await showDialog(
       context: context,
@@ -43,7 +50,11 @@ class _RecognitionScreenState extends State<RecognitionScreen> {
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           DropdownButtonFormField(
             value: receiverId,
-            items: [for (final e in directory) DropdownMenuItem(value: e['id'] as String, child: Text(employeeLabel(e)))],
+            items: [
+              for (final e in directory)
+                DropdownMenuItem(
+                    value: e['id'] as String, child: Text(employeeLabel(e)))
+            ],
             onChanged: (v) => receiverId = v,
             decoration: const InputDecoration(labelText: 'Colleague'),
           ),
@@ -51,20 +62,29 @@ class _RecognitionScreenState extends State<RecognitionScreen> {
             value: badge,
             items: [
               for (final b in badges)
-                DropdownMenuItem(value: str(b['name']), child: Text(str(b['name']))),
+                DropdownMenuItem(
+                    value: str(b['name']), child: Text(str(b['name']))),
             ],
             onChanged: (v) => badge = v as String,
             decoration: const InputDecoration(labelText: 'Badge'),
           ),
-          TextField(controller: message, decoration: const InputDecoration(labelText: 'Message')),
+          TextField(
+              controller: message,
+              decoration: const InputDecoration(labelText: 'Message')),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await ApiClient.post('/recognitions', {'receiverId': receiverId, 'badge': badge, 'message': message.text, 'points': 50});
+                await ApiClient.post('/recognitions', {
+                  'receiverId': receiverId,
+                  'badge': badge,
+                  'message': message.text,
+                  'points': 50
+                });
                 if (mounted) showOk(context, 'Recognition sent');
                 _load();
               } catch (e) {
@@ -82,21 +102,27 @@ class _RecognitionScreenState extends State<RecognitionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Recognition'), actions: [
-        if (directory.isNotEmpty) IconButton(icon: const Icon(Icons.add), onPressed: _give),
+        if (directory.isNotEmpty)
+          IconButton(icon: const Icon(Icons.add), onPressed: _give),
       ]),
       body: RefreshIndicator(
         onRefresh: _load,
         child: feed.isEmpty
-            ? ListView(children: const [EmptyState('No recognitions yet.', icon: Icons.emoji_events_outlined)])
+            ? ListView(children: const [
+                EmptyState('No recognitions yet.',
+                    icon: Icons.emoji_events_outlined)
+              ])
             : ListView.builder(
                 itemCount: feed.length,
                 itemBuilder: (_, i) {
                   final x = feed[i];
                   return Card(
                     child: ListTile(
-                      title: Text('${x['badge']} — ${employeeLabel(x['receiver'])}'),
+                      title: Text(
+                          '${x['badge']} — ${employeeLabel(x['receiver'])}'),
                       subtitle: Text(str(x['message'])),
-                      trailing: Text('+${x['points']}', style: const TextStyle(fontWeight: FontWeight.w800)),
+                      trailing: Text('+${x['points']}',
+                          style: const TextStyle(fontWeight: FontWeight.w800)),
                     ),
                   );
                 },
@@ -124,7 +150,9 @@ class _SurveysScreenState extends State<SurveysScreen> {
   }
 
   Future<void> _load() async {
-    try { surveys = asList(await ApiClient.get('/surveys/open/mine')); } catch (_) {}
+    try {
+      surveys = asList(await ApiClient.get('/surveys/open/mine'));
+    } catch (_) {}
     if (mounted) setState(() {});
   }
 
@@ -135,7 +163,9 @@ class _SurveysScreenState extends State<SurveysScreen> {
       body: RefreshIndicator(
         onRefresh: _load,
         child: surveys.isEmpty
-            ? ListView(children: const [EmptyState('No open surveys.', icon: Icons.poll_outlined)])
+            ? ListView(children: const [
+                EmptyState('No open surveys.', icon: Icons.poll_outlined)
+              ])
             : ListView.builder(
                 itemCount: surveys.length,
                 itemBuilder: (_, i) {
@@ -146,7 +176,9 @@ class _SurveysScreenState extends State<SurveysScreen> {
                       subtitle: Text(str(s['type'])),
                       trailing: s['alreadyAnswered'] == true
                           ? const StatusBadge('DONE')
-                          : FilledButton(onPressed: () => _answer(s), child: const Text('Answer')),
+                          : FilledButton(
+                              onPressed: () => _answer(s),
+                              child: const Text('Answer')),
                     ),
                   );
                 },
@@ -170,16 +202,20 @@ class _SurveysScreenState extends State<SurveysScreen> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: q['kind'] == 'SCALE'
-                        ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(str(q['q'])),
-                            Slider(
-                              value: ((values[q['q']] ?? 5) as num).toDouble(),
-                              min: 0,
-                              max: 10,
-                              divisions: 10,
-                              onChanged: (v) => setD(() => values[q['q']] = v.round()),
-                            ),
-                          ])
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                                Text(str(q['q'])),
+                                Slider(
+                                  value:
+                                      ((values[q['q']] ?? 5) as num).toDouble(),
+                                  min: 0,
+                                  max: 10,
+                                  divisions: 10,
+                                  onChanged: (v) =>
+                                      setD(() => values[q['q']] = v.round()),
+                                ),
+                              ])
                         : TextField(
                             decoration: InputDecoration(labelText: str(q['q'])),
                             onChanged: (v) => values[q['q']] = v,
@@ -189,7 +225,9 @@ class _SurveysScreenState extends State<SurveysScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
                 Navigator.pop(ctx);
@@ -197,7 +235,11 @@ class _SurveysScreenState extends State<SurveysScreen> {
                   await ApiClient.post('/surveys/${s['id']}/respond', {
                     'answers': [
                       for (final q in (s['questions'] as List? ?? []))
-                        {'q': q['q'], 'value': values[q['q']] ?? (q['kind'] == 'SCALE' ? 5 : '')},
+                        {
+                          'q': q['q'],
+                          'value':
+                              values[q['q']] ?? (q['kind'] == 'SCALE' ? 5 : '')
+                        },
                     ],
                   });
                   if (mounted) showOk(context, 'Submitted');
@@ -223,14 +265,19 @@ class ExpensesScreen extends StatefulWidget {
   State<ExpensesScreen> createState() => _ExpensesScreenState();
 }
 
-class _ExpensesScreenState extends State<ExpensesScreen> with SingleTickerProviderStateMixin {
+class _ExpensesScreenState extends State<ExpensesScreen>
+    with SingleTickerProviderStateMixin {
   List items = [], allItems = [];
   late TabController _tc;
 
   Future<void> _load() async {
-    try { items = asList(await ApiClient.get('/expenses/mine')); } catch (_) {}
+    try {
+      items = asList(await ApiClient.get('/expenses/mine'));
+    } catch (_) {}
     if (isHrOrAdmin || isManager) {
-      try { allItems = asList(await ApiClient.get('/expenses')); } catch (_) {}
+      try {
+        allItems = asList(await ApiClient.get('/expenses'));
+      } catch (_) {}
     }
     if (mounted) setState(() {});
   }
@@ -238,7 +285,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tc = TabController(length: (isHrOrAdmin || isManager) ? 2 : 1, vsync: this);
+    _tc =
+        TabController(length: (isHrOrAdmin || isManager) ? 2 : 1, vsync: this);
     _load();
   }
 
@@ -268,13 +316,23 @@ class _ExpensesScreenState extends State<ExpensesScreen> with SingleTickerProvid
       builder: (ctx) => AlertDialog(
         title: const Text('New expense claim'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: title, decoration: const InputDecoration(labelText: 'Claim title')),
-          TextField(controller: amount, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount')),
-          TextField(controller: category, decoration: const InputDecoration(labelText: 'Category')),
-          TextField(controller: desc, decoration: const InputDecoration(labelText: 'Description')),
+          TextField(
+              controller: title,
+              decoration: const InputDecoration(labelText: 'Claim title')),
+          TextField(
+              controller: amount,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Amount')),
+          TextField(
+              controller: category,
+              decoration: const InputDecoration(labelText: 'Category')),
+          TextField(
+              controller: desc,
+              decoration: const InputDecoration(labelText: 'Description')),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
@@ -284,7 +342,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> with SingleTickerProvid
                   'lines': [
                     {
                       'date': DateTime.now().toUtc().toIso8601String(),
-                      'category': category.text.isEmpty ? 'GENERAL' : category.text,
+                      'category':
+                          category.text.isEmpty ? 'GENERAL' : category.text,
                       'amount': num.tryParse(amount.text) ?? 0,
                       if (desc.text.isNotEmpty) 'description': desc.text,
                     },
@@ -307,17 +366,24 @@ class _ExpensesScreenState extends State<ExpensesScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     Widget list(List data, {bool approve = false}) => data.isEmpty
-        ? ListView(children: const [EmptyState('No expense claims.', icon: Icons.receipt_long)])
+        ? ListView(children: const [
+            EmptyState('No expense claims.', icon: Icons.receipt_long)
+          ])
         : ListView.builder(
             itemCount: data.length,
             itemBuilder: (_, i) {
               final e = data[i];
               return Card(
                 child: ListTile(
-                  title: Text('${str(e['title'], 'Expense')} — ₹ ${e['totalAmount'] ?? e['amount'] ?? 0}'),
-                  subtitle: Text('${(e['lines'] as List?)?.length ?? 0} line(s)'),
+                  title: Text(
+                      '${str(e['title'], 'Expense')} — ₹ ${e['totalAmount'] ?? e['amount'] ?? 0}'),
+                  subtitle:
+                      Text('${(e['lines'] as List?)?.length ?? 0} line(s)'),
                   trailing: approve && e['status'] == 'SUBMITTED'
-                      ? IconButton(icon: const Icon(Icons.check_circle, color: Colors.green), onPressed: () => _approve(e['id'].toString()))
+                      ? IconButton(
+                          icon: const Icon(Icons.check_circle,
+                              color: Colors.green),
+                          onPressed: () => _approve(e['id'].toString()))
                       : StatusBadge(str(e['status'])),
                 ),
               );
@@ -327,13 +393,20 @@ class _ExpensesScreenState extends State<ExpensesScreen> with SingleTickerProvid
     return Scaffold(
       appBar: AppBar(
         title: const Text('Expenses'),
-        bottom: (isHrOrAdmin || isManager) ? TabBar(controller: _tc, tabs: const [Tab(text: 'Mine'), Tab(text: 'Approve')]) : null,
+        bottom: (isHrOrAdmin || isManager)
+            ? TabBar(
+                controller: _tc,
+                tabs: const [Tab(text: 'Mine'), Tab(text: 'Approve')])
+            : null,
       ),
-      floatingActionButton: FloatingActionButton(onPressed: _create, child: const Icon(Icons.add)),
+      floatingActionButton: FloatingActionButton(
+          onPressed: _create, child: const Icon(Icons.add)),
       body: RefreshIndicator(
         onRefresh: _load,
         child: (isHrOrAdmin || isManager)
-            ? TabBarView(controller: _tc, children: [list(items), list(allItems, approve: true)])
+            ? TabBarView(
+                controller: _tc,
+                children: [list(items), list(allItems, approve: true)])
             : list(items),
       ),
     );
@@ -348,16 +421,22 @@ class GoalsScreen extends StatefulWidget {
   State<GoalsScreen> createState() => _GoalsScreenState();
 }
 
-class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStateMixin {
+class _GoalsScreenState extends State<GoalsScreen>
+    with SingleTickerProviderStateMixin {
   List kpis = [], mine = [], teamGoals = [], employees = [];
   late TabController _tc;
 
   Future<void> _load() async {
-    try { kpis = asList(await ApiClient.get('/goals/kpis')); } catch (_) {}
-    try { mine = asList(await ApiClient.get('/goals/mine')); } catch (_) {}
+    try {
+      kpis = asList(await ApiClient.get('/goals/kpis'));
+    } catch (_) {}
+    try {
+      mine = asList(await ApiClient.get('/goals/mine'));
+    } catch (_) {}
     if (canAssignGoals) {
       try {
-        employees = asList(await ApiClient.get(isHrOrAdmin ? '/employees/directory' : '/employees/team'));
+        employees = asList(await ApiClient.get(
+            isHrOrAdmin ? '/employees/directory' : '/employees/team'));
         teamGoals = asList(await ApiClient.get('/goals'));
       } catch (_) {}
     }
@@ -396,16 +475,22 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
       builder: (ctx) => AlertDialog(
         title: const Text('Add KPI'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: code, decoration: const InputDecoration(labelText: 'Code')),
-          TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+          TextField(
+              controller: code,
+              decoration: const InputDecoration(labelText: 'Code')),
+          TextField(
+              controller: name,
+              decoration: const InputDecoration(labelText: 'Name')),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await ApiClient.post('/goals/kpis', {'code': code.text, 'name': name.text});
+                await ApiClient.post(
+                    '/goals/kpis', {'code': code.text, 'name': name.text});
                 if (mounted) showOk(context, 'KPI added');
                 _load();
               } catch (e) {
@@ -433,22 +518,36 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
           content: Column(mainAxisSize: MainAxisSize.min, children: [
             DropdownButtonFormField(
               value: empId,
-              items: [for (final e in employees) DropdownMenuItem(value: e['id'] as String, child: Text(employeeLabel(e)))],
+              items: [
+                for (final e in employees)
+                  DropdownMenuItem(
+                      value: e['id'] as String, child: Text(employeeLabel(e)))
+              ],
               onChanged: (v) => empId = v,
               decoration: const InputDecoration(labelText: 'Employee'),
             ),
-            TextField(controller: title, decoration: const InputDecoration(labelText: 'Goal title')),
-            TextField(controller: target, decoration: const InputDecoration(labelText: 'Target')),
+            TextField(
+                controller: title,
+                decoration: const InputDecoration(labelText: 'Goal title')),
+            TextField(
+                controller: target,
+                decoration: const InputDecoration(labelText: 'Target')),
             OutlinedButton(
               onPressed: () async {
-                final d = await showDatePicker(context: ctx, initialDate: due, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 730)));
+                final d = await showDatePicker(
+                    context: ctx,
+                    initialDate: due,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 730)));
                 if (d != null) setD(() => due = d);
               },
               child: Text('Due: ${due.toIso8601String().substring(0, 10)}'),
             ),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
                 Navigator.pop(ctx);
@@ -476,9 +575,11 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
   Widget _goalTile(dynamic g, {bool showBump = true}) => Card(
         child: ListTile(
           title: Text(str(g['title'] ?? g['kpi']?['name'])),
-          subtitle: Text('${g['progress'] ?? 0}% · ${employeeLabel(g['employee'])}'),
+          subtitle:
+              Text('${g['progress'] ?? 0}% · ${employeeLabel(g['employee'])}'),
           trailing: showBump
-              ? FilledButton(onPressed: () => _bump(g), child: const Text('+10%'))
+              ? FilledButton(
+                  onPressed: () => _bump(g), child: const Text('+10%'))
               : StatusBadge(str(g['status'])),
         ),
       );
@@ -489,11 +590,18 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
       appBar: AppBar(
         title: const Text('Goals'),
         bottom: canAssignGoals
-            ? TabBar(controller: _tc, tabs: const [Tab(text: 'My goals'), Tab(text: 'Team')])
+            ? TabBar(
+                controller: _tc,
+                tabs: const [Tab(text: 'My goals'), Tab(text: 'Team')])
             : null,
         actions: [
-          if (isHrOrAdmin) IconButton(icon: const Icon(Icons.add), onPressed: _addKpi, tooltip: 'Add KPI'),
-          if (canAssignGoals) IconButton(icon: const Icon(Icons.person_add), onPressed: _assign),
+          if (isHrOrAdmin)
+            IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: _addKpi,
+                tooltip: 'Add KPI'),
+          if (canAssignGoals)
+            IconButton(icon: const Icon(Icons.person_add), onPressed: _assign),
         ],
       ),
       body: RefreshIndicator(
@@ -503,15 +611,24 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
                 controller: _tc,
                 children: [
                   mine.isEmpty
-                      ? ListView(children: const [EmptyState('No goals assigned.', icon: Icons.track_changes)])
-                      : ListView(children: [for (final g in mine) _goalTile(g)]),
+                      ? ListView(children: const [
+                          EmptyState('No goals assigned.',
+                              icon: Icons.track_changes)
+                        ])
+                      : ListView(
+                          children: [for (final g in mine) _goalTile(g)]),
                   teamGoals.isEmpty
                       ? ListView(children: const [EmptyState('No team goals.')])
-                      : ListView(children: [for (final g in teamGoals) _goalTile(g, showBump: false)]),
+                      : ListView(children: [
+                          for (final g in teamGoals)
+                            _goalTile(g, showBump: false)
+                        ]),
                 ],
               )
             : mine.isEmpty
-                ? ListView(children: const [EmptyState('No goals assigned.', icon: Icons.track_changes)])
+                ? ListView(children: const [
+                    EmptyState('No goals assigned.', icon: Icons.track_changes)
+                  ])
                 : ListView(children: [for (final g in mine) _goalTile(g)]),
       ),
     );
@@ -526,7 +643,8 @@ class AppraisalsScreen extends StatefulWidget {
   State<AppraisalsScreen> createState() => _AppraisalsScreenState();
 }
 
-class _AppraisalsScreenState extends State<AppraisalsScreen> with SingleTickerProviderStateMixin {
+class _AppraisalsScreenState extends State<AppraisalsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tc;
   List mine = [], team = [], cycles = [];
   bool busy = false;
@@ -539,10 +657,16 @@ class _AppraisalsScreenState extends State<AppraisalsScreen> with SingleTickerPr
   }
 
   Future<void> _load() async {
-    try { mine = asList(await ApiClient.get('/appraisals/mine')); } catch (_) {}
-    try { team = asList(await ApiClient.get('/appraisals/team')); } catch (_) {}
+    try {
+      mine = asList(await ApiClient.get('/appraisals/mine'));
+    } catch (_) {}
+    try {
+      team = asList(await ApiClient.get('/appraisals/team'));
+    } catch (_) {}
     if (isHrOrAdmin) {
-      try { cycles = asList(await ApiClient.get('/appraisals/cycles')); } catch (_) {}
+      try {
+        cycles = asList(await ApiClient.get('/appraisals/cycles'));
+      } catch (_) {}
     }
     if (mounted) setState(() {});
   }
@@ -550,7 +674,9 @@ class _AppraisalsScreenState extends State<AppraisalsScreen> with SingleTickerPr
   List<String> _sections(dynamic cycle) {
     final t = cycle?['template'];
     if (t is List) return t.map((e) => e.toString()).toList();
-    if (t is Map && t['sections'] is List) return (t['sections'] as List).map((e) => e.toString()).toList();
+    if (t is Map && t['sections'] is List) {
+      return (t['sections'] as List).map((e) => e.toString()).toList();
+    }
     return ['Delivery', 'Collaboration', 'Growth'];
   }
 
@@ -565,7 +691,8 @@ class _AppraisalsScreenState extends State<AppraisalsScreen> with SingleTickerPr
     }
     setState(() => busy = true);
     try {
-      await ApiClient.post('/appraisals/${a['id']}/self-review', {'selfReview': self});
+      await ApiClient.post(
+          '/appraisals/${a['id']}/self-review', {'selfReview': self});
       if (mounted) showOk(context, 'Self-review submitted');
       _load();
     } catch (e) {
@@ -606,12 +733,16 @@ class _AppraisalsScreenState extends State<AppraisalsScreen> with SingleTickerPr
           title: const Text('Create review cycle'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+              TextField(
+                  controller: name,
+                  decoration: const InputDecoration(labelText: 'Name')),
               DropdownButtonFormField(
                 value: frequency,
                 items: const [
-                  DropdownMenuItem(value: 'QUARTERLY', child: Text('Quarterly')),
-                  DropdownMenuItem(value: 'HALF_YEARLY', child: Text('Half yearly')),
+                  DropdownMenuItem(
+                      value: 'QUARTERLY', child: Text('Quarterly')),
+                  DropdownMenuItem(
+                      value: 'HALF_YEARLY', child: Text('Half yearly')),
                   DropdownMenuItem(value: 'YEARLY', child: Text('Yearly')),
                 ],
                 onChanged: (v) => setD(() => frequency = v as String),
@@ -626,7 +757,9 @@ class _AppraisalsScreenState extends State<AppraisalsScreen> with SingleTickerPr
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
                 Navigator.pop(ctx);
@@ -678,14 +811,18 @@ class _AppraisalsScreenState extends State<AppraisalsScreen> with SingleTickerPr
                     onChanged: (v) => (a['_self'] as Map)[s] = v,
                   ),
                 const SizedBox(height: 8),
-                FilledButton(onPressed: busy ? null : () => _submitSelf(a), child: const Text('Submit self-review')),
+                FilledButton(
+                    onPressed: busy ? null : () => _submitSelf(a),
+                    child: const Text('Submit self-review')),
               ],
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (a['selfReview'] != null) const Text('Self-review submitted'),
-                if (a['finalRating'] != null) Text('Rating: ${a['finalRating']} / 5'),
+                if (a['selfReview'] != null)
+                  const Text('Self-review submitted'),
+                if (a['finalRating'] != null)
+                  Text('Rating: ${a['finalRating']} / 5'),
               ],
             ),
     );
@@ -710,12 +847,15 @@ class _AppraisalsScreenState extends State<AppraisalsScreen> with SingleTickerPr
                 DropdownButtonFormField(
                   value: a['_rating'].toString(),
                   items: [
-                    for (var i = 1; i <= 5; i++) DropdownMenuItem(value: '$i', child: Text('$i')),
+                    for (var i = 1; i <= 5; i++)
+                      DropdownMenuItem(value: '$i', child: Text('$i')),
                   ],
                   onChanged: (v) => a['_rating'] = v,
                   decoration: const InputDecoration(labelText: 'Rating'),
                 ),
-                FilledButton(onPressed: busy ? null : () => _submitManager(a), child: const Text('Submit manager review')),
+                FilledButton(
+                    onPressed: busy ? null : () => _submitManager(a),
+                    child: const Text('Submit manager review')),
               ],
             )
           : Text('Rating: ${str(a['finalRating'], 'pending')}'),
@@ -739,7 +879,10 @@ class _AppraisalsScreenState extends State<AppraisalsScreen> with SingleTickerPr
       appBar: AppBar(
         title: const Text('Appraisals'),
         bottom: TabBar(controller: _tc, tabs: tabs),
-        actions: [if (isHrOrAdmin) IconButton(icon: const Icon(Icons.add), onPressed: _createCycle)],
+        actions: [
+          if (isHrOrAdmin)
+            IconButton(icon: const Icon(Icons.add), onPressed: _createCycle)
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -747,7 +890,9 @@ class _AppraisalsScreenState extends State<AppraisalsScreen> with SingleTickerPr
           controller: _tc,
           children: [
             mine.isEmpty
-                ? ListView(children: const [EmptyState('No appraisals.', icon: Icons.star_outline)])
+                ? ListView(children: const [
+                    EmptyState('No appraisals.', icon: Icons.star_outline)
+                  ])
                 : ListView(children: [for (final a in mine) _mineCard(a)]),
             team.isEmpty
                 ? ListView(children: const [EmptyState('No team appraisals.')])
@@ -761,8 +906,11 @@ class _AppraisalsScreenState extends State<AppraisalsScreen> with SingleTickerPr
                           Card(
                             child: ListTile(
                               title: Text(str(c['name'])),
-                              subtitle: Text('${str(c['frequency'])} · ${c['_count']?['appraisals'] ?? 0} appraisals'),
-                              trailing: TextButton(onPressed: () => _launch(c['id'].toString()), child: const Text('Launch')),
+                              subtitle: Text(
+                                  '${str(c['frequency'])} · ${c['_count']?['appraisals'] ?? 0} appraisals'),
+                              trailing: TextButton(
+                                  onPressed: () => _launch(c['id'].toString()),
+                                  child: const Text('Launch')),
                             ),
                           ),
                       ],
@@ -782,23 +930,47 @@ class PayrollScreen extends StatefulWidget {
   State<PayrollScreen> createState() => _PayrollScreenState();
 }
 
-class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProviderStateMixin {
+class _PayrollScreenState extends State<PayrollScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tc;
   List calendars = [], runs = [], mySlips = [], runSlips = [];
+  List employees = [], adjustments = [], declarations = [];
 
   @override
   void initState() {
     super.initState();
-    _tc = TabController(length: isHrOrAdmin ? 2 : 1, vsync: this);
+    _tc = TabController(length: isHrOrAdmin ? 4 : 3, vsync: this);
     _load();
   }
 
   Future<void> _load() async {
     if (isHrOrAdmin) {
-      try { calendars = asList(await ApiClient.get('/payroll/calendars')); } catch (_) {}
-      try { runs = asList(await ApiClient.get('/payroll/runs')); } catch (_) {}
+      try {
+        calendars = asList(await ApiClient.get('/payroll/calendars'));
+      } catch (_) {}
+      try {
+        runs = asList(await ApiClient.get('/payroll/runs'));
+      } catch (_) {}
+      try {
+        employees = asList(await ApiClient.get('/employees'));
+      } catch (_) {}
+      try {
+        adjustments = asList(await ApiClient.get('/payroll/adjustments'));
+      } catch (_) {}
+      try {
+        declarations = asList(await ApiClient.get('/payroll/tax-declarations'));
+      } catch (_) {}
     } else {
-      try { mySlips = asList(await ApiClient.get('/payroll/payslips/mine')); } catch (_) {}
+      try {
+        mySlips = asList(await ApiClient.get('/payroll/payslips/mine'));
+      } catch (_) {}
+      try {
+        adjustments = asList(await ApiClient.get('/payroll/adjustments/mine'));
+      } catch (_) {}
+      try {
+        declarations =
+            asList(await ApiClient.get('/payroll/tax-declarations/mine'));
+      } catch (_) {}
     }
     if (mounted) setState(() {});
   }
@@ -809,9 +981,12 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Create payroll calendar'),
-        content: TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+        content: TextField(
+            controller: name,
+            decoration: const InputDecoration(labelText: 'Name')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
@@ -831,7 +1006,8 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
   }
 
   Future<void> _createRun() async {
-    String? calId = calendars.isNotEmpty ? calendars.first['id'] as String? : null;
+    String? calId =
+        calendars.isNotEmpty ? calendars.first['id'] as String? : null;
     DateTime start = DateTime.now().subtract(const Duration(days: 30));
     DateTime end = DateTime.now();
     await showDialog(
@@ -843,20 +1019,36 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
             if (calendars.isNotEmpty)
               DropdownButtonFormField(
                 value: calId,
-                items: [for (final c in calendars) DropdownMenuItem(value: c['id'] as String, child: Text(str(c['name'])))],
+                items: [
+                  for (final c in calendars)
+                    DropdownMenuItem(
+                        value: c['id'] as String, child: Text(str(c['name'])))
+                ],
                 onChanged: (v) => calId = v,
                 decoration: const InputDecoration(labelText: 'Calendar'),
               ),
             OutlinedButton(
               onPressed: () async {
-                final r = await showDateRangePicker(context: ctx, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)), initialDateRange: DateTimeRange(start: start, end: end));
-                if (r != null) setD(() { start = r.start; end = r.end; });
+                final r = await showDateRangePicker(
+                    context: ctx,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                    initialDateRange: DateTimeRange(start: start, end: end));
+                if (r != null) {
+                  setD(() {
+                    start = r.start;
+                    end = r.end;
+                  });
+                }
               },
-              child: Text('${start.toIso8601String().substring(0, 10)} – ${end.toIso8601String().substring(0, 10)}'),
+              child: Text(
+                  '${start.toIso8601String().substring(0, 10)} – ${end.toIso8601String().substring(0, 10)}'),
             ),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
                 Navigator.pop(ctx);
@@ -890,6 +1082,173 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
     }
   }
 
+  Future<void> _createAdjustment() async {
+    if (employees.isEmpty) return;
+    String? employeeId = employees.first['id']?.toString();
+    String type = 'BONUS';
+    final amount = TextEditingController();
+    final period = TextEditingController(
+        text: DateTime.now().toIso8601String().substring(0, 7));
+    final note = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: const Text('Add payroll adjustment'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              DropdownButtonFormField<String>(
+                value: employeeId,
+                items: [
+                  for (final e in employees)
+                    DropdownMenuItem(
+                        value: e['id']?.toString(),
+                        child: Text(employeeLabel(e)))
+                ],
+                onChanged: (value) => setD(() => employeeId = value),
+                decoration: const InputDecoration(labelText: 'Employee'),
+              ),
+              DropdownButtonFormField<String>(
+                value: type,
+                items: [
+                  'BONUS',
+                  'INCENTIVE',
+                  'OVERTIME',
+                  'ARREAR',
+                  'RECOVERY',
+                  'LOAN',
+                  'ADVANCE'
+                ]
+                    .map((value) =>
+                        DropdownMenuItem(value: value, child: Text(value)))
+                    .toList(),
+                onChanged: (value) => setD(() => type = value ?? 'BONUS'),
+                decoration: const InputDecoration(labelText: 'Type'),
+              ),
+              TextField(
+                  controller: amount,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Amount')),
+              TextField(
+                  controller: period,
+                  decoration: const InputDecoration(
+                      labelText: 'Payroll month (YYYY-MM)')),
+              TextField(
+                  controller: note,
+                  decoration: const InputDecoration(labelText: 'Note')),
+            ]),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try {
+                  await ApiClient.post('/payroll/adjustments', {
+                    'employeeId': employeeId,
+                    'type': type,
+                    'amount': double.tryParse(amount.text) ?? 0,
+                    'period': period.text,
+                    'note': note.text,
+                  });
+                  if (mounted) showOk(context, 'Payroll adjustment added');
+                  _load();
+                } catch (e) {
+                  if (mounted) showError(context, e);
+                }
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitTaxDeclaration() async {
+    final year = DateTime.now().year;
+    final fiscalYear = TextEditingController(
+        text: '$year-${(year + 1).toString().substring(2)}');
+    final section = TextEditingController(text: '80C');
+    final description = TextEditingController();
+    final amount = TextEditingController();
+    String regime = 'NEW';
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          title: const Text('Submit tax declaration'),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              TextField(
+                  controller: fiscalYear,
+                  decoration: const InputDecoration(labelText: 'Fiscal year')),
+              DropdownButtonFormField<String>(
+                value: regime,
+                items: const [
+                  DropdownMenuItem(value: 'NEW', child: Text('NEW')),
+                  DropdownMenuItem(value: 'OLD', child: Text('OLD'))
+                ],
+                onChanged: (value) => setD(() => regime = value ?? 'NEW'),
+                decoration: const InputDecoration(labelText: 'Tax regime'),
+              ),
+              TextField(
+                  controller: section,
+                  decoration: const InputDecoration(labelText: 'Section')),
+              TextField(
+                  controller: description,
+                  decoration: const InputDecoration(labelText: 'Description')),
+              TextField(
+                  controller: amount,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Amount')),
+            ]),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try {
+                  await ApiClient.post('/payroll/tax-declarations', {
+                    'fiscalYear': fiscalYear.text,
+                    'regime': regime,
+                    'items': [
+                      {
+                        'section': section.text,
+                        'description': description.text,
+                        'amount': double.tryParse(amount.text) ?? 0
+                      }
+                    ],
+                  });
+                  if (mounted) showOk(context, 'Tax declaration submitted');
+                  _load();
+                } catch (e) {
+                  if (mounted) showError(context, e);
+                }
+              },
+              child: const Text('Submit'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _verifyTax(String id) async {
+    try {
+      await ApiClient.post('/payroll/tax-declarations/$id/verify');
+      if (mounted) showOk(context, 'Tax declaration verified');
+      _load();
+    } catch (e) {
+      if (mounted) showError(context, e);
+    }
+  }
+
   Future<void> _viewSlips(String runId) async {
     try {
       runSlips = asList(await ApiClient.get('/payroll/runs/$runId/payslips'));
@@ -902,7 +1261,10 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
           builder: (_, sc) => ListView(
             controller: sc,
             children: [
-              const Padding(padding: EdgeInsets.all(16), child: Text('Payslips', style: TextStyle(fontWeight: FontWeight.w700))),
+              const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('Payslips',
+                      style: TextStyle(fontWeight: FontWeight.w700))),
               for (final p in runSlips)
                 ListTile(
                   title: Text(employeeLabel(p['employee'])),
@@ -923,17 +1285,96 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
       context: context,
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(str(slip['period']?['label'] ?? slip['payrollRun']?['periodStart'] ?? 'Payslip'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-          Text('Gross: ₹ ${slip['grossPay'] ?? slip['gross'] ?? '—'}'),
-          Text('Net: ₹ ${slip['netPay'] ?? slip['net'] ?? '—'}'),
-          if (slip['components'] is List)
-            for (final c in slip['components'] as List)
-              Text('${c['name']}: ₹ ${c['amount'] ?? c['monthly']}'),
-        ]),
+        child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                  str(slip['period']?['label'] ??
+                      slip['payrollRun']?['periodStart'] ??
+                      'Payslip'),
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w700)),
+              Text('Gross: ₹ ${slip['grossPay'] ?? slip['gross'] ?? '—'}'),
+              Text('Net: ₹ ${slip['netPay'] ?? slip['net'] ?? '—'}'),
+              if (slip['components'] is List)
+                for (final c in slip['components'] as List)
+                  Text('${c['name']}: ₹ ${c['amount'] ?? c['monthly']}'),
+            ]),
       ),
     );
   }
+
+  String _payrollEmployee(dynamic item) {
+    if (item['employee'] != null) return employeeLabel(item['employee']);
+    final id = item['employeeId']?.toString();
+    for (final employee in employees) {
+      if (employee['id']?.toString() == id) return employeeLabel(employee);
+    }
+    return id ?? 'Employee';
+  }
+
+  Widget _adjustmentsView() => ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          if (isHrOrAdmin)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.icon(
+                onPressed: employees.isEmpty ? null : _createAdjustment,
+                icon: const Icon(Icons.add),
+                label: const Text('Add adjustment'),
+              ),
+            ),
+          if (adjustments.isEmpty)
+            const EmptyState('No payroll adjustments.')
+          else
+            for (final adjustment in adjustments)
+              Card(
+                child: ListTile(
+                  title: Text(
+                      '${str(adjustment['type'])} - ${adjustment['period']}'),
+                  subtitle: Text(isHrOrAdmin
+                      ? _payrollEmployee(adjustment)
+                      : str(adjustment['note'])),
+                  trailing: Text('${adjustment['amount']}'),
+                ),
+              ),
+        ],
+      );
+
+  Widget _taxView() => ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          if (!isHrOrAdmin)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.icon(
+                onPressed: _submitTaxDeclaration,
+                icon: const Icon(Icons.add),
+                label: const Text('Submit declaration'),
+              ),
+            ),
+          if (declarations.isEmpty)
+            const EmptyState('No tax declarations.')
+          else
+            for (final declaration in declarations)
+              Card(
+                child: ListTile(
+                  title: Text(
+                      '${declaration['fiscalYear']} - ${str(declaration['regime'])}'),
+                  subtitle: Text(
+                      '${isHrOrAdmin ? '${_payrollEmployee(declaration)} - ' : ''}Total ${declaration['total'] ?? 0}'),
+                  trailing: isHrOrAdmin && declaration['status'] != 'VERIFIED'
+                      ? TextButton(
+                          onPressed: () =>
+                              _verifyTax(declaration['id'].toString()),
+                          child: const Text('Verify'))
+                      : StatusBadge(str(declaration['status'])),
+                ),
+              ),
+        ],
+      );
 
   @override
   void dispose() {
@@ -946,9 +1387,22 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
     return Scaffold(
       appBar: AppBar(
         title: const Text('Payroll'),
-        bottom: isHrOrAdmin
-            ? TabBar(controller: _tc, tabs: const [Tab(text: 'Runs'), Tab(text: 'Calendars')])
-            : null,
+        bottom: TabBar(
+          controller: _tc,
+          isScrollable: true,
+          tabs: isHrOrAdmin
+              ? const [
+                  Tab(text: 'Runs'),
+                  Tab(text: 'Calendars'),
+                  Tab(text: 'Adjustments'),
+                  Tab(text: 'Tax')
+                ]
+              : const [
+                  Tab(text: 'Payslips'),
+                  Tab(text: 'Adjustments'),
+                  Tab(text: 'Tax')
+                ],
+        ),
         actions: [
           if (isHrOrAdmin)
             PopupMenuButton<String>(
@@ -971,23 +1425,31 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                 controller: _tc,
                 children: [
                   runs.isEmpty
-                      ? ListView(children: const [EmptyState('No payroll runs.')])
+                      ? ListView(
+                          children: const [EmptyState('No payroll runs.')])
                       : ListView.builder(
                           itemCount: runs.length,
                           itemBuilder: (_, i) {
                             final r = runs[i];
                             return Card(
                               child: ListTile(
-                                title: Text('${r['periodStart']?.toString().substring(0, 10)} – ${r['periodEnd']?.toString().substring(0, 10)}'),
+                                title: Text(
+                                    '${r['periodStart']?.toString().substring(0, 10)} – ${r['periodEnd']?.toString().substring(0, 10)}'),
                                 subtitle: Text(str(r['calendar']?['name'])),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     StatusBadge(str(r['status'])),
                                     if (r['status'] == 'DRAFT')
-                                      IconButton(icon: const Icon(Icons.play_arrow), onPressed: () => _process(r['id'].toString())),
+                                      IconButton(
+                                          icon: const Icon(Icons.play_arrow),
+                                          onPressed: () =>
+                                              _process(r['id'].toString())),
                                     if (r['status'] == 'COMPLETED')
-                                      IconButton(icon: const Icon(Icons.receipt), onPressed: () => _viewSlips(r['id'].toString())),
+                                      IconButton(
+                                          icon: const Icon(Icons.receipt),
+                                          onPressed: () =>
+                                              _viewSlips(r['id'].toString())),
                                   ],
                                 ),
                               ),
@@ -999,27 +1461,42 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                       : ListView.builder(
                           itemCount: calendars.length,
                           itemBuilder: (_, i) => Card(
-                            child: ListTile(title: Text(str(calendars[i]['name'])), subtitle: Text('Pay day ${calendars[i]['payDay'] ?? '—'}')),
+                            child: ListTile(
+                                title: Text(str(calendars[i]['name'])),
+                                subtitle: Text(
+                                    'Pay day ${calendars[i]['payDay'] ?? '—'}')),
                           ),
                         ),
+                  _adjustmentsView(),
+                  _taxView(),
                 ],
               )
-            : mySlips.isEmpty
-                ? ListView(children: const [EmptyState('No payslips.')])
-                : ListView.builder(
-                    itemCount: mySlips.length,
-                    itemBuilder: (_, i) {
-                      final p = mySlips[i];
-                      return Card(
-                        child: ListTile(
-                          title: Text(str(p['period']?['label'] ?? p['payrollRun']?['periodStart'] ?? 'Payslip')),
-                          subtitle: Text('Net: ₹ ${p['netPay'] ?? p['net'] ?? '—'}'),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => _payslipDetail(p),
+            : TabBarView(
+                controller: _tc,
+                children: [
+                  mySlips.isEmpty
+                      ? ListView(children: const [EmptyState('No payslips.')])
+                      : ListView.builder(
+                          itemCount: mySlips.length,
+                          itemBuilder: (_, i) {
+                            final p = mySlips[i];
+                            return Card(
+                              child: ListTile(
+                                title: Text(str(p['period']?['label'] ??
+                                    p['payrollRun']?['periodStart'] ??
+                                    'Payslip')),
+                                subtitle: Text(
+                                    'Net: ${p['netPay'] ?? p['net'] ?? '-'}'),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => _payslipDetail(p),
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
+                  _adjustmentsView(),
+                  _taxView(),
+                ],
+              ),
       ),
     );
   }
@@ -1033,7 +1510,8 @@ class BenefitsScreen extends StatefulWidget {
   State<BenefitsScreen> createState() => _BenefitsScreenState();
 }
 
-class _BenefitsScreenState extends State<BenefitsScreen> with SingleTickerProviderStateMixin {
+class _BenefitsScreenState extends State<BenefitsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tc;
   List plans = [], mine = [], enrollments = [], employees = [];
 
@@ -1045,11 +1523,19 @@ class _BenefitsScreenState extends State<BenefitsScreen> with SingleTickerProvid
   }
 
   Future<void> _load() async {
-    try { plans = asList(await ApiClient.get('/benefits/plans')); } catch (_) {}
-    try { mine = asList(await ApiClient.get('/benefits/enrollments/mine')); } catch (_) {}
+    try {
+      plans = asList(await ApiClient.get('/benefits/plans'));
+    } catch (_) {}
+    try {
+      mine = asList(await ApiClient.get('/benefits/enrollments/mine'));
+    } catch (_) {}
     if (isHrOrAdmin) {
-      try { employees = asList(await ApiClient.get('/employees')); } catch (_) {}
-      try { enrollments = asList(await ApiClient.get('/benefits/enrollments')); } catch (_) {}
+      try {
+        employees = asList(await ApiClient.get('/employees'));
+      } catch (_) {}
+      try {
+        enrollments = asList(await ApiClient.get('/benefits/enrollments'));
+      } catch (_) {}
     }
     if (mounted) setState(() {});
   }
@@ -1063,17 +1549,28 @@ class _BenefitsScreenState extends State<BenefitsScreen> with SingleTickerProvid
       builder: (ctx) => AlertDialog(
         title: const Text('Add benefit plan'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: code, decoration: const InputDecoration(labelText: 'Code')),
-          TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
-          TextField(controller: category, decoration: const InputDecoration(labelText: 'Category')),
+          TextField(
+              controller: code,
+              decoration: const InputDecoration(labelText: 'Code')),
+          TextField(
+              controller: name,
+              decoration: const InputDecoration(labelText: 'Name')),
+          TextField(
+              controller: category,
+              decoration: const InputDecoration(labelText: 'Category')),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await ApiClient.post('/benefits/plans', {'code': code.text, 'name': name.text, 'category': category.text});
+                await ApiClient.post('/benefits/plans', {
+                  'code': code.text,
+                  'name': name.text,
+                  'category': category.text
+                });
                 if (mounted) showOk(context, 'Plan created');
                 _load();
               } catch (e) {
@@ -1096,17 +1593,23 @@ class _BenefitsScreenState extends State<BenefitsScreen> with SingleTickerProvid
         title: Text('Enroll in ${plan['name']}'),
         content: DropdownButtonFormField(
           value: empId,
-          items: [for (final e in employees) DropdownMenuItem(value: e['id'] as String, child: Text(employeeLabel(e)))],
+          items: [
+            for (final e in employees)
+              DropdownMenuItem(
+                  value: e['id'] as String, child: Text(employeeLabel(e)))
+          ],
           onChanged: (v) => empId = v,
           decoration: const InputDecoration(labelText: 'Employee'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await ApiClient.post('/benefits/plans/${plan['id']}/enroll', {'employeeId': empId});
+                await ApiClient.post('/benefits/plans/${plan['id']}/enroll',
+                    {'employeeId': empId});
                 if (mounted) showOk(context, 'Enrolled');
                 _load();
               } catch (e) {
@@ -1132,9 +1635,16 @@ class _BenefitsScreenState extends State<BenefitsScreen> with SingleTickerProvid
       appBar: AppBar(
         title: const Text('Benefits'),
         bottom: isHrOrAdmin
-            ? TabBar(controller: _tc, tabs: const [Tab(text: 'My enrollments'), Tab(text: 'Plans'), Tab(text: 'All enrollments')])
+            ? TabBar(controller: _tc, tabs: const [
+                Tab(text: 'My enrollments'),
+                Tab(text: 'Plans'),
+                Tab(text: 'All enrollments')
+              ])
             : null,
-        actions: [if (isHrOrAdmin) IconButton(icon: const Icon(Icons.add), onPressed: _createPlan)],
+        actions: [
+          if (isHrOrAdmin)
+            IconButton(icon: const Icon(Icons.add), onPressed: _createPlan)
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -1150,7 +1660,9 @@ class _BenefitsScreenState extends State<BenefitsScreen> with SingleTickerProvid
                           child: ListTile(
                             title: Text(str(p['name'])),
                             subtitle: Text(str(p['category'])),
-                            trailing: TextButton(onPressed: () => _enroll(p), child: const Text('Enroll')),
+                            trailing: TextButton(
+                                onPressed: () => _enroll(p),
+                                child: const Text('Enroll')),
                           ),
                         ),
                     ],
@@ -1171,8 +1683,12 @@ class _BenefitsScreenState extends State<BenefitsScreen> with SingleTickerProvid
             final e = data[i];
             return Card(
               child: ListTile(
-                title: Text(showEmployee ? employeeLabel(e['employee']) : str(e['plan']?['name'])),
-                subtitle: Text(showEmployee ? str(e['plan']?['name']) : str(e['plan']?['category'])),
+                title: Text(showEmployee
+                    ? employeeLabel(e['employee'])
+                    : str(e['plan']?['name'])),
+                subtitle: Text(showEmployee
+                    ? str(e['plan']?['name'])
+                    : str(e['plan']?['category'])),
                 trailing: StatusBadge(str(e['status'])),
               ),
             );
@@ -1188,7 +1704,8 @@ class ExitScreen extends StatefulWidget {
   State<ExitScreen> createState() => _ExitScreenState();
 }
 
-class _ExitScreenState extends State<ExitScreen> with SingleTickerProviderStateMixin {
+class _ExitScreenState extends State<ExitScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tc;
 
   @override
@@ -1208,7 +1725,9 @@ class _ExitScreenState extends State<ExitScreen> with SingleTickerProviderStateM
     return Scaffold(
       appBar: AppBar(
         title: const Text('Exit management'),
-        bottom: TabBar(controller: _tc, tabs: const [Tab(text: 'My resignation'), Tab(text: 'All')]),
+        bottom: TabBar(
+            controller: _tc,
+            tabs: const [Tab(text: 'My resignation'), Tab(text: 'All')]),
       ),
       body: TabBarView(
         controller: _tc,
@@ -1243,7 +1762,8 @@ class _MineExitTabState extends State<_MineExitTab> {
 
   Future<void> _load() async {
     try {
-      resignation = await ApiClient.get('/exit/resignations/mine') as Map<String, dynamic>?;
+      resignation = await ApiClient.get('/exit/resignations/mine')
+          as Map<String, dynamic>?;
     } catch (_) {}
     if (mounted) setState(() => loading = false);
   }
@@ -1254,14 +1774,18 @@ class _MineExitTabState extends State<_MineExitTab> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Submit resignation'),
-        content: TextField(controller: reason, decoration: const InputDecoration(labelText: 'Reason')),
+        content: TextField(
+            controller: reason,
+            decoration: const InputDecoration(labelText: 'Reason')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await ApiClient.post('/exit/resignations', {'reason': reason.text});
+                await ApiClient.post(
+                    '/exit/resignations', {'reason': reason.text});
                 if (mounted) showOk(context, 'Resignation submitted');
                 _load();
               } catch (e) {
@@ -1282,7 +1806,8 @@ class _MineExitTabState extends State<_MineExitTab> {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const EmptyState('No active resignation.'),
-          FilledButton(onPressed: _submit, child: const Text('Submit resignation')),
+          FilledButton(
+              onPressed: _submit, child: const Text('Submit resignation')),
         ]),
       );
     }
@@ -1309,7 +1834,8 @@ class EmployeesScreen extends StatefulWidget {
   State<EmployeesScreen> createState() => _EmployeesScreenState();
 }
 
-class _EmployeesScreenState extends State<EmployeesScreen> with SingleTickerProviderStateMixin {
+class _EmployeesScreenState extends State<EmployeesScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tc;
   List directory = [], team = [];
 
@@ -1321,8 +1847,12 @@ class _EmployeesScreenState extends State<EmployeesScreen> with SingleTickerProv
   }
 
   Future<void> _load() async {
-    try { directory = asList(await ApiClient.get('/employees')); } catch (_) {}
-    try { team = asList(await ApiClient.get('/employees/team')); } catch (_) {}
+    try {
+      directory = asList(await ApiClient.get('/employees'));
+    } catch (_) {}
+    try {
+      team = asList(await ApiClient.get('/employees/team'));
+    } catch (_) {}
     if (mounted) setState(() {});
   }
 
@@ -1338,15 +1868,26 @@ class _EmployeesScreenState extends State<EmployeesScreen> with SingleTickerProv
         title: const Text('Create employee'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: first, decoration: const InputDecoration(labelText: 'First name')),
-            TextField(controller: last, decoration: const InputDecoration(labelText: 'Last name')),
-            TextField(controller: email, decoration: const InputDecoration(labelText: 'Email')),
-            TextField(controller: code, decoration: const InputDecoration(labelText: 'Employee code')),
-            TextField(controller: designation, decoration: const InputDecoration(labelText: 'Designation')),
+            TextField(
+                controller: first,
+                decoration: const InputDecoration(labelText: 'First name')),
+            TextField(
+                controller: last,
+                decoration: const InputDecoration(labelText: 'Last name')),
+            TextField(
+                controller: email,
+                decoration: const InputDecoration(labelText: 'Email')),
+            TextField(
+                controller: code,
+                decoration: const InputDecoration(labelText: 'Employee code')),
+            TextField(
+                controller: designation,
+                decoration: const InputDecoration(labelText: 'Designation')),
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
@@ -1371,6 +1912,16 @@ class _EmployeesScreenState extends State<EmployeesScreen> with SingleTickerProv
     );
   }
 
+  Future<void> _setStatus(dynamic employee, String status) async {
+    try {
+      await ApiClient.patch('/employees/${employee['id']}', {'status': status});
+      if (mounted) showOk(context, 'Employment status updated');
+      await _load();
+    } catch (e) {
+      if (mounted) showError(context, e);
+    }
+  }
+
   Widget _empList(List data) => RefreshIndicator(
         onRefresh: _load,
         child: data.isEmpty
@@ -1382,18 +1933,57 @@ class _EmployeesScreenState extends State<EmployeesScreen> with SingleTickerProv
                   return Card(
                     child: ListTile(
                       title: Text(employeeLabel(e)),
-                      subtitle: Text('${str(e['designation'])} · ${str(e['department']?['name'])}'),
+                      subtitle: Text(
+                          '${str(e['designation'])} · ${str(e['department']?['name'])}'),
                       trailing: StatusBadge(str(e['status'])),
                       onTap: () => showModalBottomSheet(
                         context: context,
-                        builder: (ctx) => Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(employeeLabel(e), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                            Text(str(e['user']?['email'])),
-                            Text('Manager: ${personName(e['manager']?['user'])}'),
-                            Text('Joined: ${str(e['joinDate'])}'),
-                          ]),
+                        builder: (ctx) => SafeArea(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(employeeLabel(e),
+                                    style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700)),
+                                Text(str(e['user']?['email'])),
+                                Text(
+                                    'Manager: ${personName(e['manager']?['user'])}'),
+                                Text('Joined: ${str(e['joinDate'])}'),
+                                const SizedBox(height: 12),
+                                if (canManageHr && e['status'] == 'ONBOARDING')
+                                  FilledButton(
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      _setStatus(e, 'ACTIVE');
+                                    },
+                                    child: const Text('Activate employee'),
+                                  ),
+                                if (canManageHr && e['status'] == 'ACTIVE')
+                                  OutlinedButton(
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      _setStatus(e, 'ON_NOTICE');
+                                    },
+                                    child: const Text('Mark on notice'),
+                                  ),
+                                if (canManageHr && e['status'] == 'ON_NOTICE')
+                                  FilledButton(
+                                    onPressed: () {
+                                      Navigator.pop(ctx);
+                                      _setStatus(e, 'ACTIVE');
+                                    },
+                                    child: const Text('Reactivate employee'),
+                                  ),
+                                if (canManageHr && e['status'] != 'EXITED')
+                                  const Text(
+                                      'Use Exit management for final release and EXITED status.'),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -1413,10 +2003,16 @@ class _EmployeesScreenState extends State<EmployeesScreen> with SingleTickerProv
     return Scaffold(
       appBar: AppBar(
         title: const Text('Employees'),
-        bottom: TabBar(controller: _tc, tabs: const [Tab(text: 'Directory'), Tab(text: 'My team')]),
-        actions: [if (canManageHr) IconButton(icon: const Icon(Icons.add), onPressed: _create)],
+        bottom: TabBar(
+            controller: _tc,
+            tabs: const [Tab(text: 'Directory'), Tab(text: 'My team')]),
+        actions: [
+          if (canManageHr)
+            IconButton(icon: const Icon(Icons.add), onPressed: _create)
+        ],
       ),
-      body: TabBarView(controller: _tc, children: [_empList(directory), _empList(team)]),
+      body: TabBarView(
+          controller: _tc, children: [_empList(directory), _empList(team)]),
     );
   }
 }
@@ -1442,7 +2038,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Future<void> _load() async {
-    try { catalogue = asList(await ApiClient.get('/reports')); } catch (_) {}
+    try {
+      catalogue = asList(await ApiClient.get('/reports'));
+    } catch (_) {}
     if (mounted) setState(() => loading = false);
   }
 
@@ -1501,8 +2099,20 @@ class CataloguesScreen extends StatelessWidget {
   Widget build(BuildContext context) => TabbedApiScreen(
         title: 'Catalogues',
         tabs: [
-          (label: 'Data entities', endpoint: '/v1/data-entities', titleOf: (i) => str(i['name'] ?? i['code']), subtitleOf: (i) => str(i['module']), statusOf: (_) => ''),
-          (label: 'API catalogue', endpoint: '/v1/api-catalogue', titleOf: (i) => '${str(i['method'] ?? '')} ${str(i['path'])}', subtitleOf: (i) => str(i['summary']), statusOf: (_) => ''),
+          (
+            label: 'Data entities',
+            endpoint: '/v1/data-entities',
+            titleOf: (i) => str(i['name'] ?? i['code']),
+            subtitleOf: (i) => str(i['module']),
+            statusOf: (_) => ''
+          ),
+          (
+            label: 'API catalogue',
+            endpoint: '/v1/api-catalogue',
+            titleOf: (i) => '${str(i['method'] ?? '')} ${str(i['path'])}',
+            subtitleOf: (i) => str(i['summary']),
+            statusOf: (_) => ''
+          ),
         ],
       );
 }
@@ -1515,9 +2125,27 @@ class RequirementsScreen extends StatelessWidget {
   Widget build(BuildContext context) => TabbedApiScreen(
         title: 'Requirements',
         tabs: [
-          (label: 'Modules', endpoint: '/requirements/modules', titleOf: (i) => str(i['name'] ?? i['code']), subtitleOf: (i) => str(i['description']), statusOf: (_) => ''),
-          (label: 'Features', endpoint: '/requirements/features', titleOf: (i) => str(i['title'] ?? i['code']), subtitleOf: (i) => str(i['module']), statusOf: (i) => str(i['status'], '')),
-          (label: 'Roles', endpoint: '/requirements/roles', titleOf: (i) => str(i['name'] ?? i['code']), subtitleOf: (i) => str(i['description']), statusOf: (_) => ''),
+          (
+            label: 'Modules',
+            endpoint: '/requirements/modules',
+            titleOf: (i) => str(i['name'] ?? i['code']),
+            subtitleOf: (i) => str(i['description']),
+            statusOf: (_) => ''
+          ),
+          (
+            label: 'Features',
+            endpoint: '/requirements/features',
+            titleOf: (i) => str(i['title'] ?? i['code']),
+            subtitleOf: (i) => str(i['module']),
+            statusOf: (i) => str(i['status'], '')
+          ),
+          (
+            label: 'Roles',
+            endpoint: '/requirements/roles',
+            titleOf: (i) => str(i['name'] ?? i['code']),
+            subtitleOf: (i) => str(i['description']),
+            statusOf: (_) => ''
+          ),
         ],
       );
 }
@@ -1575,16 +2203,20 @@ class _ExecutionScreenState extends State<ExecutionScreen> {
           : RefreshIndicator(
               onRefresh: _load,
               child: checklist.isEmpty
-                  ? ListView(children: const [EmptyState('No checklist items.')])
+                  ? ListView(
+                      children: const [EmptyState('No checklist items.')])
                   : ListView.builder(
                       itemCount: checklist.length,
                       itemBuilder: (_, i) {
                         final c = checklist[i];
                         return Card(
                           child: ListTile(
-                            title: Text(str(c['step'] ?? c['title'] ?? c['name'])),
-                            subtitle: Text('${str(c['sheetRef'] ?? c['description'])} · ${str(c['evidence'])}'),
-                            trailing: StatusBadge(str(c['status'] ?? (c['done'] == true ? 'DONE' : 'PENDING'))),
+                            title:
+                                Text(str(c['step'] ?? c['title'] ?? c['name'])),
+                            subtitle: Text(
+                                '${str(c['sheetRef'] ?? c['description'])} · ${str(c['evidence'])}'),
+                            trailing: StatusBadge(str(c['status'] ??
+                                (c['done'] == true ? 'DONE' : 'PENDING'))),
                           ),
                         );
                       },
@@ -1612,10 +2244,16 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
   }
 
   Future<void> _load() async {
-    try { consents = asList(await ApiClient.get('/privacy/consent/mine')); } catch (_) {}
-    try { dsrs = asList(await ApiClient.get('/privacy/dsr/mine')); } catch (_) {}
+    try {
+      consents = asList(await ApiClient.get('/privacy/consent/mine'));
+    } catch (_) {}
+    try {
+      dsrs = asList(await ApiClient.get('/privacy/dsr/mine'));
+    } catch (_) {}
     if (isHrOrAdmin) {
-      try { allDsrs = asList(await ApiClient.get('/privacy/dsr')); } catch (_) {}
+      try {
+        allDsrs = asList(await ApiClient.get('/privacy/dsr'));
+      } catch (_) {}
     }
     if (mounted) setState(() {});
   }
@@ -1629,16 +2267,24 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
         builder: (ctx, setD) => AlertDialog(
           title: const Text('Record consent'),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: purpose, decoration: const InputDecoration(labelText: 'Purpose')),
-            SwitchListTile(title: const Text('Granted'), value: granted, onChanged: (v) => setD(() => granted = v)),
+            TextField(
+                controller: purpose,
+                decoration: const InputDecoration(labelText: 'Purpose')),
+            SwitchListTile(
+                title: const Text('Granted'),
+                value: granted,
+                onChanged: (v) => setD(() => granted = v)),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
                 Navigator.pop(ctx);
                 try {
-                  await ApiClient.post('/privacy/consent', {'purpose': purpose.text, 'granted': granted});
+                  await ApiClient.post('/privacy/consent',
+                      {'purpose': purpose.text, 'granted': granted});
                   if (mounted) showOk(context, 'Consent recorded');
                   _load();
                 } catch (e) {
@@ -1667,21 +2313,31 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
               items: const [
                 DropdownMenuItem(value: 'ACCESS', child: Text('Access')),
                 DropdownMenuItem(value: 'ERASURE', child: Text('Erasure')),
-                DropdownMenuItem(value: 'PORTABILITY', child: Text('Portability')),
-                DropdownMenuItem(value: 'RECTIFICATION', child: Text('Rectification')),
+                DropdownMenuItem(
+                    value: 'PORTABILITY', child: Text('Portability')),
+                DropdownMenuItem(
+                    value: 'RECTIFICATION', child: Text('Rectification')),
               ],
               onChanged: (v) => setD(() => type = v as String),
               decoration: const InputDecoration(labelText: 'Type'),
             ),
-            TextField(controller: details, decoration: const InputDecoration(labelText: 'Details (optional)')),
+            TextField(
+                controller: details,
+                decoration:
+                    const InputDecoration(labelText: 'Details (optional)')),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
                 Navigator.pop(ctx);
                 try {
-                  await ApiClient.post('/privacy/dsr', {'type': type, if (details.text.isNotEmpty) 'details': details.text});
+                  await ApiClient.post('/privacy/dsr', {
+                    'type': type,
+                    if (details.text.isNotEmpty) 'details': details.text
+                  });
                   if (mounted) showOk(context, 'DSR submitted');
                   _load();
                 } catch (e) {
@@ -1712,8 +2368,14 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
       appBar: AppBar(
         title: const Text('Privacy & consent'),
         actions: [
-          IconButton(icon: const Icon(Icons.add_moderator), onPressed: _recordConsent, tooltip: 'Record consent'),
-          IconButton(icon: const Icon(Icons.privacy_tip_outlined), onPressed: _submitDsr, tooltip: 'Submit DSR'),
+          IconButton(
+              icon: const Icon(Icons.add_moderator),
+              onPressed: _recordConsent,
+              tooltip: 'Record consent'),
+          IconButton(
+              icon: const Icon(Icons.privacy_tip_outlined),
+              onPressed: _submitDsr,
+              tooltip: 'Submit DSR'),
         ],
       ),
       body: RefreshIndicator(
@@ -1727,7 +2389,11 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                   ? const EmptyState('No consents recorded.')
                   : Column(children: [
                       for (final c in consents)
-                        RowTile(title: str(c['purpose'] ?? c['type']), subtitle: str(c['grantedAt']), trailing: StatusBadge(c['granted'] == true ? 'APPROVED' : 'PENDING')),
+                        RowTile(
+                            title: str(c['purpose'] ?? c['type']),
+                            subtitle: str(c['grantedAt']),
+                            trailing: StatusBadge(
+                                c['granted'] == true ? 'APPROVED' : 'PENDING')),
                     ]),
             ),
             SectionCard(
@@ -1736,7 +2402,10 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                   ? const EmptyState('No DSR requests.')
                   : Column(children: [
                       for (final d in dsrs)
-                        RowTile(title: str(d['type']), subtitle: str(d['details']), trailing: StatusBadge(str(d['status']))),
+                        RowTile(
+                            title: str(d['type']),
+                            subtitle: str(d['details']),
+                            trailing: StatusBadge(str(d['status']))),
                     ]),
             ),
             if (isHrOrAdmin)
@@ -1750,7 +2419,10 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                             title: str(d['type']),
                             subtitle: str(d['userId']),
                             trailing: d['status'] != 'COMPLETED'
-                                ? TextButton(onPressed: () => _completeDsr(d['id'].toString()), child: const Text('Complete'))
+                                ? TextButton(
+                                    onPressed: () =>
+                                        _completeDsr(d['id'].toString()),
+                                    child: const Text('Complete'))
                                 : const StatusBadge('COMPLETED'),
                           ),
                       ]),
@@ -1783,12 +2455,19 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
   }
 
   Future<void> _load() async {
-    try { mine = asList(await ApiClient.get('/compliance/cases/mine')); } catch (_) {}
+    try {
+      mine = asList(await ApiClient.get('/compliance/cases/mine'));
+    } catch (_) {}
     if (isHrOrAdmin) {
-      try { cases = asList(await ApiClient.get('/compliance/cases')); } catch (_) {}
+      try {
+        cases = asList(await ApiClient.get('/compliance/cases'));
+      } catch (_) {}
     }
     if (isTenantAdmin) {
-      try { purge = asList(await ApiClient.get('/compliance/retention/purge-preview')); } catch (_) {}
+      try {
+        purge =
+            asList(await ApiClient.get('/compliance/retention/purge-preview'));
+      } catch (_) {}
     }
     if (mounted) setState(() {});
   }
@@ -1808,22 +2487,37 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
               DropdownButtonFormField(
                 value: type,
                 items: const [
-                  DropdownMenuItem(value: 'POSH', child: Text('POSH complaint')),
-                  DropdownMenuItem(value: 'WHISTLEBLOWER', child: Text('Whistleblower')),
+                  DropdownMenuItem(
+                      value: 'POSH', child: Text('POSH complaint')),
+                  DropdownMenuItem(
+                      value: 'WHISTLEBLOWER', child: Text('Whistleblower')),
                   DropdownMenuItem(value: 'INCIDENT', child: Text('Incident')),
-                  DropdownMenuItem(value: 'GRIEVANCE', child: Text('Grievance')),
-                  DropdownMenuItem(value: 'CONFLICT_OF_INTEREST', child: Text('Conflict of interest')),
+                  DropdownMenuItem(
+                      value: 'GRIEVANCE', child: Text('Grievance')),
+                  DropdownMenuItem(
+                      value: 'CONFLICT_OF_INTEREST',
+                      child: Text('Conflict of interest')),
                 ],
                 onChanged: (v) => setD(() => type = v as String),
                 decoration: const InputDecoration(labelText: 'Type'),
               ),
-              TextField(controller: title, decoration: const InputDecoration(labelText: 'Title')),
-              TextField(controller: details, maxLines: 3, decoration: const InputDecoration(labelText: 'Details')),
-              SwitchListTile(title: const Text('Report anonymously'), value: anonymous, onChanged: (v) => setD(() => anonymous = v)),
+              TextField(
+                  controller: title,
+                  decoration: const InputDecoration(labelText: 'Title')),
+              TextField(
+                  controller: details,
+                  maxLines: 3,
+                  decoration: const InputDecoration(labelText: 'Details')),
+              SwitchListTile(
+                  title: const Text('Report anonymously'),
+                  value: anonymous,
+                  onChanged: (v) => setD(() => anonymous = v)),
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
                 Navigator.pop(ctx);
@@ -1863,13 +2557,20 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Resolve case'),
-        content: TextField(controller: resolution, decoration: const InputDecoration(labelText: 'Resolution note')),
+        content: TextField(
+            controller: resolution,
+            decoration: const InputDecoration(labelText: 'Resolution note')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await _update(id, {'status': 'RESOLVED', 'resolution': resolution.text.isEmpty ? 'Resolved' : resolution.text});
+              await _update(id, {
+                'status': 'RESOLVED',
+                'resolution':
+                    resolution.text.isEmpty ? 'Resolved' : resolution.text
+              });
             },
             child: const Text('Resolve'),
           ),
@@ -1896,7 +2597,12 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Compliance'),
-        actions: [IconButton(icon: const Icon(Icons.add), onPressed: _report, tooltip: 'Raise concern')],
+        actions: [
+          IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: _report,
+              tooltip: 'Raise concern')
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -1909,7 +2615,10 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
                   ? const EmptyState('No cases.')
                   : Column(children: [
                       for (final c in mine)
-                        RowTile(title: '${str(c['type'])} — ${str(c['title'])}', subtitle: str(c['details']), trailing: StatusBadge(str(c['status']))),
+                        RowTile(
+                            title: '${str(c['type'])} — ${str(c['title'])}',
+                            subtitle: str(c['details']),
+                            trailing: StatusBadge(str(c['status']))),
                     ]),
             ),
             if (isHrOrAdmin)
@@ -1921,22 +2630,60 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
                         for (final c in cases)
                           Card(
                             child: ListTile(
-                              title: Text('${str(c['type'])} — ${str(c['title'])}'),
-                              subtitle: Text(c['anonymous'] == true ? 'Anonymous' : str(c['reporterId'])),
+                              title: Text(
+                                  '${str(c['type'])} — ${str(c['title'])}'),
+                              subtitle: Text(c['anonymous'] == true
+                                  ? 'Anonymous'
+                                  : str(c['reporterId'])),
                               trailing: StatusBadge(str(c['status'])),
                               onTap: () => showModalBottomSheet(
                                 context: context,
                                 builder: (ctx) => Padding(
                                   padding: const EdgeInsets.all(16),
-                                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                                    if (c['status'] == 'OPEN')
-                                      FilledButton(onPressed: () { Navigator.pop(ctx); _update(c['id'].toString(), {'status': 'UNDER_INVESTIGATION'}); }, child: const Text('Investigate')),
-                                    if (c['status'] != 'RESOLVED' && c['status'] != 'DISMISSED') ...[
-                                      FilledButton(onPressed: () { Navigator.pop(ctx); _resolve(c['id'].toString()); }, child: const Text('Resolve')),
-                                      OutlinedButton(onPressed: () { Navigator.pop(ctx); _update(c['id'].toString(), {'status': 'DISMISSED', 'resolution': 'Dismissed after review'}); }, child: const Text('Dismiss')),
-                                    ],
-                                    OutlinedButton(onPressed: () { Navigator.pop(ctx); _update(c['id'].toString(), {'legalHold': c['legalHold'] != true}); }, child: Text(c['legalHold'] == true ? 'Release legal hold' : 'Apply legal hold')),
-                                  ]),
+                                  child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (c['status'] == 'OPEN')
+                                          FilledButton(
+                                              onPressed: () {
+                                                Navigator.pop(ctx);
+                                                _update(c['id'].toString(), {
+                                                  'status':
+                                                      'UNDER_INVESTIGATION'
+                                                });
+                                              },
+                                              child: const Text('Investigate')),
+                                        if (c['status'] != 'RESOLVED' &&
+                                            c['status'] != 'DISMISSED') ...[
+                                          FilledButton(
+                                              onPressed: () {
+                                                Navigator.pop(ctx);
+                                                _resolve(c['id'].toString());
+                                              },
+                                              child: const Text('Resolve')),
+                                          OutlinedButton(
+                                              onPressed: () {
+                                                Navigator.pop(ctx);
+                                                _update(c['id'].toString(), {
+                                                  'status': 'DISMISSED',
+                                                  'resolution':
+                                                      'Dismissed after review'
+                                                });
+                                              },
+                                              child: const Text('Dismiss')),
+                                        ],
+                                        OutlinedButton(
+                                            onPressed: () {
+                                              Navigator.pop(ctx);
+                                              _update(c['id'].toString(), {
+                                                'legalHold':
+                                                    c['legalHold'] != true
+                                              });
+                                            },
+                                            child: Text(c['legalHold'] == true
+                                                ? 'Release legal hold'
+                                                : 'Apply legal hold')),
+                                      ]),
                                 ),
                               ),
                             ),
@@ -1946,41 +2693,63 @@ class _ComplianceScreenState extends State<ComplianceScreen> {
             if (isTenantAdmin)
               SectionCard(
                 title: 'Retention & purge preview',
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    Expanded(child: DropdownButtonFormField(
-                      value: rf['entity'] as String,
-                      items: const [
-                        DropdownMenuItem(value: 'CANDIDATE', child: Text('Candidate')),
-                        DropdownMenuItem(value: 'AUDIT_LOG', child: Text('Audit log')),
-                        DropdownMenuItem(value: 'ATTENDANCE', child: Text('Attendance')),
-                        DropdownMenuItem(value: 'COMPLIANCE_CASE', child: Text('Compliance case')),
-                      ],
-                      onChanged: (v) => setState(() => rf['entity'] = v),
-                      decoration: const InputDecoration(labelText: 'Entity'),
-                    )),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 80,
-                      child: TextField(
-                        controller: TextEditingController(text: '${rf['retainMonths']}'),
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Months'),
-                        onChanged: (v) => rf['retainMonths'] = int.tryParse(v) ?? 24,
-                      ),
-                    ),
-                  ]),
-                  const SizedBox(height: 8),
-                  Row(children: [
-                    FilledButton(onPressed: _setRetention, child: const Text('Save policy')),
-                    const SizedBox(width: 8),
-                    OutlinedButton(onPressed: _load, child: const Text('Refresh preview')),
-                  ]),
-                  const SizedBox(height: 8),
-                  for (final p in purge)
-                    RowTile(title: str(p['entity']), subtitle: '${p['retainMonths']} months · ${p['eligibleRows']} eligible', trailing: StatusBadge(p['purgeEnabled'] == true ? 'ON' : 'OFF')),
-                  if (purge.isEmpty) const EmptyState('No retention policies yet.'),
-                ]),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        Expanded(
+                            child: DropdownButtonFormField(
+                          value: rf['entity'] as String,
+                          items: const [
+                            DropdownMenuItem(
+                                value: 'CANDIDATE', child: Text('Candidate')),
+                            DropdownMenuItem(
+                                value: 'AUDIT_LOG', child: Text('Audit log')),
+                            DropdownMenuItem(
+                                value: 'ATTENDANCE', child: Text('Attendance')),
+                            DropdownMenuItem(
+                                value: 'COMPLIANCE_CASE',
+                                child: Text('Compliance case')),
+                          ],
+                          onChanged: (v) => setState(() => rf['entity'] = v),
+                          decoration:
+                              const InputDecoration(labelText: 'Entity'),
+                        )),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 80,
+                          child: TextField(
+                            controller: TextEditingController(
+                                text: '${rf['retainMonths']}'),
+                            keyboardType: TextInputType.number,
+                            decoration:
+                                const InputDecoration(labelText: 'Months'),
+                            onChanged: (v) =>
+                                rf['retainMonths'] = int.tryParse(v) ?? 24,
+                          ),
+                        ),
+                      ]),
+                      const SizedBox(height: 8),
+                      Row(children: [
+                        FilledButton(
+                            onPressed: _setRetention,
+                            child: const Text('Save policy')),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                            onPressed: _load,
+                            child: const Text('Refresh preview')),
+                      ]),
+                      const SizedBox(height: 8),
+                      for (final p in purge)
+                        RowTile(
+                            title: str(p['entity']),
+                            subtitle:
+                                '${p['retainMonths']} months · ${p['eligibleRows']} eligible',
+                            trailing: StatusBadge(
+                                p['purgeEnabled'] == true ? 'ON' : 'OFF')),
+                      if (purge.isEmpty)
+                        const EmptyState('No retention policies yet.'),
+                    ]),
               ),
           ],
         ),
@@ -2008,13 +2777,16 @@ class _InterviewsScreenState extends State<InterviewsScreen> {
   }
 
   Future<void> _load() async {
-    try { applications = asList(await ApiClient.get('/applications')); } catch (_) {}
+    try {
+      applications = asList(await ApiClient.get('/applications'));
+    } catch (_) {}
     if (mounted) setState(() => loading = false);
   }
 
   Future<void> _openInterviews(dynamic app) async {
     try {
-      final interviews = asList(await ApiClient.get('/applications/${app['id']}/interviews'));
+      final interviews =
+          asList(await ApiClient.get('/applications/${app['id']}/interviews'));
       if (!mounted) return;
       await showModalBottomSheet(
         context: context,
@@ -2026,20 +2798,23 @@ class _InterviewsScreenState extends State<InterviewsScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: Text('Interviews — ${app['candidate']?['firstName']} ${app['candidate']?['lastName']}',
+                child: Text(
+                    'Interviews — ${app['candidate']?['firstName']} ${app['candidate']?['lastName']}',
                     style: const TextStyle(fontWeight: FontWeight.w700)),
               ),
               for (final iv in interviews)
                 ListTile(
                   title: Text(str(iv['round'] ?? iv['name'] ?? iv['type'])),
                   subtitle: Text(str(iv['scheduledAt'])),
-                  trailing: StatusBadge(str(iv['result'] ?? iv['status'], 'PENDING')),
+                  trailing:
+                      StatusBadge(str(iv['result'] ?? iv['status'], 'PENDING')),
                   onTap: () {
                     Navigator.pop(ctx);
                     _submitResult(iv, app);
                   },
                 ),
-              if (interviews.isEmpty) const EmptyState('No interviews scheduled.'),
+              if (interviews.isEmpty)
+                const EmptyState('No interviews scheduled.'),
             ],
           ),
         ),
@@ -2071,21 +2846,33 @@ class _InterviewsScreenState extends State<InterviewsScreen> {
                 onChanged: (v) => setD(() => result = v as String),
                 decoration: const InputDecoration(labelText: 'Result'),
               ),
-              TextField(controller: rating, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Rating (1-5)')),
-              TextField(controller: notes, decoration: const InputDecoration(labelText: 'Notes')),
+              TextField(
+                  controller: rating,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Rating (1-5)')),
+              TextField(
+                  controller: notes,
+                  decoration: const InputDecoration(labelText: 'Notes')),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 icon: const Icon(Icons.image),
-                label: Text(screenshotFileId != null ? 'Screenshot attached' : 'Attach screenshot'),
+                label: Text(screenshotFileId != null
+                    ? 'Screenshot attached'
+                    : 'Attach screenshot'),
                 onPressed: () async {
-                  final up = await pickAndUpload(allowedExtensions: ['png', 'jpg', 'jpeg', 'webp']);
-                  if (up != null) setD(() => screenshotFileId = up['id'] as String?);
+                  final up = await pickAndUpload(
+                      allowedExtensions: ['png', 'jpg', 'jpeg', 'webp']);
+                  if (up != null) {
+                    setD(() => screenshotFileId = up['id'] as String?);
+                  }
                 },
               ),
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
                 Navigator.pop(ctx);
@@ -2094,7 +2881,8 @@ class _InterviewsScreenState extends State<InterviewsScreen> {
                     'result': result,
                     'rating': int.tryParse(rating.text),
                     if (notes.text.isNotEmpty) 'notes': notes.text,
-                    if (screenshotFileId != null) 'screenshotFileId': screenshotFileId,
+                    if (screenshotFileId != null)
+                      'screenshotFileId': screenshotFileId,
                   });
                   if (mounted) showOk(context, 'Result submitted');
                   _load();
@@ -2126,7 +2914,8 @@ class _InterviewsScreenState extends State<InterviewsScreen> {
                         final a = applications[i];
                         return Card(
                           child: ListTile(
-                            title: Text('${a['candidate']?['firstName']} ${a['candidate']?['lastName']}'),
+                            title: Text(
+                                '${a['candidate']?['firstName']} ${a['candidate']?['lastName']}'),
                             subtitle: Text(str(a['job']?['title'])),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => _openInterviews(a),
@@ -2158,7 +2947,9 @@ class _MatchingScreenState extends State<MatchingScreen> {
   }
 
   Future<void> _load() async {
-    try { jobs = asList(await ApiClient.get('/jobs')); } catch (_) {}
+    try {
+      jobs = asList(await ApiClient.get('/jobs'));
+    } catch (_) {}
     if (mounted) setState(() => loading = false);
   }
 
@@ -2176,11 +2967,13 @@ class _MatchingScreenState extends State<MatchingScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: Text('Matches for ${job['title']}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                child: Text('Matches for ${job['title']}',
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
               ),
               for (final m in matches)
                 ListTile(
-                  title: Text('${m['candidate']?['firstName']} ${m['candidate']?['lastName']}'),
+                  title: Text(
+                      '${m['candidate']?['firstName']} ${m['candidate']?['lastName']}'),
                   subtitle: Text('Score: ${m['score'] ?? m['matchScore']}'),
                   trailing: StatusBadge(str(m['status'], 'OPEN')),
                 ),
@@ -2235,7 +3028,9 @@ class _BgcVendorScreenState extends State<BgcVendorScreen> {
   List cases = [];
 
   Future<void> _load() async {
-    try { cases = asList(await ApiClient.get('/bgc/vendor/cases')); } catch (_) {}
+    try {
+      cases = asList(await ApiClient.get('/bgc/vendor/cases'));
+    } catch (_) {}
     if (mounted) setState(() {});
   }
 
@@ -2255,13 +3050,23 @@ class _BgcVendorScreenState extends State<BgcVendorScreen> {
           controller: sc,
           padding: const EdgeInsets.all(16),
           children: [
-            Text(employeeLabel(c['employee']), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            Text(employeeLabel(c['employee']),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             Text('Package: ${str(c['package']?['name'])}'),
             Text('Status: ${str(c['status'])}'),
-            if (c['reportSummary'] != null) Text('Report: ${c['reportSummary']}'),
+            if (c['reportSummary'] != null)
+              Text('Report: ${c['reportSummary']}'),
             const SizedBox(height: 16),
-            if (c['status'] != 'CLEAR' && c['status'] != 'FAILED' && c['status'] != 'DISCREPANCY')
-              FilledButton(onPressed: () { Navigator.pop(ctx); _report(c); }, child: const Text('Submit report')),
+            if (c['status'] != 'CLEAR' &&
+                c['status'] != 'FAILED' &&
+                c['status'] != 'DISCREPANCY')
+              FilledButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _report(c);
+                  },
+                  child: const Text('Submit report')),
           ],
         ),
       ),
@@ -2280,23 +3085,28 @@ class _BgcVendorScreenState extends State<BgcVendorScreen> {
             value: status,
             items: const [
               DropdownMenuItem(value: 'CLEAR', child: Text('Clear')),
-              DropdownMenuItem(value: 'DISCREPANCY', child: Text('Discrepancy')),
+              DropdownMenuItem(
+                  value: 'DISCREPANCY', child: Text('Discrepancy')),
               DropdownMenuItem(value: 'FAILED', child: Text('Failed')),
             ],
             onChanged: (v) => status = v as String,
             decoration: const InputDecoration(labelText: 'Status'),
           ),
-          TextField(controller: notes, decoration: const InputDecoration(labelText: 'Report summary')),
+          TextField(
+              controller: notes,
+              decoration: const InputDecoration(labelText: 'Report summary')),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
               try {
                 await ApiClient.post('/bgc/vendor/cases/${c['id']}/report', {
                   'status': status,
-                  'reportSummary': notes.text.isEmpty ? 'Report submitted' : notes.text,
+                  'reportSummary':
+                      notes.text.isEmpty ? 'Report submitted' : notes.text,
                 });
                 if (mounted) showOk(context, 'Report submitted');
                 _load();
@@ -2318,7 +3128,9 @@ class _BgcVendorScreenState extends State<BgcVendorScreen> {
       body: RefreshIndicator(
         onRefresh: _load,
         child: cases.isEmpty
-            ? ListView(children: const [EmptyState('No cases assigned.', icon: Icons.biotech_outlined)])
+            ? ListView(children: const [
+                EmptyState('No cases assigned.', icon: Icons.biotech_outlined)
+              ])
             : ListView.builder(
                 itemCount: cases.length,
                 itemBuilder: (_, i) {

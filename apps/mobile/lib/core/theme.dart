@@ -44,7 +44,8 @@ class E360Theme {
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+        titleTextStyle: const TextStyle(
+            fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       cardTheme: CardThemeData(
@@ -66,24 +67,28 @@ class E360Theme {
         fillColor: isDark ? const Color(0xFF1A2745) : surface1,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: isDark ? const Color(0xFF243354) : border),
+          borderSide:
+              BorderSide(color: isDark ? const Color(0xFF243354) : border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: isDark ? const Color(0xFF243354) : border),
+          borderSide:
+              BorderSide(color: isDark ? const Color(0xFF243354) : border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: primary, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: Colors.white,
           minimumSize: const Size(48, 48),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
@@ -91,7 +96,8 @@ class E360Theme {
         style: OutlinedButton.styleFrom(
           foregroundColor: isDark ? Colors.white : navy,
           side: BorderSide(color: isDark ? const Color(0xFF243354) : border),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
@@ -99,24 +105,32 @@ class E360Theme {
         backgroundColor: isDark ? const Color(0xFF101B33) : surface1,
         indicatorColor: primary.withValues(alpha: .15),
         labelTextStyle: WidgetStatePropertyAll(
-          TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : navy),
+          TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white70 : navy),
         ),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const IconThemeData(color: primary, size: 24);
           }
-          return IconThemeData(color: isDark ? Colors.white54 : const Color(0xFF64748B), size: 24);
+          return IconThemeData(
+              color: isDark ? Colors.white54 : const Color(0xFF64748B),
+              size: 24);
         }),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: isDark ? const Color(0xFF1A2745) : surface2,
         side: BorderSide(color: isDark ? const Color(0xFF243354) : border),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        labelStyle: TextStyle(fontSize: 12, color: isDark ? Colors.white : navy),
+        labelStyle:
+            TextStyle(fontSize: 12, color: isDark ? Colors.white : navy),
       ),
       listTileTheme: const ListTileThemeData(iconColor: Colors.white70),
-      snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
-      dividerTheme: DividerThemeData(color: isDark ? const Color(0xFF243354) : border),
+      snackBarTheme:
+          const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+      dividerTheme:
+          DividerThemeData(color: isDark ? const Color(0xFF243354) : border),
     );
   }
 }

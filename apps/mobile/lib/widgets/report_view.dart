@@ -10,7 +10,8 @@ class ReportView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = result is Map && result['data'] != null ? result['data'] : result;
+    final data =
+        result is Map && result['data'] != null ? result['data'] : result;
     if (data == null) return const EmptyState('No report data.');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -18,7 +19,9 @@ class ReportView extends StatelessWidget {
         if (result is Map && result['generatedAt'] != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text('Generated ${result['generatedAt']}', style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
+            child: Text('Generated ${result['generatedAt']}',
+                style: TextStyle(
+                    fontSize: 12, color: Theme.of(context).hintColor)),
           ),
         ..._widgetsFor(data),
       ],
@@ -47,7 +50,17 @@ class ReportView extends StatelessWidget {
       out.add(const SizedBox(height: 12));
     }
 
-    for (final key in ['rows', 'sources', 'stages', 'aging', 'funnel', 'byStatus', 'byDepartment', 'offersByStatus', 'clearancesByStatus']) {
+    for (final key in [
+      'rows',
+      'sources',
+      'stages',
+      'aging',
+      'funnel',
+      'byStatus',
+      'byDepartment',
+      'offersByStatus',
+      'clearancesByStatus'
+    ]) {
       final v = data[key];
       if (v is List && v.isNotEmpty) {
         out.add(_sectionTitle(_label(key)));
@@ -57,14 +70,26 @@ class ReportView extends StatelessWidget {
     }
 
     for (final entry in data.entries) {
-      if (['kpis', 'rows', 'sources', 'stages', 'aging', 'funnel', 'byStatus', 'byDepartment', 'offersByStatus', 'clearancesByStatus'].contains(entry.key)) {
+      if ([
+        'kpis',
+        'rows',
+        'sources',
+        'stages',
+        'aging',
+        'funnel',
+        'byStatus',
+        'byDepartment',
+        'offersByStatus',
+        'clearancesByStatus'
+      ].contains(entry.key)) {
         continue;
       }
       if (entry.value is num || entry.value is String || entry.value is bool) {
         out.add(ListTile(
           dense: true,
           title: Text(_label(entry.key)),
-          trailing: Text(str(entry.value), style: const TextStyle(fontWeight: FontWeight.w600)),
+          trailing: Text(str(entry.value),
+              style: const TextStyle(fontWeight: FontWeight.w600)),
         ));
       }
     }
@@ -85,7 +110,8 @@ class ReportView extends StatelessWidget {
 
   Widget _sectionTitle(String title) => Padding(
         padding: const EdgeInsets.only(bottom: 6),
-        child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+        child: Text(title,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
       );
 
   Widget _tableFromMaps(List rows) {
@@ -99,11 +125,19 @@ class ReportView extends StatelessWidget {
         columnSpacing: 16,
         headingRowHeight: 36,
         dataRowMinHeight: 32,
-        columns: [for (final c in cols) DataColumn(label: Text(_label(c), style: const TextStyle(fontSize: 12)))],
+        columns: [
+          for (final c in cols)
+            DataColumn(
+                label: Text(_label(c), style: const TextStyle(fontSize: 12)))
+        ],
         rows: [
           for (final row in rows.take(50))
             if (row is Map)
-              DataRow(cells: [for (final c in cols) DataCell(Text(str(row[c]), style: const TextStyle(fontSize: 12)))]),
+              DataRow(cells: [
+                for (final c in cols)
+                  DataCell(
+                      Text(str(row[c]), style: const TextStyle(fontSize: 12)))
+              ]),
         ],
       ),
     );

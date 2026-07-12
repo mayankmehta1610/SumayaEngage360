@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../core/api_client.dart';
 import 'common.dart';
 
-typedef ItemBuilder = Widget Function(BuildContext context, dynamic item, int index);
+typedef ItemBuilder = Widget Function(
+    BuildContext context, dynamic item, int index);
 typedef StringFn = String Function(dynamic item);
 
 /// Generic pull-to-refresh list wired to a GET endpoint.
@@ -72,21 +73,33 @@ class _ApiListScreenState extends State<ApiListScreen> {
             : error != null && items.isEmpty
                 ? ListView(children: [ErrorState(error!, onRetry: _load)])
                 : items.isEmpty
-                    ? ListView(children: [EmptyState('No ${widget.title.toLowerCase()} found.', icon: Icons.inbox_outlined)])
+                    ? ListView(children: [
+                        EmptyState('No ${widget.title.toLowerCase()} found.',
+                            icon: Icons.inbox_outlined)
+                      ])
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: items.length,
                         itemBuilder: (ctx, i) {
                           final item = items[i];
-                          if (widget.itemBuilder != null) return widget.itemBuilder!(ctx, item, i);
+                          if (widget.itemBuilder != null) {
+                            return widget.itemBuilder!(ctx, item, i);
+                          }
                           final status = widget.statusOf?.call(item);
-                          final showStatus = status != null && status.isNotEmpty;
+                          final showStatus =
+                              status != null && status.isNotEmpty;
                           return Card(
                             child: ListTile(
-                              title: Text(widget.titleOf(item), style: const TextStyle(fontWeight: FontWeight.w600)),
-                              subtitle: widget.subtitleOf != null ? Text(widget.subtitleOf!(item)) : null,
+                              title: Text(widget.titleOf(item),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600)),
+                              subtitle: widget.subtitleOf != null
+                                  ? Text(widget.subtitleOf!(item))
+                                  : null,
                               trailing: showStatus ? StatusBadge(status) : null,
-                              onTap: widget.onTap != null ? () => widget.onTap!(item) : null,
+                              onTap: widget.onTap != null
+                                  ? () => widget.onTap!(item)
+                                  : null,
                             ),
                           );
                         },

@@ -17,7 +17,11 @@ class ModulesGridScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 6),
             child: Text(entry.key.toUpperCase(),
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1, color: Theme.of(context).hintColor)),
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.1,
+                    color: Theme.of(context).hintColor)),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -27,8 +31,10 @@ class ModulesGridScreen extends StatelessWidget {
               children: [
                 for (final item in entry.value)
                   ActionChip(
-                    avatar: Icon(item.icon, size: 18, color: Theme.of(context).colorScheme.primary),
-                    label: Text(item.label, style: const TextStyle(fontSize: 12)),
+                    avatar: Icon(item.icon,
+                        size: 18, color: Theme.of(context).colorScheme.primary),
+                    label:
+                        Text(item.label, style: const TextStyle(fontSize: 12)),
                     onPressed: () => openModule(context, item.path),
                   ),
               ],

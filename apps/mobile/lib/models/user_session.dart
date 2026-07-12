@@ -19,7 +19,8 @@ class UserSession {
         email: json['email']?.toString() ?? '',
         firstName: json['firstName']?.toString(),
         lastName: json['lastName']?.toString(),
-        roles: (json['roles'] as List?)?.map((e) => e.toString()).toList() ?? [],
+        roles:
+            (json['roles'] as List?)?.map((e) => e.toString()).toList() ?? [],
       );
 
   String get displayName => '${firstName ?? ''} ${lastName ?? ''}'.trim();

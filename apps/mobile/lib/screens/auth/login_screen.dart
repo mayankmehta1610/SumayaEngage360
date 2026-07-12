@@ -22,7 +22,8 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await AuthService.login(tenant.text, email.text.trim(), password.text);
       if (mounted) {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+        Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const HomeScreen()));
       }
     } catch (e) {
       if (mounted) showError(context, e);
@@ -73,15 +74,21 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
-                        child: const Icon(Icons.dashboard_outlined, color: Colors.white, size: 28),
+                        child: const Icon(Icons.dashboard_outlined,
+                            color: Colors.white, size: 28),
                       ),
                       const SizedBox(height: 18),
                       const Text('SumayaEngage360',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: E360Theme.navy)),
+                          style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: E360Theme.navy)),
                       Text('Sign in to your enterprise workspace',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Theme.of(context).hintColor, fontSize: 14)),
+                          style: TextStyle(
+                              color: Theme.of(context).hintColor,
+                              fontSize: 14)),
                       const SizedBox(height: 28),
                       TextField(
                         controller: tenant,
@@ -101,7 +108,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: password,
                         obscureText: true,
                         onSubmitted: (_) => _submit(),
-                        decoration: const InputDecoration(labelText: 'Password'),
+                        decoration:
+                            const InputDecoration(labelText: 'Password'),
                       ),
                       const SizedBox(height: 20),
                       FilledButton.icon(
@@ -110,7 +118,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
                               )
                             : const Icon(Icons.login, size: 18),
                         label: Text(busy ? 'Signing in…' : 'Sign in'),
@@ -118,7 +127,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 16),
                       Text('API: ${ApiClient.base}',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 10, color: Theme.of(context).hintColor)),
+                          style: TextStyle(
+                              fontSize: 10,
+                              color: Theme.of(context).hintColor)),
                     ],
                   ),
                 ),

@@ -25,7 +25,7 @@ export class HasRoleDirective {
     this.vcr.clear();
     const u = this.auth.user();
     if (!u) return;
-    if (u.roles.includes('PLATFORM_ADMIN') || this.roles.some((r) => u.roles.includes(r))) {
+    if (this.roles.some((r) => u.roles.includes(r))) {
       this.vcr.createEmbeddedView(this.tpl);
     }
   }

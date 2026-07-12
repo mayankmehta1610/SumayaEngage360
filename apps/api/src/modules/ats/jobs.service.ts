@@ -123,11 +123,9 @@ export class JobsService {
       where: { id },
       data: { status: JobStatus.PUBLISHED },
     });
-    // New JD published: score the existing talent pool against it in the
-    // background so recruiters immediately see matching past candidates.
-    this.matching
-      .matchJob(tenantId, id, { useAi: false, autoShortlist: false })
-      .catch(() => undefined);
+    // Finish the initial non-shortlisting score pass before returning. This
+    // prevents it from racing a recruiter's explicit auto-shortlist run.
+    await this.matching.matchJob(tenantId, id, { useAi: false, autoShortlist: false });
     return job;
   }
 
