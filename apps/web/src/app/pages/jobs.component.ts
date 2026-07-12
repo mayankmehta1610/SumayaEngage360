@@ -42,7 +42,7 @@ import { IconComponent } from '../ui/icon.component';
               @for (c of clients; track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
             </select>
           </div>
-          <div><label>Location</label><input [(ngModel)]="f.location" /></div>
+          <div><label for="job-location">Location</label><input id="job-location" [(ngModel)]="f.location" /></div>
           <div><label>Vacancies</label><input type="number" [(ngModel)]="f.vacancies" min="1" /></div>
           <div><label>Employment type</label>
             <select [(ngModel)]="f.employmentType">

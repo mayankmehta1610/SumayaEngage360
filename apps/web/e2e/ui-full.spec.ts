@@ -7,8 +7,13 @@ const LOCAL_TENANT = `ui-full-${RUN}`;
 const PASSWORD = REMOTE ? (process.env.E2E_PASSWORD ?? 'Owner@12345') : 'Flow@12345';
 const TENANT = REMOTE ? (process.env.E2E_TENANT ?? 'sumaya') : LOCAL_TENANT;
 const EMAIL = REMOTE ? (process.env.E2E_EMAIL ?? 'owner@sumaya.com') : `owner@${LOCAL_TENANT}.test`;
+const LEAVE_EMAIL = REMOTE
+  ? (process.env.E2E_EMPLOYEE_EMAIL ?? 'walk-emp@sumaya.com')
+  : `leave@${LOCAL_TENANT}.test`;
+const LEAVE_PASSWORD = REMOTE ? (process.env.E2E_EMPLOYEE_PASSWORD ?? 'Walk@12345') : PASSWORD;
 
 type ApiOptions = { token?: string; tenant?: string; data?: unknown };
+type LoginCreds = { tenant?: string; email?: string; password?: string };
 
 async function api(
   request: APIRequestContext,
@@ -28,11 +33,22 @@ async function api(
   return { status: response.status(), body };
 }
 
-async function login(page: Page) {
+function nextWeekdayISO() {
+  const d = new Date();
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6) {
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return d.toISOString().slice(0, 10);
+}
+
+async function login(page: Page, creds: LoginCreds = {}) {
+  const tenant = creds.tenant ?? TENANT;
+  const email = creds.email ?? EMAIL;
+  const password = creds.password ?? PASSWORD;
   await page.goto('/login');
-  await page.getByPlaceholder('acme').fill(TENANT);
-  await page.locator('input[type="email"]').fill(EMAIL);
-  await page.locator('input[type="password"]').fill(PASSWORD);
+  await page.getByPlaceholder('acme').fill(tenant);
+  await page.locator('input[type="email"]').fill(email);
+  await page.locator('input[type="password"]').fill(password);
   await page.getByRole('button', { name: /sign in/i }).click();
   await expect(page).toHaveURL(/\/(dashboard|home)/, { timeout: 30_000 });
 }
@@ -56,7 +72,7 @@ test.describe.serial('full lifecycle UI data generation', () => {
     });
     const platformToken = platform.body?.accessToken as string;
     if (!platformToken) {
-      test.skip(true, 'Local API/DB unavailable — run docker compose up and start API');
+      test.skip(true, 'Local API/DB unavailable - run docker compose up and start API');
     }
 
     await api(request, 'POST', '/tenants', {
@@ -82,6 +98,16 @@ test.describe.serial('full lifecycle UI data generation', () => {
     const scoped = { token: ownerToken, tenant: LOCAL_TENANT };
     await api(request, 'GET', '/org-masters/employment-types', scoped);
     await api(request, 'GET', '/recognition-badges', scoped);
+    await api(request, 'POST', '/employees', {
+      ...scoped,
+      data: {
+        email: LEAVE_EMAIL,
+        password: LEAVE_PASSWORD,
+        firstName: 'Leave',
+        lastName: 'Tester',
+        designation: 'Engineer',
+      },
+    });
   });
 
   test('login and verify employment types load from API', async ({ page }) => {
@@ -122,33 +148,55 @@ test.describe.serial('full lifecycle UI data generation', () => {
     await page.goto('/jobs');
 
     const title = `E2E Job ${RUN}`;
-    await page.getByPlaceholder(/senior backend engineer/i).fill(title);
-    await page.getByLabel('Location').fill('Remote');
-    await page.locator('textarea').first().fill('Automated UI test job');
-    await page.getByPlaceholder(/screening, technical/i).fill('Screening, Technical');
-    const empSelect = page.locator('label:has-text("Employment type") + select').first();
-    if (await empSelect.isVisible()) {
-      await empSelect.selectOption({ index: 1 });
-    }
+    const jobForm = page.locator('div.card').filter({
+      has: page.getByRole('heading', { name: 'Create job requisition' }),
+    });
+    await jobForm.getByPlaceholder(/senior backend engineer/i).fill(title);
+    await jobForm.locator('#job-location').or(jobForm.locator('input').nth(1)).fill('Remote');
+    await jobForm.locator('textarea').fill('Automated UI test job');
+    await jobForm.getByPlaceholder(/screening, technical/i).fill('Screening, Technical');
+    await jobForm.getByRole('combobox').nth(1).selectOption({ index: 1 });
     await page.getByRole('button', { name: /create job/i }).click();
     await expect(page.getByRole('cell', { name: title })).toBeVisible({ timeout: 15_000 });
   });
 
   test('configure leave type and submit leave request', async ({ page }) => {
+    const code = `E2E${RUN.slice(-4).toUpperCase()}`;
+    const leaveName = `Annual ${RUN}`;
+
     await login(page);
     await page.goto('/leave');
+    await page.getByRole('heading', { name: /Configure leave types/i }).scrollIntoViewIfNeeded();
+    await page.getByPlaceholder('AL', { exact: true }).fill(code);
+    await page.getByPlaceholder('Annual Leave').fill(leaveName);
+    await page
+      .locator('h2:has-text("Configure leave types")')
+      .locator('xpath=ancestor::div[1]')
+      .getByRole('button', { name: /^add$/i })
+      .click();
+    await expect(page.locator('span.badge', { hasText: code })).toBeVisible({ timeout: 15_000 });
 
-    const code = `AL${RUN.slice(-4)}`;
-    await page.getByPlaceholder('AL').fill(code);
-    await page.getByPlaceholder('Annual Leave').fill(`Annual ${RUN}`);
-    await page.getByRole('button', { name: /add$/i }).click();
+    await login(page, { email: LEAVE_EMAIL, password: LEAVE_PASSWORD });
+    await page.goto('/leave');
 
-    await page.locator('select').first().selectOption({ index: 1 });
-    const today = new Date().toISOString().slice(0, 10);
-    await page.locator('input[type="date"]').first().fill(today);
-    await page.locator('input[type="date"]').nth(1).fill(today);
+    const applyLeave = page.getByRole('heading', { name: 'Apply for leave' }).locator('xpath=..');
+    const typeSelect = applyLeave.locator('select');
+    await expect(typeSelect.locator('option', { hasText: code })).toHaveCount(1, { timeout: 15_000 });
+    await typeSelect.evaluate((sel, leaveCode) => {
+      const select = sel as HTMLSelectElement;
+      const idx = Array.from(select.options).findIndex((o) => o.text.includes(leaveCode));
+      if (idx < 0) throw new Error(`Leave option not found for ${leaveCode}`);
+      select.selectedIndex = idx;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      select.dispatchEvent(new Event('input', { bubbles: true }));
+    }, code);
+
+    const leaveDay = nextWeekdayISO();
+    await applyLeave.locator('input[type="date"]').nth(0).fill(leaveDay);
+    await applyLeave.locator('input[type="date"]').nth(1).fill(leaveDay);
+    await expect(page.getByRole('button', { name: /submit leave request/i })).toBeEnabled();
     await page.getByRole('button', { name: /submit leave request/i }).click();
-    await expect(page.getByText(/PENDING|APPROVED/)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/PENDING|APPROVED/).first()).toBeVisible({ timeout: 15_000 });
   });
 
   test('masters page shows extended admin sections', async ({ page }) => {
@@ -163,8 +211,11 @@ test.describe.serial('full lifecycle UI data generation', () => {
     await login(page);
     await page.goto('/recognition');
     await page.waitForTimeout(1500);
-    const badgeOptions = page.locator('label:has-text("Badge") + select option');
-    const count = await badgeOptions.count();
-    expect(count).toBeGreaterThan(0);
+    const giveRecognition = page
+      .getByRole('heading', { name: /Give instant recognition/i })
+      .locator('xpath=..');
+    const badgeOptions = giveRecognition.getByRole('combobox').nth(1).locator('option');
+    await expect(badgeOptions).not.toHaveCount(0);
+    expect(await badgeOptions.count()).toBeGreaterThan(0);
   });
 });
