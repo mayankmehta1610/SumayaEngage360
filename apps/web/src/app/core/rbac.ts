@@ -15,6 +15,56 @@ export type AppRole =
   | 'BGC_VENDOR'
   | 'DEPARTMENT_HEAD';
 
+export type TenantType =
+  | 'COMPANY'
+  | 'RECRUITMENT_AGENCY'
+  | 'STAFFING_COMPANY'
+  | 'INDIVIDUAL_RECRUITER';
+
+/** Portal keys used to show/hide nav groups per tenant type. */
+export const ROUTE_PORTAL: Record<string, string> = {
+  '/clients': 'ats',
+  '/jobs': 'ats',
+  '/candidates': 'ats',
+  '/applications': 'ats',
+  '/employees': 'workforce',
+  '/onboarding': 'workforce',
+  '/preboarding-admin': 'workforce',
+  '/org': 'workforce',
+  '/exit': 'workforce',
+  '/projects': 'operations',
+  '/manpower': 'operations',
+  '/assets': 'operations',
+  '/leave': 'operations',
+  '/timesheets': 'operations',
+  '/payroll': 'compensation',
+  '/benefits': 'compensation',
+  '/expenses': 'compensation',
+  '/goals': 'performance',
+  '/appraisals': 'performance',
+  '/trainings': 'performance',
+  '/recognition': 'performance',
+  '/surveys': 'performance',
+  '/agency/submissions': 'agency',
+  '/agency/contacts': 'agency',
+  '/contracts': 'staffing',
+  '/contractors': 'staffing',
+};
+
+export const TENANT_TYPE_DEFAULT_PORTALS: Record<TenantType, string[]> = {
+  COMPANY: ['ats', 'workforce', 'operations', 'compensation', 'performance'],
+  RECRUITMENT_AGENCY: ['ats', 'agency'],
+  STAFFING_COMPANY: ['ats', 'staffing', 'operations'],
+  INDIVIDUAL_RECRUITER: ['ats', 'agency'],
+};
+
+export const TENANT_TYPE_LABELS: Record<TenantType, string> = {
+  COMPANY: 'Company (hire-to-exit)',
+  RECRUITMENT_AGENCY: 'Recruitment agency',
+  STAFFING_COMPANY: 'Staffing company',
+  INDIVIDUAL_RECRUITER: 'Individual recruiter',
+};
+
 export interface RouteAccess {
   path: string;
   label: string;
@@ -28,13 +78,15 @@ export interface RouteAccess {
 export const NAV_GROUPS: Record<string, { label: string; order: number }> = {
   platform: { label: 'Platform', order: 1 },
   ats: { label: 'Recruitment (ATS)', order: 2 },
-  workforce: { label: 'Workforce & HR', order: 3 },
-  operations: { label: 'Operations', order: 4 },
-  compensation: { label: 'Compensation', order: 5 },
-  performance: { label: 'Performance', order: 6 },
-  workflow: { label: 'Workflow', order: 7 },
-  admin: { label: 'Administration', order: 8 },
-  personal: { label: 'My workspace', order: 9 },
+  agency: { label: 'Agency CRM', order: 3 },
+  staffing: { label: 'Staffing', order: 4 },
+  workforce: { label: 'Workforce & HR', order: 5 },
+  operations: { label: 'Operations', order: 6 },
+  compensation: { label: 'Compensation', order: 7 },
+  performance: { label: 'Performance', order: 8 },
+  workflow: { label: 'Workflow', order: 9 },
+  admin: { label: 'Administration', order: 10 },
+  personal: { label: 'My workspace', order: 11 },
 };
 
 /** Route-level access — used by roleGuard and shell navigation */
@@ -53,6 +105,12 @@ export const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/jobs', label: 'Jobs', roles: ['TENANT_ADMIN', 'HR'], icon: 'file-text', group: 'ats' },
   { path: '/candidates', label: 'Talent pool', roles: ['TENANT_ADMIN', 'HR', 'INTERVIEWER'], icon: 'user-search', group: 'ats' },
   { path: '/applications', label: 'Applications', roles: ['TENANT_ADMIN', 'HR', 'INTERVIEWER'], icon: 'inbox', group: 'ats' },
+
+  { path: '/agency/submissions', label: 'Client submissions', roles: ['TENANT_ADMIN', 'HR'], icon: 'send', group: 'agency' },
+  { path: '/agency/contacts', label: 'Agency contacts', roles: ['TENANT_ADMIN', 'HR'], icon: 'contact', group: 'agency' },
+
+  { path: '/contracts', label: 'Contracts', roles: ['TENANT_ADMIN', 'HR', 'MANAGER'], icon: 'file-signature', group: 'staffing' },
+  { path: '/contractors', label: 'Contractors', roles: ['TENANT_ADMIN', 'HR', 'MANAGER'], icon: 'hard-hat', group: 'staffing' },
 
   { path: '/employees', label: 'Employees', roles: ['TENANT_ADMIN', 'HR', 'MANAGER'], icon: 'users-round', group: 'workforce' },
   { path: '/onboarding', label: 'Onboarding', roles: ['TENANT_ADMIN', 'HR', 'INTERVIEWER'], icon: 'user-plus', group: 'workforce' },
@@ -126,6 +184,23 @@ export function canAccess(roles: string[], path: string): boolean {
   const required = rolesForPath(path);
   if (!required) return true;
   return required.some((r) => roles.includes(r));
+}
+
+/** Filter nav routes by tenant type portals (enabledPortals from tenant settings). */
+export function routeVisibleForTenant(
+  path: string,
+  tenantType: TenantType | null | undefined,
+  enabledPortals?: string[],
+): boolean {
+  const portal = ROUTE_PORTAL[path];
+  if (!portal) return true;
+  const portals =
+    enabledPortals?.length
+      ? enabledPortals
+      : tenantType
+        ? TENANT_TYPE_DEFAULT_PORTALS[tenantType]
+        : TENANT_TYPE_DEFAULT_PORTALS.COMPANY;
+  return portals.includes(portal);
 }
 
 export function homeForRoles(roles: string[]): string {

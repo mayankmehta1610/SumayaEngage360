@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Recognition & feedback"
@@ -24,15 +25,17 @@ import { ExportBarComponent } from '../core/export-bar.component';
     <div class="row">
       <div class="card">
         <h2 style="margin-top:0">🌟 Give instant recognition</h2>
-        <label>Colleague</label>
-        <select [(ngModel)]="r.receiverId">
-          <option [ngValue]="undefined">choose…</option>
-          @for (e of directory; track e.id) { <option [ngValue]="e.id">{{ e.user.firstName }} {{ e.user.lastName }} — {{ e.designation }}</option> }
-        </select>
-        <label>Badge</label>
-        <select [(ngModel)]="r.badge">
-          @for (b of badges; track b) { <option>{{ b }}</option> }
-        </select>
+        <e360-select-field
+          label="Colleague"
+          placeholder="choose…"
+          [options]="colleagueOptions"
+          [(ngModel)]="r.receiverId"
+        />
+        <e360-select-field
+          label="Badge"
+          [options]="badgeOptions"
+          [(ngModel)]="r.badge"
+        />
         <label>Points</label>
         <input type="number" [(ngModel)]="r.points" min="0" max="500" />
         <label>Message</label>
@@ -43,18 +46,17 @@ import { ExportBarComponent } from '../core/export-bar.component';
 
       <div class="card">
         <h2 style="margin-top:0">💬 Give feedback</h2>
-        <label>To</label>
-        <select [(ngModel)]="fb.receiverId">
-          <option [ngValue]="undefined">choose…</option>
-          @for (e of directory; track e.id) { <option [ngValue]="e.id">{{ e.user.firstName }} {{ e.user.lastName }} — {{ e.designation }}</option> }
-        </select>
-        <label>Type</label>
-        <select [(ngModel)]="fb.type">
-          <option value="PEER">Peer feedback</option>
-          <option value="MANAGER_TO_EMPLOYEE">Manager → employee</option>
-          <option value="EMPLOYEE_TO_MANAGER">Employee → manager</option>
-          <option value="THREE_SIXTY">360°</option>
-        </select>
+        <e360-select-field
+          label="To"
+          placeholder="choose…"
+          [options]="colleagueOptions"
+          [(ngModel)]="fb.receiverId"
+        />
+        <e360-select-field
+          label="Type"
+          [options]="feedbackTypeOptions"
+          [(ngModel)]="fb.type"
+        />
         <label>Strengths</label>
         <textarea rows="2" [(ngModel)]="fb.strengths"></textarea>
         <label>Growth areas</label>
@@ -104,6 +106,12 @@ export class RecognitionComponent implements OnInit {
   badges: string[] = [];
   r: any = { points: 50, isPublic: true };
   fb: any = { type: 'PEER', anonymous: false };
+  feedbackTypeOptions: SelectOption[] = [
+    { value: 'EMPLOYEE_TO_MANAGER', label: 'Employee → manager' },
+    { value: 'MANAGER_TO_EMPLOYEE', label: 'Manager → employee' },
+    { value: 'PEER', label: 'Peer feedback' },
+    { value: 'THREE_SIXTY', label: '360°' },
+  ];
   feedCols = [
     { key: 'badge', label: 'Badge' },
     { key: 'receiver.user.firstName', label: 'First name' },
@@ -112,6 +120,17 @@ export class RecognitionComponent implements OnInit {
     { key: 'message', label: 'Message' },
     { key: 'createdAt', label: 'Date' },
   ];
+
+  get colleagueOptions(): SelectOption[] {
+    return this.directory.map((e) => ({
+      value: e.id,
+      label: `${e.user.firstName} ${e.user.lastName} — ${e.designation}`,
+    }));
+  }
+
+  get badgeOptions(): SelectOption[] {
+    return this.badges.map((b) => ({ value: b, label: b }));
+  }
 
   async ngOnInit() { await this.load(); }
   async load() {

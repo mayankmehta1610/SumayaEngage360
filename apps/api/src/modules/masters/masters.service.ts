@@ -6,7 +6,7 @@ export class MastersService {
   constructor(private readonly prisma: PrismaService) {}
 
   listJobFamilies(tenantId: string) {
-    return this.prisma.jobFamily.findMany({ where: { tenantId } });
+    return this.prisma.jobFamily.findMany({ where: { tenantId }, orderBy: { name: 'asc' } });
   }
   createJobFamily(tenantId: string, body: { code: string; name: string }) {
     return this.prisma.jobFamily.create({ data: { tenantId, ...body } });
@@ -16,7 +16,7 @@ export class MastersService {
   }
 
   listPositions(tenantId: string) {
-    return this.prisma.orgPosition.findMany({ where: { tenantId } });
+    return this.prisma.orgPosition.findMany({ where: { tenantId }, orderBy: { title: 'asc' } });
   }
   createPosition(tenantId: string, body: { code: string; title: string; familyId?: string }) {
     return this.prisma.orgPosition.create({ data: { tenantId, ...body } });
@@ -26,7 +26,7 @@ export class MastersService {
   }
 
   listBgvPackages(tenantId: string) {
-    return this.prisma.bgvPackage.findMany({ where: { tenantId } });
+    return this.prisma.bgvPackage.findMany({ where: { tenantId }, orderBy: { name: 'asc' } });
   }
   createBgvPackage(tenantId: string, body: { code: string; name: string; checks: unknown }) {
     return this.prisma.bgvPackage.create({ data: { tenantId, ...body, checks: body.checks as object } });
@@ -38,14 +38,14 @@ export class MastersService {
   }
 
   listRatingScales(tenantId: string) {
-    return this.prisma.ratingScale.findMany({ where: { tenantId } });
+    return this.prisma.ratingScale.findMany({ where: { tenantId }, orderBy: { name: 'asc' } });
   }
   createRatingScale(tenantId: string, body: { name: string; levels: unknown }) {
     return this.prisma.ratingScale.create({ data: { tenantId, ...body, levels: body.levels as object } });
   }
 
   listCountryConfigs(tenantId: string) {
-    return this.prisma.countryConfig.findMany({ where: { tenantId } });
+    return this.prisma.countryConfig.findMany({ where: { tenantId }, orderBy: { country: 'asc' } });
   }
   createCountryConfig(tenantId: string, body: { country: string; settings: unknown }) {
     return this.prisma.countryConfig.create({ data: { tenantId, ...body, settings: body.settings as object } });
@@ -55,14 +55,14 @@ export class MastersService {
   }
 
   listDocuments(tenantId: string) {
-    return this.prisma.documentRepositoryItem.findMany({ where: { tenantId } });
+    return this.prisma.documentRepositoryItem.findMany({ where: { tenantId }, orderBy: { title: 'asc' } });
   }
   createDocument(tenantId: string, body: { title: string; category: string; fileId?: string; tags?: string[] }) {
     return this.prisma.documentRepositoryItem.create({ data: { tenantId, ...body } });
   }
 
   listScheduledJobs(tenantId: string) {
-    return this.prisma.scheduledJobDef.findMany({ where: { tenantId } });
+    return this.prisma.scheduledJobDef.findMany({ where: { tenantId }, orderBy: { name: 'asc' } });
   }
   createScheduledJob(tenantId: string, body: { name: string; cron: string; jobType: string; config?: unknown }) {
     return this.prisma.scheduledJobDef.create({

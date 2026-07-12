@@ -199,6 +199,32 @@ export class UpdateApplicationStatusDto {
   status: ApplicationStatus;
 }
 
+export class UpsertApplicationProfileDto {
+  @IsOptional()
+  @IsString()
+  professionalSummary?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  domainExpertise?: string[];
+
+  @IsOptional()
+  @IsArray()
+  education?: unknown[];
+
+  @IsOptional()
+  @IsString()
+  coverLetterFileId?: string;
+
+  @IsOptional()
+  @IsArray()
+  contacts?: unknown[];
+
+  @IsOptional()
+  customFields?: Record<string, unknown>;
+}
+
 // ── Interviews ──────────────────────────────────────────────────
 
 export class ScheduleInterviewDto {

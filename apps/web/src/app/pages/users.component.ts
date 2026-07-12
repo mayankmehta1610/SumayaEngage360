@@ -1,13 +1,15 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
+import { tableListParams, TableSort } from '../core/table-query.util';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { AuthService } from '../core/auth.service';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="User accounts"
@@ -44,49 +46,37 @@ import { AuthService } from '../core/auth.service';
         <div class="e360-toolbar">
           <h2 style="margin:0">Accounts ({{ total }})</h2>
         </div>
-        <div class="e360-table-wrap e360-table-sticky" style="max-height:min(70vh, 640px)">
-          <table class="e360-table e360-table-zebra">
-            <thead>
-              <tr><th>Name</th><th>Email</th><th>Roles</th><th>Active</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-              @for (u of users; track u.id) {
-                <tr>
-                  <td>{{ u.firstName }} {{ u.lastName }}</td>
-                  <td>{{ u.email }}</td>
-                  <td>
-                    @for (r of allRoles; track r) {
-                      <label style="font-weight:400;margin-right:.5rem"><input type="checkbox"
-                        [checked]="u._roles.includes(r)" (change)="toggleUserRole(u, r)"
-                        style="width:auto;margin-right:.2rem" />{{ r }}</label>
-                    }
-                  </td>
-                  <td><span class="badge" [class.ok]="u.isActive">{{ u.isActive ? 'active' : 'disabled' }}</span></td>
-                  <td>
-                    @if (u.id !== auth.user()?.id) {
-                      <button (click)="saveAccess(u)" [disabled]="!u._roles.length">Save roles</button>
-                      <button class="secondary" (click)="toggleActive(u)">{{ u.isActive ? 'Disable' : 'Enable' }}</button>
-                    } @else { <span class="e360-muted">Current account</span> }
-                  </td>
-                </tr>
+        <e360-data-table
+          [columns]="tableCols"
+          [rows]="tableRows"
+          [page]="page"
+          [pageSize]="pageSize"
+          [total]="total"
+          [stickyHeader]="true"
+          (pageChange)="goPage($event)"
+          (pageSizeChange)="onPageSizeChange($event)"
+          (sortChange)="onSortChange($event)"
+          (filterChange)="onFilterChange($event)"
+        >
+          <ng-template #rowTemplate let-row>
+            <td>{{ row.name }}</td>
+            <td>{{ row.email }}</td>
+            <td>
+              @for (r of allRoles; track r) {
+                <label style="font-weight:400;margin-right:.5rem"><input type="checkbox"
+                  [checked]="row._raw._roles.includes(r)" (change)="toggleUserRole(row._raw, r)"
+                  style="width:auto;margin-right:.2rem" />{{ r }}</label>
               }
-            </tbody>
-          </table>
-        </div>
-        <div class="e360-pagination">
-          <span>{{ pageFrom }}–{{ pageTo }} of {{ total }}</span>
-          <div class="pages">
-            <label class="e360-muted" style="font-size:.75rem;margin-right:.35rem">Rows</label>
-            <select [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
-              <option [ngValue]="10">10</option>
-              <option [ngValue]="25">25</option>
-              <option [ngValue]="50">50</option>
-            </select>
-            <button class="secondary sm" [disabled]="page <= 1" (click)="goPage(page - 1)">‹</button>
-            <span>Page {{ page }} / {{ totalPages }}</span>
-            <button class="secondary sm" [disabled]="page >= totalPages" (click)="goPage(page + 1)">›</button>
-          </div>
-        </div>
+            </td>
+            <td><span class="badge" [class.ok]="row._raw.isActive">{{ row._raw.isActive ? 'active' : 'disabled' }}</span></td>
+            <td>
+              @if (row._raw.id !== auth.user()?.id) {
+                <button (click)="saveAccess(row._raw)" [disabled]="!row._raw._roles.length">Save roles</button>
+                <button class="secondary" (click)="toggleActive(row._raw)">{{ row._raw.isActive ? 'Disable' : 'Enable' }}</button>
+              } @else { <span class="e360-muted">Current account</span> }
+            </td>
+          </ng-template>
+        </e360-data-table>
       </div>
     </e360-module-shell>
   `,
@@ -99,6 +89,8 @@ export class UsersComponent implements OnInit {
   page = 1;
   pageSize = 25;
   total = 0;
+  sort: TableSort | null = null;
+  columnFilters: Record<string, string> = {};
   allRoles = ['HR', 'MANAGER', 'INTERVIEWER', 'BGC_VENDOR', 'TENANT_ADMIN', 'EMPLOYEE'];
   f: any = { roles: ['HR'] };
   exportCols = [
@@ -108,29 +100,53 @@ export class UsersComponent implements OnInit {
     { key: 'roles', label: 'Roles' },
     { key: 'isActive', label: 'Active' },
   ];
+  tableCols: TableColumn[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'roles', label: 'Roles', sortable: false, filterable: false },
+    { key: 'active', label: 'Active' },
+    { key: 'actions', label: 'Actions', sortable: false, filterable: false },
+  ];
 
-  get totalPages() { return Math.max(1, Math.ceil(this.total / this.pageSize)); }
-  get pageFrom() { return this.total ? (this.page - 1) * this.pageSize + 1 : 0; }
-  get pageTo() { return Math.min(this.page * this.pageSize, this.total); }
+  get tableRows() {
+    return this.users.map((u) => ({
+      id: u.id,
+      name: `${u.firstName} ${u.lastName}`,
+      email: u.email,
+      active: u.isActive ? 'active' : 'disabled',
+      _raw: u,
+    }));
+  }
 
   async ngOnInit() { await this.load(); }
 
   goPage(p: number) {
-    this.page = Math.max(1, Math.min(p, this.totalPages));
+    this.page = p;
     this.load();
   }
 
-  onPageSizeChange() {
+  onPageSizeChange(ps: number) {
+    this.pageSize = ps;
+    this.page = 1;
+    this.load();
+  }
+
+  onSortChange(s: { key: string; dir: 'asc' | 'desc' }) {
+    this.sort = s;
+    this.page = 1;
+    this.load();
+  }
+
+  onFilterChange(f: Record<string, string>) {
+    this.columnFilters = f;
     this.page = 1;
     this.load();
   }
 
   async load() {
     try {
-      const res = await this.api.get<any>('/users', {
-        page: String(this.page),
-        pageSize: String(this.pageSize),
-      });
+      const params = tableListParams(this.page, this.pageSize, {}, this.sort, this.columnFilters);
+      const res = await this.api.get<any>('/users', params);
       const { items, meta } = unwrapPaginated(res);
       this.users = items.map((u: any) => ({ ...u, _roles: [...u.roles] }));
       this.total = meta?.total ?? items.length;

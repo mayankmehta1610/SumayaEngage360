@@ -35,7 +35,7 @@ export class DepartmentsService {
   listDesignations(tenantId: string) {
     return this.prisma.designation.findMany({
       where: { tenantId },
-      orderBy: { level: 'asc' },
+      orderBy: { name: 'asc' },
     });
   }
 }

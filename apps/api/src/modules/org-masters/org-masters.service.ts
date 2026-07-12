@@ -13,7 +13,7 @@ export class OrgMastersService {
   ) {
     const m = this.prisma[model] as any;
     return {
-      list: () => m.findMany({ where: { tenantId, isActive: true }, orderBy: { code: 'asc' } }),
+      list: () => m.findMany({ where: { tenantId, isActive: true }, orderBy: { name: 'asc' } }),
       create: (dto: MasterDto) => m.create({ data: { tenantId, ...dto } }),
     };
   }

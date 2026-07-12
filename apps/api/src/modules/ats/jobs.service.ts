@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { JobStatus } from '@prisma/client';
+import { JobStatus, Prisma } from '@prisma/client';
+import { contains, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MatchingService } from '../matching/matching.service';
 import { CreateJobDto, UpdateJobDto } from './ats.dto';
@@ -37,20 +38,51 @@ export class JobsService {
 
   async findAll(
     tenantId: string,
-    status?: JobStatus,
+    statuses?: JobStatus[],
     page?: number,
     pageSize?: number,
+    sortBy?: string,
+    sortDir?: string,
+    filter?: string,
   ) {
-    const where = { tenantId, ...(status ? { status } : {}) };
+    const filters = parseFilterJson(filter);
+    const where: Prisma.JobWhereInput = {
+      tenantId,
+      ...(statuses?.length === 1 ? { status: statuses[0] } : {}),
+      ...(statuses && statuses.length > 1 ? { status: { in: statuses } } : {}),
+    };
+    if (filters.title) where.title = contains(filters.title);
+    if (filters.client) where.hiringClient = { name: contains(filters.client) };
+    if (filters.location) where.location = contains(filters.location);
+    if (filters.status) where.status = filters.status.toUpperCase() as JobStatus;
+    if (filters.__search) {
+      const q = filters.__search;
+      where.OR = [
+        { title: contains(q) },
+        { location: contains(q) },
+        { hiringClient: { name: contains(q) } },
+      ];
+    }
     const include = {
       hiringClient: { select: { id: true, name: true, slug: true } },
       skills: { include: { skill: true } },
       _count: { select: { applications: true } },
     };
-    const orderBy = { createdAt: 'desc' as const };
+    const dir = parseSortDir(sortDir);
+    const orderBy: Prisma.JobOrderByWithRelationInput = (() => {
+      switch (sortBy) {
+        case 'title': return { title: dir };
+        case 'client': return { hiringClient: { name: dir } };
+        case 'location': return { location: dir };
+        case 'vacancies': return { vacancies: dir };
+        case 'applications': return { applications: { _count: dir } };
+        case 'status': return { status: dir };
+        default: return { createdAt: dir };
+      }
+    })();
     const paginated = page !== undefined || pageSize !== undefined;
     if (!paginated) {
-      return this.prisma.job.findMany({ where, include, orderBy });
+      return this.prisma.job.findMany({ where, include, orderBy: { title: 'asc' } });
     }
     const p = Math.max(1, page ?? 1);
     const ps = Math.min(200, Math.max(1, pageSize ?? 50));

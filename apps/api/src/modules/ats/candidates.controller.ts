@@ -1,5 +1,7 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
+import { contains, paginatedResponse, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
+import { parseMultiQuery } from '../../common/http/parse-multi-query';
 import { Roles } from '../../common/auth/roles.decorator';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
@@ -19,27 +21,53 @@ export class CandidatesController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('search') search?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
+    @Query('filter') filter?: string,
+    @Query('jobIds') jobIds?: string | string[],
+    @Query('jobId') jobId?: string | string[],
   ) {
-    const where = {
+    const filters = parseFilterJson(filter);
+    const jobs = [...parseMultiQuery(jobIds), ...parseMultiQuery(jobId)];
+    const q = filters.__search ?? search?.trim();
+    const where: Prisma.CandidateWhereInput = {
       tenantId,
       ...(this.interviewerScope(user)
         ? { applications: { some: { interviews: { some: { interviewerId: user.sub } } } } }
         : {}),
-      ...(search?.trim()
-        ? {
-            OR: [
-              { firstName: { contains: search.trim(), mode: 'insensitive' as const } },
-              { lastName: { contains: search.trim(), mode: 'insensitive' as const } },
-              { email: { contains: search.trim(), mode: 'insensitive' as const } },
-            ],
-          }
+      ...(jobs.length
+        ? { applications: { some: { jobId: { in: jobs } } } }
         : {}),
     };
+    if (filters.name) {
+      where.OR = [
+        { firstName: contains(filters.name) },
+        { lastName: contains(filters.name) },
+      ];
+    }
+    if (filters.email) where.email = contains(filters.email);
+    if (filters.phone) where.phone = contains(filters.phone);
+    if (q) {
+      where.OR = [
+        { firstName: contains(q) },
+        { lastName: contains(q) },
+        { email: contains(q) },
+      ];
+    }
     const include = {
       skills: { include: { skill: { select: { name: true } } } },
       _count: { select: { applications: true, matches: true } },
     };
-    const orderBy = { createdAt: 'desc' as const };
+    const dir = parseSortDir(sortDir);
+    const orderBy: Prisma.CandidateOrderByWithRelationInput = (() => {
+      switch (sortBy) {
+        case 'name': return { lastName: dir };
+        case 'email': return { email: dir };
+        case 'phone': return { phone: dir };
+        case 'applications': return { applications: { _count: dir } };
+        default: return { createdAt: dir };
+      }
+    })();
     const paginated = page !== undefined || pageSize !== undefined;
     if (!paginated) {
       return this.prisma.candidate.findMany({ where, include, orderBy });
@@ -56,10 +84,7 @@ export class CandidatesController {
       }),
       this.prisma.candidate.count({ where }),
     ]);
-    return {
-      data,
-      meta: { total, page: p, pageSize: ps, totalPages: Math.ceil(total / ps) || 1 },
-    };
+    return paginatedResponse(data, total, p, ps, sortBy, dir);
   }
 
   @Get(':id')

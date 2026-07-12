@@ -4,10 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { AuthService } from '../core/auth.service';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ModuleShellComponent],
+  imports: [FormsModule, DatePipe, ModuleShellComponent, SelectFieldComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="Payroll"
@@ -30,8 +32,11 @@ import { AuthService } from '../core/auth.service';
       </div>
       <div class="card">
         <h2>Run payroll</h2>
-        <select [(ngModel)]="runCalId"><option value="">Select calendar</option>
-          @for (c of calendars; track c.id) { <option [value]="c.id">{{ c.name }}</option> }</select>
+        <e360-select-field
+          placeholder="Select calendar"
+          [options]="calendarOptions"
+          [(ngModel)]="runCalId"
+        />
         <input type="date" [(ngModel)]="periodStart" /> <input type="date" [(ngModel)]="periodEnd" />
         <button (click)="createRun()">Create run</button>
         @for (r of runs; track r.id) {
@@ -44,19 +49,12 @@ import { AuthService } from '../core/auth.service';
       </div>
       @if (payslips.length) {
         <div class="card"><h2>Payslips</h2>
-          <table><tr><th>Employee</th><th>Gross</th><th>Net</th></tr>
-            @for (p of payslips; track p.id) {
-              <tr><td>{{ p.employee?.user?.firstName }} {{ p.employee?.user?.lastName }}</td>
-                <td>{{ p.grossPay }}</td><td>{{ p.netPay }}</td></tr>
-            }</table>
+          <e360-data-table [columns]="payslipCols" [rows]="payslipRows" [paginated]="false" [stickyHeader]="true" />
         </div>
       }
     } @else {
       <div class="card"><h2>My payslips</h2>
-        <table><tr><th>Period</th><th>Net pay</th></tr>
-          @for (p of mySlips; track p.id) {
-            <tr><td>{{ p.payrollRun?.periodStart | date:'MMM yyyy' }}</td><td>{{ p.netPay }}</td></tr>
-          }</table>
+        <e360-data-table [columns]="mySlipCols" [rows]="mySlipRows" [paginated]="false" [stickyHeader]="true" />
       </div>
     }
   
@@ -68,6 +66,34 @@ export class PayrollComponent implements OnInit {
   auth = inject(AuthService);
   calendars: any[] = []; runs: any[] = []; payslips: any[] = []; mySlips: any[] = [];
   calName = ''; runCalId = ''; periodStart = ''; periodEnd = ''; error = '';
+  payslipCols: TableColumn[] = [
+    { key: 'employee', label: 'Employee' },
+    { key: 'gross', label: 'Gross' },
+    { key: 'net', label: 'Net' },
+  ];
+  mySlipCols: TableColumn[] = [
+    { key: 'period', label: 'Period' },
+    { key: 'net', label: 'Net pay' },
+  ];
+
+  get payslipRows() {
+    return this.payslips.map((p) => ({
+      employee: `${p.employee?.user?.firstName ?? ''} ${p.employee?.user?.lastName ?? ''}`.trim() || '—',
+      gross: p.grossPay,
+      net: p.netPay,
+    }));
+  }
+
+  get mySlipRows() {
+    return this.mySlips.map((p) => ({
+      period: p.payrollRun?.periodStart ? new Date(p.payrollRun.periodStart).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : '—',
+      net: p.netPay,
+    }));
+  }
+
+  get calendarOptions(): SelectOption[] {
+    return this.calendars.map((c) => ({ value: c.id, label: c.name }));
+  }
 
   async ngOnInit() {
     try {

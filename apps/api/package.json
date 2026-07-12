@@ -9,7 +9,7 @@
     "start:dev": "ts-node src/main.ts",
     "typecheck": "tsc --noEmit",
     "test:e2e": "node test/e2e.mjs",
-    "test:unit": "ts-node test/reports.unit.ts && ts-node test/pagination.unit.ts && ts-node test/authorization.unit.ts",
+    "test:unit": "ts-node test/reports.unit.ts && ts-node test/pagination.unit.ts && ts-node test/parse-multi-query.unit.ts && ts-node test/authorization.unit.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev"
   },

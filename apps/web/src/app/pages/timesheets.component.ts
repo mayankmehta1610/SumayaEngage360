@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Timesheets"
@@ -44,9 +45,12 @@ import { ExportBarComponent } from '../core/export-bar.component';
     <div class="card">
       <h2>My timesheets</h2>
       <div class="row" style="align-items:flex-end">
-        <div><label>Type</label>
-          <select [(ngModel)]="f.type"><option>INTERNAL</option><option>CLIENT</option></select>
-        </div>
+        <e360-select-field
+          label="Type"
+          [searchable]="false"
+          [options]="typeOptions"
+          [(ngModel)]="f.type"
+        />
         <div><label>Period start</label><input type="date" [(ngModel)]="f.periodStart" /></div>
         <div><label>Period end</label><input type="date" [(ngModel)]="f.periodEnd" /></div>
         <div><label>Day worked</label><input type="date" [(ngModel)]="entry.workDate" /></div>
@@ -88,6 +92,10 @@ export class TimesheetsComponent implements OnInit {
   ];
   f: any = { type: 'INTERNAL' };
   entry: any = { hours: 8 };
+  typeOptions: SelectOption[] = [
+    { value: 'CLIENT', label: 'CLIENT' },
+    { value: 'INTERNAL', label: 'INTERNAL' },
+  ];
 
   async ngOnInit() { await this.load(); }
   async load() {

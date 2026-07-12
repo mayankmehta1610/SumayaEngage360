@@ -1,16 +1,18 @@
 import { Component, Input, OnChanges, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
+import { ApiService, QueryParams, errMsg, unwrapPaginated } from '../core/api.service';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { ModuleShellComponent } from '../ui/module-shell.component';
-import { TableColumn } from '../ui/data-table.component';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
+import { tableListParams, TableSort } from '../core/table-query.util';
 import { environment } from '../../environments/environment';
 import { AuthService } from '../core/auth.service';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent, DataTableComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Applications"
@@ -28,74 +30,62 @@ import { AuthService } from '../core/auth.service';
       @if (error) { <div class="e360-error">{{ error }}</div> }
 
       <div class="e360-filters">
-        <div>
-          <label>Status</label>
-          <select [(ngModel)]="statusFilter" (ngModelChange)="onFilterChange()">
-            <option value="">All statuses</option>
-            @for (s of statuses; track s) { <option [ngValue]="s">{{ s }}</option> }
-          </select>
-        </div>
-        <div>
-          <label>Job</label>
-          <select [(ngModel)]="jobFilter" (ngModelChange)="onFilterChange()">
-            <option value="">All jobs</option>
-            @for (j of jobs; track j.id) { <option [ngValue]="j.id">{{ j.title }}</option> }
-          </select>
-        </div>
+        <e360-select-field
+          label="Status"
+          placeholder="All statuses"
+          [multiple]="true"
+          [options]="statusOptions"
+          [(ngModel)]="statusFilter"
+          (ngModelChange)="onFilterChange()"
+        />
+        <e360-select-field
+          label="Job"
+          placeholder="All jobs"
+          [multiple]="true"
+          [options]="jobOptions"
+          [(ngModel)]="jobFilter"
+          (ngModelChange)="onFilterChange()"
+        />
       </div>
 
       <div class="card">
         <div class="e360-toolbar">
           <h2 style="margin:0">Pipeline ({{ total }})</h2>
         </div>
-        @if (!loading && !applications.length) {
-          <p class="e360-muted">No applications yet. Publish a job and share its careers page.</p>
-        } @else {
-          <div class="e360-table-wrap e360-table-sticky" style="max-height:min(70vh, 640px)">
-            <table class="e360-table e360-table-zebra e360-table-clickable">
-              <thead>
-                <tr>
-                  @for (col of tableCols; track col.key) { <th>{{ col.label }}</th> }
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (a of applications; track a.id) {
-                  <tr
-                    [class.e360-row-selected]="selectedId === a.id"
-                    (click)="selectApplication(a)"
-                  >
-                    <td><strong>{{ a.candidate.firstName }} {{ a.candidate.lastName }}</strong></td>
-                    <td>{{ a.candidate.email }}</td>
-                    <td>{{ a.job.title }}</td>
-                    <td>
-                      <span class="badge" [class.ok]="a.status === 'HIRED' || a.status === 'OFFER_ACCEPTED'"
-                            [class.err]="a.status === 'REJECTED'">{{ a.status }}</span>
-                    </td>
-                    <td>{{ a.createdAt | date: 'mediumDate' }}</td>
-                    <td>
-                      <button class="secondary sm" (click)="selectApplication(a); $event.stopPropagation()">
-                        {{ selectedId === a.id ? 'Hide' : 'Open' }}
-                      </button>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          <div class="e360-pagination">
-            <span>{{ pageFrom }}–{{ pageTo }} of {{ total }}</span>
-            <div class="pages">
-              <label class="e360-muted" style="font-size:.75rem;margin-right:.35rem">Rows</label>
-              <select [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
-                @for (ps of pageSizeOptions; track ps) { <option [ngValue]="ps">{{ ps }}</option> }
-              </select>
-              <button class="secondary sm" [disabled]="page <= 1" (click)="goPage(page - 1)">‹</button>
-              <span>Page {{ page }} / {{ totalPages }}</span>
-              <button class="secondary sm" [disabled]="page >= totalPages" (click)="goPage(page + 1)">›</button>
-            </div>
-          </div>
-        }
+        <e360-data-table
+          [columns]="tableCols"
+          [rows]="tableRows"
+          [page]="page"
+          [pageSize]="pageSize"
+          [pageSizeOptions]="pageSizeOptions"
+          [total]="total"
+          [loading]="loading"
+          [stickyHeader]="true"
+          [rowClickable]="true"
+          [selectedId]="selectedId"
+          (pageChange)="goPage($event)"
+          (pageSizeChange)="onPageSizeChange($event)"
+          (sortChange)="onSortChange($event)"
+          (filterChange)="onTableFilterChange($event)"
+          (rowClick)="onRowClick($event)"
+          emptyMessage="No applications yet. Publish a job and share its careers page."
+        >
+          <ng-template #rowTemplate let-row>
+            <td><strong>{{ row.name }}</strong></td>
+            <td>{{ row.email }}</td>
+            <td>{{ row.job }}</td>
+            <td>
+              <span class="badge" [class.ok]="row.status === 'HIRED' || row.status === 'OFFER_ACCEPTED'"
+                    [class.err]="row.status === 'REJECTED'">{{ row.status }}</span>
+            </td>
+            <td>{{ row.applied }}</td>
+            <td>
+              <button class="secondary sm" (click)="selectByRow(row); $event.stopPropagation()">
+                {{ selectedId === row.id ? 'Hide' : 'Open' }}
+              </button>
+            </td>
+          </ng-template>
+        </e360-data-table>
       </div>
 
       @if (selectedApp) {
@@ -112,33 +102,38 @@ import { AuthService } from '../core/auth.service';
           @if (isHr) {
           <div class="row" style="align-items:flex-end">
             <div>
-              <label>Move to status</label>
-              <select [(ngModel)]="selectedApp._status">
-                @for (s of statuses; track s) { <option [ngValue]="s">{{ s }}</option> }
-              </select>
+              <e360-select-field
+                label="Move to status"
+                [options]="statusOptions"
+                [(ngModel)]="selectedApp._status"
+                [clearable]="false"
+              />
             </div>
             <div style="flex:0"><button class="secondary" (click)="setStatus(selectedApp)">Update</button></div>
           </div>
           }
 
           <h2>Interview rounds</h2>
-          <table>
-            <tr><th>Level</th><th>Name</th><th>Scheduled</th><th>Result</th><th>Recording</th><th>Screenshot</th><th></th></tr>
-            @for (r of selectedApp.interviews; track r.id) {
-              <tr>
-                <td>{{ r.level }}</td><td>{{ r.name }}</td>
-                <td>{{ r.scheduledAt | date: 'short' }}</td>
-                <td><span class="badge" [class.ok]="r.result==='PASSED'" [class.err]="r.result==='FAILED'">{{ r.result }}</span></td>
-                <td>{{ r.recordingUrl || r.recordingFileId ? '✔' : '—' }}</td>
-                <td>{{ r.screenshotFileId ? '✔' : '—' }}</td>
-                <td>
-                  @if (r.result === 'PENDING') {
-                    <button class="secondary" (click)="openResult(r)">Record result</button>
-                  }
-                </td>
-              </tr>
-            }
-          </table>
+          <e360-data-table
+            [columns]="interviewCols"
+            [rows]="interviewRows"
+            [paginated]="false"
+            [stickyHeader]="true"
+          >
+            <ng-template #rowTemplate let-row>
+              <td>{{ row.level }}</td>
+              <td>{{ row.name }}</td>
+              <td>{{ row.scheduled }}</td>
+              <td><span class="badge" [class.ok]="row.result==='PASSED'" [class.err]="row.result==='FAILED'">{{ row.result }}</span></td>
+              <td>{{ row.recording }}</td>
+              <td>{{ row.screenshot }}</td>
+              <td>
+                @if (row.result === 'PENDING') {
+                  <button class="secondary" (click)="openResult(row._raw)">Record result</button>
+                }
+              </td>
+            </ng-template>
+          </e360-data-table>
 
           @if (resultRound && resultRound.applicationId === selectedApp.id) {
             <div class="e360-detail-panel">
@@ -146,10 +141,12 @@ import { AuthService } from '../core/auth.service';
               <div class="row">
                 <div><label>Rating (1–10)</label><input type="number" [(ngModel)]="res.rating" /></div>
                 <div>
-                  <label>Result</label>
-                  <select [(ngModel)]="res.result">
-                    <option>PASSED</option><option>FAILED</option><option>NO_SHOW</option>
-                  </select>
+                  <e360-select-field
+                    label="Result"
+                    [options]="resultOptions"
+                    [(ngModel)]="res.result"
+                    [clearable]="false"
+                  />
                 </div>
                 <div><label>Recording URL (Teams/Zoom link)</label><input [(ngModel)]="res.recordingUrl" /></div>
               </div>
@@ -168,17 +165,18 @@ import { AuthService } from '../core/auth.service';
           <div class="row" style="margin-top: .75rem; align-items:flex-end">
             <div><label>Next round name</label><input [(ngModel)]="selectedApp._roundName" placeholder="Technical" /></div>
             <div><label>Interview date/time</label><input type="datetime-local" [(ngModel)]="selectedApp._roundAt" /></div>
-            <div><label>Mode</label>
-              <select [(ngModel)]="selectedApp._roundMode"><option>TEAMS</option><option>ZOOM</option><option>MEET</option><option>IN_PERSON</option></select>
-            </div>
-            <div><label>Interviewer</label>
-              <select [(ngModel)]="selectedApp._interviewerId">
-                <option [ngValue]="undefined">choose…</option>
-                @for (i of interviewers; track i.id) {
-                  <option [ngValue]="i.id">{{ i.firstName }} {{ i.lastName }}</option>
-                }
-              </select>
-            </div>
+            <e360-select-field
+              label="Mode"
+              [options]="modeOptions"
+              [(ngModel)]="selectedApp._roundMode"
+              [clearable]="false"
+            />
+            <e360-select-field
+              label="Interviewer"
+              placeholder="choose…"
+              [options]="interviewerOptions"
+              [(ngModel)]="selectedApp._interviewerId"
+            />
             <div style="flex:0"><button class="secondary" (click)="schedule(selectedApp)">Schedule round</button></div>
           </div>
           }
@@ -231,10 +229,33 @@ export class ApplicationsComponent implements OnInit, OnChanges {
   page = 1;
   pageSize = 25;
   pageSizeOptions = [10, 25, 50];
-  total = 0;
-  totalPages = 1;
-  statusFilter = '';
-  jobFilter = '';
+  sort: TableSort | null = null;
+  columnFilters: Record<string, string> = {};
+
+  get tableRows() {
+    return this.applications.map((a) => ({
+      id: a.id,
+      name: `${a.candidate.firstName} ${a.candidate.lastName}`,
+      email: a.candidate.email,
+      job: a.job.title,
+      status: a.status,
+      applied: a.createdAt ? new Date(a.createdAt).toLocaleDateString() : '—',
+      _raw: a,
+    }));
+  }
+
+  get interviewRows() {
+    return (this.selectedApp?.interviews ?? []).map((r: any) => ({
+      id: r.id,
+      level: r.level,
+      name: r.name,
+      scheduled: r.scheduledAt ? new Date(r.scheduledAt).toLocaleString() : '—',
+      result: r.result,
+      recording: r.recordingUrl || r.recordingFileId ? '✔' : '—',
+      screenshot: r.screenshotFileId ? '✔' : '—',
+      _raw: r,
+    }));
+  }
 
   exportCols = [
     { key: 'candidate.firstName', label: 'First name' },
@@ -250,19 +271,46 @@ export class ApplicationsComponent implements OnInit, OnChanges {
     { key: 'job', label: 'Job' },
     { key: 'status', label: 'Status' },
     { key: 'applied', label: 'Applied' },
+    { key: 'actions', label: '', sortable: false, filterable: false },
   ];
+  interviewCols: TableColumn[] = [
+    { key: 'level', label: 'Level' },
+    { key: 'name', label: 'Name' },
+    { key: 'scheduled', label: 'Scheduled' },
+    { key: 'result', label: 'Result', filterable: false },
+    { key: 'recording', label: 'Recording' },
+    { key: 'screenshot', label: 'Screenshot' },
+    { key: 'actions', label: '', sortable: false, filterable: false },
+  ];
+  total = 0;
+  totalPages = 1;
+  statusFilter: string[] = [];
+  jobFilter: string[] = [];
   statuses = ['APPLIED', 'SCREENING', 'INTERVIEW', 'SELECTED', 'REJECTED', 'WITHDRAWN'];
+  resultOptions: SelectOption[] = ['FAILED', 'NO_SHOW', 'PASSED'].map((v) => ({ value: v, label: v.replace(/_/g, ' ') }));
+  modeOptions: SelectOption[] = ['IN_PERSON', 'MEET', 'TEAMS', 'ZOOM'].map((v) => ({ value: v, label: v.replace(/_/g, ' ') }));
   resultRound: any = null;
   res: any = { result: 'PASSED' };
   screenshotFile: File | null = null;
   interviewers: any[] = [];
 
+  get statusOptions(): SelectOption[] {
+    return [...this.statuses].sort().map((s) => ({ value: s, label: s.replace(/_/g, ' ') }));
+  }
+  get jobOptions(): SelectOption[] {
+    return this.jobs.map((j) => ({ value: j.id, label: j.title }));
+  }
+  get interviewerOptions(): SelectOption[] {
+    return this.interviewers.map((i) => ({
+      value: i.id,
+      label: `${i.firstName} ${i.lastName}`,
+    }));
+  }
   get isHr() { return this.auth.hasRole('TENANT_ADMIN', 'HR'); }
-  get pageFrom() { return this.total ? (this.page - 1) * this.pageSize + 1 : 0; }
   get pageTo() { return Math.min(this.page * this.pageSize, this.total); }
 
   async ngOnInit() {
-    this.statusFilter = this.status ?? '';
+    this.statusFilter = this.status ? [this.status] : [];
     await Promise.all([this.loadJobs(), this.load()]);
     if (this.isHr) {
       try { this.interviewers = await this.api.get<any[]>('/interviewers'); } catch { /* optional */ }
@@ -270,7 +318,7 @@ export class ApplicationsComponent implements OnInit, OnChanges {
   }
 
   ngOnChanges() {
-    this.statusFilter = this.status ?? '';
+    this.statusFilter = this.status ? [this.status] : [];
     this.load();
   }
 
@@ -279,9 +327,31 @@ export class ApplicationsComponent implements OnInit, OnChanges {
     this.load();
   }
 
-  onPageSizeChange() {
+  onPageSizeChange(ps?: number) {
+    if (ps) this.pageSize = ps;
     this.page = 1;
     this.load();
+  }
+
+  onSortChange(s: { key: string; dir: 'asc' | 'desc' }) {
+    this.sort = s;
+    this.page = 1;
+    this.load();
+  }
+
+  onTableFilterChange(f: Record<string, string>) {
+    this.columnFilters = f;
+    this.page = 1;
+    this.load();
+  }
+
+  onRowClick(row: Record<string, unknown>) {
+    this.selectByRow(row);
+  }
+
+  selectByRow(row: Record<string, unknown>) {
+    const app = row['_raw'] as any;
+    if (app) this.selectApplication(app);
   }
 
   goPage(p: number) {
@@ -300,12 +370,10 @@ export class ApplicationsComponent implements OnInit, OnChanges {
   async load() {
     this.loading = true;
     try {
-      const params: Record<string, string> = {
-        page: String(this.page),
-        pageSize: String(this.pageSize),
-      };
-      if (this.statusFilter) params.status = this.statusFilter;
-      if (this.jobFilter) params.jobId = this.jobFilter;
+      const extra: QueryParams = {};
+      if (this.statusFilter.length) extra.status = this.statusFilter;
+      if (this.jobFilter.length) extra.jobIds = this.jobFilter;
+      const params = tableListParams(this.page, this.pageSize, extra, this.sort, this.columnFilters);
       const res = await this.api.get<any>('/applications', params);
       const { items, meta } = unwrapPaginated(res);
       this.applications = items;

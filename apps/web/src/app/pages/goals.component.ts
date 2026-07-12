@@ -1,12 +1,14 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ModuleShellComponent } from '../ui/module-shell.component';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ModuleShellComponent],
+  imports: [FormsModule, ModuleShellComponent, DataTableComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Goals & KPIs"
@@ -30,22 +32,17 @@ import { AuthService } from '../core/auth.service';
       <div class="card">
         <h2>Assign goal</h2>
         <div class="row">
-          <select [(ngModel)]="assignment.employeeId">
-            <option [ngValue]="undefined">Select employee</option>
-            @for (e of employees; track e.id) {
-              <option [ngValue]="e.id">{{ e.user.firstName }} {{ e.user.lastName }}</option>
-            }
-          </select>
+          <e360-select-field
+            placeholder="Select employee"
+            [options]="employeeOptions"
+            [(ngModel)]="assignment.employeeId"
+          />
           <input [(ngModel)]="assignment.title" placeholder="Goal title" />
           <input [(ngModel)]="assignment.target" placeholder="Target" />
           <input type="date" [(ngModel)]="assignment.dueDate" />
           <button (click)="assignGoal()" [disabled]="!assignment.employeeId || !assignment.title">Assign</button>
         </div>
-        <table><tr><th>Employee</th><th>Goal</th><th>Target</th><th>Progress</th></tr>
-          @for (g of teamGoals; track g.id) {
-            <tr><td>{{ g.employee.user.firstName }} {{ g.employee.user.lastName }}</td><td>{{ g.title }}</td><td>{{ g.target }}</td><td>{{ g.progress }}%</td></tr>
-          } @empty { <tr><td colspan="4" class="muted">No team goals assigned.</td></tr> }
-        </table>
+        <e360-data-table [columns]="teamGoalCols" [rows]="teamGoalRows" [paginated]="false" [stickyHeader]="true" />
       </div>
     }
     <div class="card">
@@ -63,9 +60,31 @@ export class GoalsComponent implements OnInit {
   private auth = inject(AuthService);
   kpis: any[] = []; goals: any[] = []; employees: any[] = []; teamGoals: any[] = [];
   assignment: any = {}; kpiCode = ''; kpiName = ''; error = '';
+  teamGoalCols: TableColumn[] = [
+    { key: 'employee', label: 'Employee' },
+    { key: 'goal', label: 'Goal' },
+    { key: 'target', label: 'Target' },
+    { key: 'progress', label: 'Progress' },
+  ];
+
+  get teamGoalRows() {
+    return this.teamGoals.map((g) => ({
+      employee: `${g.employee.user.firstName} ${g.employee.user.lastName}`,
+      goal: g.title,
+      target: g.target,
+      progress: `${g.progress}%`,
+    }));
+  }
 
   get isHr() { return this.auth.hasRole('TENANT_ADMIN', 'HR'); }
   get canAssign() { return this.auth.hasRole('TENANT_ADMIN', 'HR', 'MANAGER'); }
+
+  get employeeOptions(): SelectOption[] {
+    return this.employees.map((e) => ({
+      value: e.id,
+      label: `${e.user.firstName} ${e.user.lastName}`,
+    }));
+  }
 
   async ngOnInit() {
     try {

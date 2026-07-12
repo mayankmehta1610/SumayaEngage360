@@ -1,11 +1,13 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ModuleShellComponent } from '../ui/module-shell.component';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { ApiService, errMsg } from '../core/api.service';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ModuleShellComponent],
+  imports: [FormsModule, ModuleShellComponent, DataTableComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Notifications"
@@ -19,14 +21,14 @@ import { ApiService, errMsg } from '../core/api.service';
     <div class="card">
       <h2>Templates</h2>
       <input [(ngModel)]="tpl.code" placeholder="Code" />
-      <select [(ngModel)]="tpl.channel"><option>EMAIL</option><option>SMS</option><option>WHATSAPP</option></select>
+      <e360-select-field
+        [options]="channelOptions"
+        [(ngModel)]="tpl.channel"
+      />
       <input [(ngModel)]="tpl.subject" placeholder="Subject" />
       <textarea [(ngModel)]="tpl.body" placeholder="Body with {{'{{name}}'}}"></textarea>
       <button (click)="create()">Create template</button>
-      <table><tr><th>Code</th><th>Channel</th><th>Subject</th></tr>
-        @for (t of templates; track t.id) {
-          <tr><td>{{ t.code }}</td><td>{{ t.channel }}</td><td>{{ t.subject }}</td></tr>
-        }</table>
+      <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true" />
     </div>
     <div class="card"><h2>Recent deliveries</h2>
       <ul>@for (d of deliveries; track d.id) { <li>{{ d.channel }} → {{ d.recipient }} ({{ d.status }})</li> }</ul>
@@ -39,6 +41,24 @@ export class NotificationsComponent implements OnInit {
   private api = inject(ApiService);
   templates: any[] = []; deliveries: any[] = [];
   tpl: any = { channel: 'EMAIL', body: 'Hello {{name}}' }; error = '';
+  channelOptions: SelectOption[] = [
+    { value: 'EMAIL', label: 'EMAIL' },
+    { value: 'SMS', label: 'SMS' },
+    { value: 'WHATSAPP', label: 'WHATSAPP' },
+  ];
+  tableCols: TableColumn[] = [
+    { key: 'code', label: 'Code' },
+    { key: 'channel', label: 'Channel' },
+    { key: 'subject', label: 'Subject' },
+  ];
+
+  get tableRows() {
+    return this.templates.map((t) => ({
+      code: t.code,
+      channel: t.channel,
+      subject: t.subject,
+    }));
+  }
 
   async ngOnInit() {
     try {

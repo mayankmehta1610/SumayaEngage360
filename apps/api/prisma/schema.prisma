@@ -12,21 +12,60 @@ datasource db {
 
 // ─────────────────────────────── Tenancy & identity ───────────────────────────────
 
+enum TenantType {
+  COMPANY
+  RECRUITMENT_AGENCY
+  STAFFING_COMPANY
+  INDIVIDUAL_RECRUITER
+}
+
 model Tenant {
-  id        String   @id @default(uuid())
-  name      String
-  subdomain String   @unique // acme.engage360.com
-  country   String   @default("IN") // drives identity-document requirements
-  currency  String   @default("INR")
-  timezone  String   @default("Asia/Kolkata")
-  logoUrl   String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                      String     @id @default(uuid())
+  name                    String
+  subdomain               String     @unique // acme.engage360.com
+  tenantType              TenantType @default(COMPANY)
+  onboardingQuestionnaire Json? // provisioning wizard answers
+  enabledPortals          Json? // ["ats","workforce","agency","staffing"]
+  country                 String     @default("IN") // drives identity-document requirements
+  currency                String     @default("INR")
+  timezone                String     @default("Asia/Kolkata")
+  logoUrl                 String?
+  isActive                Boolean    @default(true)
+  createdAt               DateTime   @default(now())
+  updatedAt               DateTime   @updatedAt
 
   users Users[] @relation("TenantUsers")
 
   @@map("tenants")
+}
+
+enum TenantFieldType {
+  TEXT
+  NUMBER
+  DATE
+  SELECT
+  MULTI_SELECT
+  BOOLEAN
+  TEXTAREA
+}
+
+// Per-tenant configurable fields on entities (applications, candidates…).
+model TenantFieldDefinition {
+  id        String          @id @default(uuid())
+  tenantId  String
+  entity    String // APPLICATION | CANDIDATE
+  fieldKey  String
+  label     String
+  type      TenantFieldType @default(TEXT)
+  required  Boolean         @default(false)
+  options   Json?
+  sortOrder Int             @default(0)
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+
+  @@unique([tenantId, entity, fieldKey])
+  @@index([tenantId, entity])
+  @@map("tenant_field_definitions")
 }
 
 enum Role {
@@ -196,10 +235,11 @@ model Candidate {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  skills       CandidateSkill[]
-  experiences  CandidateExperience[]
-  applications Application[]
-  matches      MatchScore[]
+  skills              CandidateSkill[]
+  experiences         CandidateExperience[]
+  applications        Application[]
+  matches             MatchScore[]
+  agencySubmissions   AgencyClientSubmission[]
 
   @@unique([tenantId, email])
   @@map("candidates")
@@ -258,10 +298,115 @@ model Application {
 
   interviews InterviewRound[]
   offer      Offer?
+  profile    ApplicationProfile?
 
   @@unique([jobId, candidateId])
   @@index([tenantId, status])
   @@map("applications")
+}
+
+// Rich application profile — professional summary, education, documents, contacts.
+model ApplicationProfile {
+  id                  String      @id @default(uuid())
+  tenantId            String
+  applicationId       String      @unique
+  application         Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  professionalSummary String?
+  domainExpertise     String[]    @default([])
+  education           Json? // [{institution, degree, field, startDate, endDate}]
+  coverLetterFileId   String?
+  contacts            Json? // [{type, name, email, phone, relation}]
+  customFields        Json? // keyed by TenantFieldDefinition.fieldKey
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@index([tenantId])
+  @@map("application_profiles")
+}
+
+enum AgencySubmissionStatus {
+  DRAFT
+  SUBMITTED
+  SHORTLISTED
+  INTERVIEW
+  SELECTED
+  REJECTED
+  WITHDRAWN
+}
+
+// Recruitment agency: submit candidates to client companies / jobs.
+model AgencyClientSubmission {
+  id             String                 @id @default(uuid())
+  agencyTenantId String
+  clientTenantId String?
+  clientName     String?
+  jobId          String?
+  candidateId    String
+  candidate      Candidate              @relation(fields: [candidateId], references: [id])
+  status         AgencySubmissionStatus @default(DRAFT)
+  notes          String?
+  submittedAt    DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@index([agencyTenantId, status])
+  @@map("agency_client_submissions")
+}
+
+enum AgencyContactType {
+  CLIENT
+  HIRING_MANAGER
+  RECRUITER
+  VENDOR
+  OTHER
+}
+
+model AgencyContact {
+  id        String            @id @default(uuid())
+  tenantId  String
+  type      AgencyContactType @default(CLIENT)
+  name      String
+  email     String?
+  phone     String?
+  company   String?
+  notes     String?
+  isActive  Boolean           @default(true)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([tenantId, type])
+  @@map("agency_contacts")
+}
+
+enum ContractorStatus {
+  DRAFT
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  TERMINATED
+}
+
+// Staffing company: contractor lifecycle on client contracts.
+model ContractorAssignment {
+  id           String           @id @default(uuid())
+  tenantId     String
+  employeeId   String?
+  candidateId  String?
+  contractId   String?
+  clientRef    String?
+  role         String?
+  rate         Decimal?
+  rateType     String           @default("HOURLY") // HOURLY | DAILY | MONTHLY
+  currency     String           @default("INR")
+  startDate    DateTime
+  endDate      DateTime?
+  status       ContractorStatus @default(DRAFT)
+  notes        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([tenantId, status])
+  @@map("contractor_assignments")
 }
 
 enum InterviewResult {

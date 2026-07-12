@@ -3,10 +3,11 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { AuthService } from '../core/auth.service';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ModuleShellComponent],
+  imports: [FormsModule, ModuleShellComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="Expenses"
@@ -26,17 +27,18 @@ import { AuthService } from '../core/auth.service';
       <button (click)="create()">Create draft</button>
     </div>
     <div class="card">
-      <table><tr><th>Title</th><th>Amount</th><th>Status</th><th>Action</th></tr>
-        @for (c of claims; track c.id) {
-          <tr>
-            <td>{{ c.title }}</td><td>{{ c.totalAmount }}</td><td>{{ c.status }}</td>
-            <td>
-              @if (c.status === 'DRAFT') { <button (click)="submit(c.id)">Submit</button> }
-              @if (c.status === 'SUBMITTED' && auth.hasRole('MANAGER','HR','TENANT_ADMIN')) {
-                <button (click)="approve(c.id)">Approve</button> }
-            </td>
-          </tr>
-        }</table>
+      <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true">
+        <ng-template #rowTemplate let-row>
+          <td>{{ row.title }}</td>
+          <td>{{ row.amount }}</td>
+          <td>{{ row.status }}</td>
+          <td>
+            @if (row._raw.status === 'DRAFT') { <button (click)="submit(row.id)">Submit</button> }
+            @if (row._raw.status === 'SUBMITTED' && auth.hasRole('MANAGER','HR','TENANT_ADMIN')) {
+              <button (click)="approve(row.id)">Approve</button> }
+          </td>
+        </ng-template>
+      </e360-data-table>
     </div>
   
     </e360-module-shell>
@@ -46,6 +48,22 @@ export class ExpensesComponent implements OnInit {
   private api = inject(ApiService);
   auth = inject(AuthService);
   claims: any[] = []; title = ''; amount = 0; category = 'Travel'; error = '';
+  tableCols: TableColumn[] = [
+    { key: 'title', label: 'Title' },
+    { key: 'amount', label: 'Amount' },
+    { key: 'status', label: 'Status' },
+    { key: 'actions', label: 'Action', sortable: false, filterable: false },
+  ];
+
+  get tableRows() {
+    return this.claims.map((c) => ({
+      id: c.id,
+      title: c.title,
+      amount: c.totalAmount,
+      status: c.status,
+      _raw: c,
+    }));
+  }
 
   async ngOnInit() { await this.load(); }
   async load() {

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { contains, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface AuditEntry {
@@ -34,21 +35,54 @@ export class AuditService {
     tenantId: string,
     opts: {
       entityType?: string;
+      entityTypes?: string[];
       from?: Date;
       to?: Date;
       limit?: number;
       page?: number;
       pageSize?: number;
+      sortBy?: string;
+      sortDir?: string;
+      filter?: string;
     } = {},
   ) {
+    const filters = parseFilterJson(opts.filter);
     const where: Prisma.AuditLogWhereInput = { tenantId };
-    if (opts.entityType) where.entityType = opts.entityType;
+    if (opts.entityTypes?.length) {
+      where.entityType = opts.entityTypes.length === 1
+        ? opts.entityTypes[0]
+        : { in: opts.entityTypes };
+    } else if (opts.entityType) where.entityType = opts.entityType;
     if (opts.from || opts.to) {
       where.createdAt = {};
       if (opts.from) where.createdAt.gte = opts.from;
       if (opts.to) where.createdAt.lte = opts.to;
     }
-    const orderBy = { createdAt: 'desc' as const };
+    if (filters.action) where.action = contains(filters.action);
+    if (filters.entity) where.entityType = contains(filters.entity);
+    if (filters.actor) {
+      const actorIds = await this.userIdsByEmail(tenantId, filters.actor);
+      where.userId = actorIds.length ? { in: actorIds } : { in: ['__none__'] };
+    }
+    if (filters.__search) {
+      const q = filters.__search;
+      const actorIds = await this.userIdsByEmail(tenantId, q);
+      where.OR = [
+        { action: contains(q) },
+        { entityType: contains(q) },
+        ...(actorIds.length ? [{ userId: { in: actorIds } }] : []),
+      ];
+    }
+    const dir = parseSortDir(opts.sortDir);
+    const orderBy: Prisma.AuditLogOrderByWithRelationInput = (() => {
+      switch (opts.sortBy) {
+        case 'actor': return { userId: dir };
+        case 'action': return { action: dir };
+        case 'entity': return { entityType: dir };
+        case 'when': return { createdAt: dir };
+        default: return { createdAt: dir };
+      }
+    })();
     const paginated = opts.page !== undefined || opts.pageSize !== undefined;
     if (!paginated) {
       return this.prisma.auditLog.findMany({
@@ -72,5 +106,17 @@ export class AuditService {
       data,
       meta: { total, page: p, pageSize: ps, totalPages: Math.ceil(total / ps) || 1 },
     };
+  }
+
+  private async userIdsByEmail(tenantId: string, needle: string): Promise<string[]> {
+    const users = await this.prisma.users.findMany({
+      where: {
+        OR: [{ tenantId }, { tenantId: null }],
+        email: contains(needle),
+      },
+      select: { id: true },
+      take: 200,
+    });
+    return users.map((u) => u.id);
   }
 }

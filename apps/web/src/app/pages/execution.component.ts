@@ -1,11 +1,12 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { AuthService } from '../core/auth.service';
 
 @Component({
   standalone: true,
-  imports: [ModuleShellComponent],
+  imports: [ModuleShellComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="AI execution checklist"
@@ -18,17 +19,7 @@ import { AuthService } from '../core/auth.service';
 @if (error) { <div class="e360-error">{{ error }}</div> }
 
     <div class="card">
-      <table>
-        <tr><th>Step</th><th>Sheet</th><th>Evidence</th><th>Status</th></tr>
-        @for (s of steps; track s.step) {
-          <tr>
-            <td>{{ s.step }}</td>
-            <td>{{ s.sheetRef }}</td>
-            <td>{{ s.evidence }}</td>
-            <td><span class="badge" [class.ok]="s.status === 'DONE'">{{ s.status }}</span></td>
-          </tr>
-        }
-      </table>
+      <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true" />
     </div>
   
     </e360-module-shell>
@@ -39,6 +30,21 @@ export class ExecutionComponent implements OnInit {
   auth = inject(AuthService);
   steps: any[] = [];
   error = '';
+  tableCols: TableColumn[] = [
+    { key: 'step', label: 'Step' },
+    { key: 'sheet', label: 'Sheet' },
+    { key: 'evidence', label: 'Evidence' },
+    { key: 'status', label: 'Status' },
+  ];
+
+  get tableRows() {
+    return this.steps.map((s) => ({
+      step: s.step,
+      sheet: s.sheetRef,
+      evidence: s.evidence,
+      status: s.status,
+    }));
+  }
 
   async ngOnInit() {
     if (!this.auth.hasRole('TENANT_ADMIN', 'HR')) return;

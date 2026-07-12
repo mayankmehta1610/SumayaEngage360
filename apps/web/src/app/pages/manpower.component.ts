@@ -3,10 +3,11 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { AuthService } from '../core/auth.service';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ModuleShellComponent],
+  imports: [FormsModule, ModuleShellComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="Manpower requests"
@@ -24,17 +25,18 @@ import { AuthService } from '../core/auth.service';
       <button (click)="create()">Create</button>
     </div>
     <div class="card">
-      <table><tr><th>Title</th><th>Count</th><th>Status</th><th>Actions</th></tr>
-        @for (r of requests; track r.id) {
-          <tr>
-            <td>{{ r.title }}</td><td>{{ r.headcount }}</td><td>{{ r.status }}</td>
-            <td>
-              @if (r.status === 'DRAFT') { <button (click)="submit(r.id)">Submit</button> }
-              @if (r.status === 'SUBMITTED' && auth.hasRole('HR','TENANT_ADMIN')) {
-                <button (click)="approve(r.id)">Approve</button> }
-            </td>
-          </tr>
-        }</table>
+      <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true">
+        <ng-template #rowTemplate let-row>
+          <td>{{ row.title }}</td>
+          <td>{{ row.count }}</td>
+          <td>{{ row.status }}</td>
+          <td>
+            @if (row._raw.status === 'DRAFT') { <button (click)="submit(row.id)">Submit</button> }
+            @if (row._raw.status === 'SUBMITTED' && auth.hasRole('HR','TENANT_ADMIN')) {
+              <button (click)="approve(row.id)">Approve</button> }
+          </td>
+        </ng-template>
+      </e360-data-table>
     </div>
   
     </e360-module-shell>
@@ -44,6 +46,22 @@ export class ManpowerComponent implements OnInit {
   private api = inject(ApiService);
   auth = inject(AuthService);
   requests: any[] = []; f: any = { headcount: 1 }; error = '';
+  tableCols: TableColumn[] = [
+    { key: 'title', label: 'Title' },
+    { key: 'count', label: 'Count' },
+    { key: 'status', label: 'Status' },
+    { key: 'actions', label: 'Actions', sortable: false, filterable: false },
+  ];
+
+  get tableRows() {
+    return this.requests.map((r) => ({
+      id: r.id,
+      title: r.title,
+      count: r.headcount,
+      status: r.status,
+      _raw: r,
+    }));
+  }
 
   async ngOnInit() {
     try { this.requests = await this.api.get<any[]>('/manpower'); }

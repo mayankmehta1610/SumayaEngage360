@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ModuleShellComponent],
+  imports: [FormsModule, DatePipe, ModuleShellComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Surveys & eNPS"
@@ -32,10 +33,13 @@ import { ModuleShellComponent } from '../ui/module-shell.component';
             @for (q of s.questions; track q.q) {
               <label>{{ q.q }}</label>
               @if (q.kind === 'SCALE') {
-                <select [(ngModel)]="draft[s.id + q.q]" style="max-width:120px">
-                  <option [ngValue]="undefined">score…</option>
-                  @for (n of scale; track n) { <option [ngValue]="n">{{ n }}</option> }
-                </select>
+                <e360-select-field
+                  [compact]="true"
+                  placeholder="score…"
+                  [searchable]="false"
+                  [options]="scaleOptions"
+                  [(ngModel)]="draft[s.id + q.q]"
+                />
               } @else {
                 <textarea rows="2" [(ngModel)]="draft[s.id + q.q]"></textarea>
               }
@@ -52,9 +56,11 @@ import { ModuleShellComponent } from '../ui/module-shell.component';
         <h2 style="margin-top:0">Create survey</h2>
         <div class="row">
           <div><label>Title</label><input [(ngModel)]="f.title" placeholder="Q3 Engagement Pulse" /></div>
-          <div><label>Type</label>
-            <select [(ngModel)]="f.type"><option>PULSE</option><option>ENGAGEMENT</option><option>ENPS</option></select>
-          </div>
+          <e360-select-field
+            label="Type"
+            [options]="surveyTypeOptions"
+            [(ngModel)]="f.type"
+          />
           <div><label>Closes on</label><input type="date" [(ngModel)]="f.closesAt" /></div>
         </div>
         <label><input type="checkbox" [(ngModel)]="f.anonymous" style="width:auto;margin-right:.4rem" />Anonymous responses</label>
@@ -62,7 +68,12 @@ import { ModuleShellComponent } from '../ui/module-shell.component';
         @for (q of qs; track $index; let i = $index) {
           <div style="display:flex;gap:.5rem;margin:.3rem 0">
             <input [(ngModel)]="q.q" placeholder="Question text" />
-            <select [(ngModel)]="q.kind" style="max-width:120px;margin:0"><option>SCALE</option><option>TEXT</option></select>
+            <e360-select-field
+              [compact]="true"
+              [searchable]="false"
+              [options]="questionKindOptions"
+              [(ngModel)]="q.kind"
+            />
             <button class="danger" (click)="qs.splice(i, 1)">✕</button>
           </div>
         }
@@ -111,6 +122,19 @@ export class SurveysComponent implements OnInit {
   scale = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   f: any = { type: 'PULSE', anonymous: true };
   qs: { q: string; kind: string }[] = [{ q: '', kind: 'SCALE' }];
+  surveyTypeOptions: SelectOption[] = [
+    { value: 'ENGAGEMENT', label: 'ENGAGEMENT' },
+    { value: 'ENPS', label: 'ENPS' },
+    { value: 'PULSE', label: 'PULSE' },
+  ];
+  questionKindOptions: SelectOption[] = [
+    { value: 'SCALE', label: 'SCALE' },
+    { value: 'TEXT', label: 'TEXT' },
+  ];
+
+  get scaleOptions(): SelectOption[] {
+    return this.scale.map((n) => ({ value: String(n), label: String(n) }));
+  }
 
   get isHr() { return this.auth.hasRole('TENANT_ADMIN', 'HR'); }
 
@@ -138,7 +162,12 @@ export class SurveysComponent implements OnInit {
   async respond(s: any) {
     try {
       const answers = s.questions
-        .map((q: any) => ({ q: q.q, value: this.draft[s.id + q.q] }))
+        .map((q: any) => ({
+          q: q.q,
+          value: q.kind === 'SCALE' && this.draft[s.id + q.q] !== undefined && this.draft[s.id + q.q] !== ''
+            ? Number(this.draft[s.id + q.q])
+            : this.draft[s.id + q.q],
+        }))
         .filter((a: any) => a.value !== undefined && a.value !== '');
       await this.api.post(`/surveys/${s.id}/respond`, { answers });
       await this.load();

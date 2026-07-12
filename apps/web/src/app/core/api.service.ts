@@ -11,10 +11,10 @@ export class ApiService {
 
   // `tenant` explicitly scopes a request to one company (used by public
   // pages whose URL names the tenant). When set, it wins over any stored value.
-  get<T>(path: string, params?: Record<string, string>, tenant?: string): Promise<T> {
+  get<T>(path: string, params?: QueryParams, tenant?: string): Promise<T> {
     return firstValueFrom(
       this.http.get<T>(`${this.base}${path}`, {
-        params: new HttpParams({ fromObject: params ?? {} }),
+        params: buildHttpParams(params),
         headers: tenant ? { 'x-tenant-id': tenant } : undefined,
       }),
     );
@@ -55,4 +55,26 @@ export function unwrapPaginated<T>(
 ): { items: T[]; meta?: PaginatedMeta } {
   if (Array.isArray(res)) return { items: res };
   return { items: res.data, meta: res.meta };
+}
+
+export type QueryParamValue = string | number | boolean | string[];
+export type QueryParams = Record<string, QueryParamValue>;
+
+/** Build HttpParams supporting repeated keys for multi-value filters. */
+export function buildHttpParams(params?: QueryParams): HttpParams {
+  let p = new HttpParams();
+  if (!params) return p;
+  for (const [key, val] of Object.entries(params)) {
+    if (val === undefined || val === null || val === '') continue;
+    if (Array.isArray(val)) {
+      for (const item of val) {
+        if (item !== undefined && item !== null && item !== '') {
+          p = p.append(key, String(item));
+        }
+      }
+    } else {
+      p = p.set(key, String(val));
+    }
+  }
+  return p;
 }

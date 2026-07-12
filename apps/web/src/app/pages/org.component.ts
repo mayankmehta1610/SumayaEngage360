@@ -4,10 +4,11 @@ import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { AuthService } from '../core/auth.service';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Departments & designations"
@@ -38,12 +39,13 @@ import { AuthService } from '../core/auth.service';
               <td>{{ d._count?.employees ?? 0 }}</td>
               <td>
                 @if (auth.hasRole('TENANT_ADMIN', 'HR')) {
-                <select [(ngModel)]="d._head" (change)="setHead(d)">
-                  <option [ngValue]="undefined">choose…</option>
-                  @for (e of employees; track e.id) {
-                    <option [ngValue]="e.id">{{ e.user.firstName }} {{ e.user.lastName }}</option>
-                  }
-                </select>
+                <e360-select-field
+                  placeholder="choose…"
+                  [compact]="true"
+                  [options]="employeeOptions"
+                  [(ngModel)]="d._head"
+                  (ngModelChange)="setHead(d)"
+                />
                 } @else { <span class="muted">Read only</span> }
               </td>
             </tr>
@@ -83,6 +85,13 @@ export class OrgComponent implements OnInit {
     { key: 'name', label: 'Department' },
     { key: '_count.employees', label: 'Employees' },
   ];
+
+  get employeeOptions(): SelectOption[] {
+    return this.employees.map((e) => ({
+      value: e.id,
+      label: `${e.user.firstName} ${e.user.lastName}`,
+    }));
+  }
 
   async ngOnInit() { await this.load(); }
   async load() {

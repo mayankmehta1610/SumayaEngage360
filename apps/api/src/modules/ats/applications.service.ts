@@ -2,8 +2,8 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { ApplicationStatus, JobStatus } from '@prisma/client';
+} from '@nestjs/common';import { ApplicationStatus, JobStatus, Prisma } from '@prisma/client';
+import { contains, paginatedResponse, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ResumeParserService } from '../integrations/resume-parser.service';
 import { MatchingService } from '../matching/matching.service';
@@ -119,21 +119,59 @@ export class ApplicationsService {
 
   async findAll(
     tenantId: string,
-    jobId?: string,
-    status?: ApplicationStatus,
+    jobIds?: string[],
+    statuses?: ApplicationStatus[],
     interviewerId?: string,
     page?: number,
     pageSize?: number,
+    sortBy?: string,
+    sortDir?: string,
+    filter?: string,
+    search?: string,
   ) {
-    const where = {
+    const filters = parseFilterJson(filter);
+    const where: Prisma.ApplicationWhereInput = {
       tenantId,
-      ...(jobId ? { jobId } : {}),
-      ...(status ? { status } : {}),
+      ...(jobIds?.length ? { jobId: { in: jobIds } } : {}),
+      ...(statuses?.length === 1 ? { status: statuses[0] } : {}),
+      ...(statuses && statuses.length > 1 ? { status: { in: statuses } } : {}),
       ...(interviewerId
         ? { interviews: { some: { interviewerId } } }
         : {}),
     };
-    const orderBy = { createdAt: 'desc' as const };
+    if (filters.candidate) {
+      where.OR = [
+        { candidate: { firstName: contains(filters.candidate) } },
+        { candidate: { lastName: contains(filters.candidate) } },
+      ];
+    }
+    if (filters.email) where.candidate = { email: contains(filters.email) };
+    if (filters.job) where.job = { title: contains(filters.job) };
+    if (filters.status) where.status = filters.status.toUpperCase() as ApplicationStatus;
+    const q = (filters.__search ?? search)?.trim();
+    if (q) {
+      const or: Prisma.ApplicationWhereInput[] = [
+        { candidate: { firstName: contains(q) } },
+        { candidate: { lastName: contains(q) } },
+        { candidate: { email: contains(q) } },
+        { job: { title: contains(q) } },
+      ];
+      if (Object.values(ApplicationStatus).includes(q.toUpperCase() as ApplicationStatus)) {
+        or.push({ status: q.toUpperCase() as ApplicationStatus });
+      }
+      where.OR = or;
+    }
+    const dir = parseSortDir(sortDir);
+    const orderBy: Prisma.ApplicationOrderByWithRelationInput = (() => {
+      switch (sortBy) {
+        case 'candidate': return { candidate: { lastName: dir } };
+        case 'email': return { candidate: { email: dir } };
+        case 'job': return { job: { title: dir } };
+        case 'status': return { status: dir };
+        case 'applied': return { createdAt: dir };
+        default: return { createdAt: dir };
+      }
+    })();
     const paginated = page !== undefined || pageSize !== undefined;
     const include = paginated
       ? {
@@ -167,15 +205,7 @@ export class ApplicationsService {
       }),
       this.prisma.application.count({ where }),
     ]);
-    return {
-      data,
-      meta: {
-        total,
-        page: p,
-        pageSize: ps,
-        totalPages: Math.ceil(total / ps) || 1,
-      },
-    };
+    return paginatedResponse(data, total, p, ps, sortBy, dir);
   }
 
   async findOne(tenantId: string, id: string, interviewerId?: string) {
@@ -197,10 +227,64 @@ export class ApplicationsService {
         job: true,
         interviews: { orderBy: { level: 'asc' } },
         offer: true,
+        profile: true,
       },
     });
     if (!app) throw new NotFoundException('Application not found');
     return app;
+  }
+
+  async getProfile(tenantId: string, applicationId: string, interviewerId?: string) {
+    const app = await this.findOne(tenantId, applicationId, interviewerId);
+    if (app.profile) return app.profile;
+    return this.prisma.applicationProfile.create({
+      data: { tenantId, applicationId: app.id },
+    });
+  }
+
+  async upsertProfile(
+    tenantId: string,
+    applicationId: string,
+    data: {
+      professionalSummary?: string;
+      domainExpertise?: string[];
+      education?: unknown;
+      coverLetterFileId?: string;
+      contacts?: unknown;
+      customFields?: unknown;
+    },
+    interviewerId?: string,
+  ) {
+    await this.findOne(tenantId, applicationId, interviewerId);
+    return this.prisma.applicationProfile.upsert({
+      where: { applicationId },
+      create: {
+        tenantId,
+        applicationId,
+        professionalSummary: data.professionalSummary,
+        domainExpertise: data.domainExpertise ?? [],
+        education: data.education as any,
+        coverLetterFileId: data.coverLetterFileId,
+        contacts: data.contacts as any,
+        customFields: data.customFields as any,
+      },
+      update: {
+        ...(data.professionalSummary !== undefined
+          ? { professionalSummary: data.professionalSummary }
+          : {}),
+        ...(data.domainExpertise !== undefined
+          ? { domainExpertise: data.domainExpertise }
+          : {}),
+        ...(data.education !== undefined ? { education: data.education as any } : {}),
+        ...(data.coverLetterFileId !== undefined
+          ? { coverLetterFileId: data.coverLetterFileId }
+          : {}),
+        ...(data.contacts !== undefined ? { contacts: data.contacts as any } : {}),
+        ...(data.customFields !== undefined
+          ? { customFields: data.customFields as any }
+          : {}),
+      },
+    });
   }
 
   async updateStatus(

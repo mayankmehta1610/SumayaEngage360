@@ -4,10 +4,11 @@ import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Settings & configuration"
@@ -31,11 +32,11 @@ import { ExportBarComponent } from '../core/export-bar.component';
         <div class="row" style="align-items:flex-end;margin-top:.6rem">
           <div><label>Code</label><input [(ngModel)]="branch.code" /></div>
           <div><label>Name</label><input [(ngModel)]="branch.name" /></div>
-          <div><label>Country</label>
-            <select [(ngModel)]="branch.country">
-              @for (c of countries; track c.country) { <option [value]="c.country">{{ c.country }}</option> }
-            </select>
-          </div>
+          <e360-select-field
+            label="Country"
+            [options]="countryOptions"
+            [(ngModel)]="branch.country"
+          />
           <div style="flex:0"><button (click)="addBranch()">Add branch</button></div>
         </div>
       </div>
@@ -130,6 +131,10 @@ export class SettingsComponent implements OnInit {
   branch = { code: '', name: '', country: 'IN' };
   shift = { code: '', name: '', startTime: '09:00', endTime: '18:00' };
   flag = { code: '', name: '' };
+
+  get countryOptions(): SelectOption[] {
+    return this.countries.map((c) => ({ value: c.country, label: c.country }));
+  }
   intCols = [
     { key: 'id', label: 'ID' },
     { key: 'name', label: 'Name' },

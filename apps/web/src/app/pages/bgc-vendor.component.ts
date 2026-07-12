@@ -1,11 +1,11 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ApiService, errMsg } from '../core/api.service';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ModuleShellComponent],
+  imports: [ModuleShellComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="BGV vendor portal"
@@ -17,19 +17,18 @@ import { ApiService, errMsg } from '../core/api.service';
     >
 @if (error) { <div class="e360-error">{{ error }}</div> }
     <div class="card">
-      <table><tr><th>Employee</th><th>Status</th><th>Action</th></tr>
-        @for (c of cases; track c.id) {
-          <tr>
-            <td>{{ c.employee?.user?.firstName }} {{ c.employee?.user?.lastName }}</td>
-            <td>{{ c.status }}</td>
-            <td>
-              @if (c.status === 'SUBMITTED_TO_VENDOR') {
-                <button (click)="clear(c.id)">Mark clear</button>
-                <button (click)="discrepancy(c.id)">Discrepancy</button>
-              }
-            </td>
-          </tr>
-        }</table>
+      <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true">
+        <ng-template #rowTemplate let-row>
+          <td>{{ row.employee }}</td>
+          <td>{{ row.status }}</td>
+          <td>
+            @if (row.status === 'SUBMITTED_TO_VENDOR') {
+              <button (click)="clear(row.id)">Mark clear</button>
+              <button (click)="discrepancy(row.id)">Discrepancy</button>
+            }
+          </td>
+        </ng-template>
+      </e360-data-table>
     </div>
   
     </e360-module-shell>
@@ -38,6 +37,19 @@ import { ApiService, errMsg } from '../core/api.service';
 export class BgcVendorComponent implements OnInit {
   private api = inject(ApiService);
   cases: any[] = []; error = '';
+  tableCols: TableColumn[] = [
+    { key: 'employee', label: 'Employee' },
+    { key: 'status', label: 'Status' },
+    { key: 'actions', label: 'Action', sortable: false, filterable: false },
+  ];
+
+  get tableRows() {
+    return this.cases.map((c) => ({
+      id: c.id,
+      employee: `${c.employee?.user?.firstName ?? ''} ${c.employee?.user?.lastName ?? ''}`.trim() || '—',
+      status: c.status,
+    }));
+  }
 
   async ngOnInit() {
     try { this.cases = await this.api.get<any[]>('/bgc/vendor/cases'); }

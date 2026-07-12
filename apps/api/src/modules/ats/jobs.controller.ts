@@ -8,6 +8,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { JobStatus, Role } from '@prisma/client';
+import { parseMultiQuery } from '../../common/http/parse-multi-query';
 import { Roles } from '../../common/auth/roles.decorator';
 import { TenantId } from '../../common/tenant/tenant.decorator';
 import { CreateJobDto, UpdateJobDto } from './ats.dto';
@@ -26,15 +27,22 @@ export class JobsController {
   @Get()
   findAll(
     @TenantId() tenantId: string,
-    @Query('status') status?: JobStatus,
+    @Query('status') status?: string | string[],
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
+    @Query('filter') filter?: string,
   ) {
+    const statuses = parseMultiQuery(status) as JobStatus[];
     return this.jobs.findAll(
       tenantId,
-      status,
+      statuses.length ? statuses : undefined,
       page !== undefined && page !== '' ? parseInt(page, 10) : undefined,
       pageSize !== undefined && pageSize !== '' ? parseInt(pageSize, 10) : undefined,
+      sortBy,
+      sortDir,
+      filter,
     );
   }
 

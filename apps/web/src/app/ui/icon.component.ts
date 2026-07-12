@@ -44,6 +44,9 @@ const ICONS: Record<string, string> = {
   'chevron-right': 'M9 18l6-6-6-6',
   'chevron-left': 'M15 18l-6-6 6-6',
   'chevron-down': 'M6 9l6 6 6-6',
+  'chevron-up': 'M18 15l-6-6-6 6',
+  'chevrons-up-down': 'M7 15l5 5 5-5M7 9l5-5 5 5',
+  'more-horizontal': 'M12 12h.01M19 12h.01M5 12h.01',
   menu: 'M4 6h16M4 12h16M4 18h16',
   x: 'M18 6 6 18M6 6l12 12',
   plus: 'M12 5v14M5 12h14',
@@ -57,6 +60,8 @@ const ICONS: Record<string, string> = {
   'circle-x': 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM15 9l-6 6M9 9l6 6',
   'info': 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01',
   'inbox-empty': 'M22 12h-6l-2 3H10l-2-3H2M22 6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2z',
+  sun: 'M12 3v2M12 19v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
+  moon: 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z',
 };
 
 @Component({

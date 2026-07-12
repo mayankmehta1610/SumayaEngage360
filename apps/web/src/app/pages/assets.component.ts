@@ -2,10 +2,12 @@ import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ApiService, errMsg } from '../core/api.service';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ModuleShellComponent],
+  imports: [FormsModule, ModuleShellComponent, SelectFieldComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="Assets"
@@ -25,31 +27,27 @@ import { ApiService, errMsg } from '../core/api.service';
       <button (click)="create()">Add</button>
     </div>
     <div class="card">
-      <table><tr><th>Tag</th><th>Category</th><th>Assigned to</th><th>Action</th></tr>
-        @for (a of assets; track a.id) {
-          <tr>
-            <td>{{ a.assetTag }}</td><td>{{ a.category }}</td>
-            <td>
-              @if (a.assignments?.[0]) {
-                {{ a.assignments[0].employee.user.firstName }} {{ a.assignments[0].employee.user.lastName }}
-              } @else { <span class="muted">Available</span> }
-            </td>
-            <td>
-              @if (a.assignments?.[0]) {
-                <input [(ngModel)]="a._condition" placeholder="Return condition" />
-                <button class="secondary" (click)="returnAsset(a)">Return</button>
-              } @else {
-                <select [(ngModel)]="a._employeeId">
-                  <option [ngValue]="undefined">Select employee</option>
-                  @for (e of employees; track e.id) {
-                    <option [ngValue]="e.id">{{ e.user.firstName }} {{ e.user.lastName }}</option>
-                  }
-                </select>
-                <button (click)="assign(a)" [disabled]="!a._employeeId">Assign</button>
-              }
-            </td>
-          </tr>
-        }</table>
+      <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true">
+        <ng-template #rowTemplate let-row>
+          <td>{{ row.tag }}</td>
+          <td>{{ row.category }}</td>
+          <td>{{ row.assigned }}</td>
+          <td>
+            @if (row._raw.assignments?.[0]) {
+              <input [(ngModel)]="row._raw._condition" placeholder="Return condition" />
+              <button class="secondary" (click)="returnAsset(row._raw)">Return</button>
+            } @else {
+              <e360-select-field
+                placeholder="Select employee"
+                [compact]="true"
+                [options]="employeeOptions"
+                [(ngModel)]="row._raw._employeeId"
+              />
+              <button (click)="assign(row._raw)" [disabled]="!row._raw._employeeId">Assign</button>
+            }
+          </td>
+        </ng-template>
+      </e360-data-table>
     </div>
   
     </e360-module-shell>
@@ -58,6 +56,31 @@ import { ApiService, errMsg } from '../core/api.service';
 export class AssetsComponent implements OnInit {
   private api = inject(ApiService);
   assets: any[] = []; employees: any[] = []; f: any = {}; error = '';
+  tableCols: TableColumn[] = [
+    { key: 'tag', label: 'Tag' },
+    { key: 'category', label: 'Category' },
+    { key: 'assigned', label: 'Assigned to' },
+    { key: 'actions', label: 'Action', sortable: false, filterable: false },
+  ];
+
+  get tableRows() {
+    return this.assets.map((a) => ({
+      id: a.id,
+      tag: a.assetTag,
+      category: a.category,
+      assigned: a.assignments?.[0]
+        ? `${a.assignments[0].employee.user.firstName} ${a.assignments[0].employee.user.lastName}`
+        : 'Available',
+      _raw: a,
+    }));
+  }
+
+  get employeeOptions(): SelectOption[] {
+    return this.employees.map((e) => ({
+      value: e.id,
+      label: `${e.user.firstName} ${e.user.lastName}`,
+    }));
+  }
 
   async ngOnInit() { await this.load(); }
   async load() {

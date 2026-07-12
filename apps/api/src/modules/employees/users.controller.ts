@@ -10,8 +10,9 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { contains, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -95,8 +96,33 @@ export class UsersController {
     @TenantId() tenantId: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
+    @Query('filter') filter?: string,
   ) {
-    const where = { tenantId };
+    const filters = parseFilterJson(filter);
+    const where: Prisma.UsersWhereInput = { tenantId };
+    if (filters.name) {
+      where.OR = [
+        { firstName: contains(filters.name) },
+        { lastName: contains(filters.name) },
+      ];
+    }
+    if (filters.email) where.email = contains(filters.email);
+    if (filters.roles) where.roles = { has: filters.roles.toUpperCase() as Role };
+    if (filters.active) {
+      const val = filters.active.toLowerCase();
+      if (val === 'active' || val === 'true' || val === 'yes') where.isActive = true;
+      if (val === 'disabled' || val === 'false' || val === 'no') where.isActive = false;
+    }
+    if (filters.__search) {
+      const q = filters.__search;
+      where.OR = [
+        { firstName: contains(q) },
+        { lastName: contains(q) },
+        { email: contains(q) },
+      ];
+    }
     const select = {
       id: true,
       email: true,
@@ -105,7 +131,15 @@ export class UsersController {
       roles: true,
       isActive: true,
     };
-    const orderBy = { createdAt: 'asc' as const };
+    const dir = parseSortDir(sortDir);
+    const orderBy: Prisma.UsersOrderByWithRelationInput = (() => {
+      switch (sortBy) {
+        case 'name': return { lastName: dir };
+        case 'email': return { email: dir };
+        case 'active': return { isActive: dir };
+        default: return { createdAt: dir };
+      }
+    })();
     const paginated = page !== undefined || pageSize !== undefined;
     if (!paginated) {
       return this.prisma.users.findMany({ where, select, orderBy });

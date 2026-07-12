@@ -3,6 +3,7 @@ import '../core/api_client.dart';
 import '../core/auth_service.dart';
 import '../core/rbac.dart';
 import '../core/theme.dart';
+import '../core/theme_controller.dart';
 import 'module_screens.dart';
 
 class ModuleDrawer extends StatelessWidget {
@@ -127,6 +128,22 @@ class ModuleDrawer extends StatelessWidget {
               ),
             ),
             const Divider(color: Colors.white24),
+            ListTile(
+              leading: Icon(
+                Theme.of(context).brightness == Brightness.dark
+                    ? Icons.light_mode_outlined
+                    : Icons.dark_mode_outlined,
+                color: Colors.white70,
+              ),
+              title: Text(
+                Theme.of(context).brightness == Brightness.dark ? 'Light mode' : 'Dark mode',
+                style: const TextStyle(color: Colors.white),
+              ),
+              onTap: () async {
+                Navigator.pop(context);
+                await ThemeController.instance?.toggle(context);
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.white70),
               title: const Text('Sign out', style: TextStyle(color: Colors.white)),

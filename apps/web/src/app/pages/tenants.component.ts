@@ -3,10 +3,11 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="Tenants"
@@ -34,15 +35,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
       <button (click)="create()">Create tenant</button>
     </div>
     <div class="card">
-      <table>
-        <tr><th>Name</th><th>Subdomain</th><th>Country</th><th>Active</th></tr>
-        @for (t of tenants; track t.id) {
-          <tr>
-            <td>{{ t.name }}</td><td>{{ t.subdomain }}</td><td>{{ t.country }}</td>
-            <td><span class="badge" [class.ok]="t.isActive">{{ t.isActive ? 'active' : 'disabled' }}</span></td>
-          </tr>
-        }
-      </table>
+      <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true" />
     </div>
   
     </e360-module-shell>
@@ -60,6 +53,21 @@ export class TenantsComponent implements OnInit {
     { key: 'isActive', label: 'Active' },
     { key: 'createdAt', label: 'Created' },
   ];
+  tableCols: TableColumn[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'subdomain', label: 'Subdomain' },
+    { key: 'country', label: 'Country' },
+    { key: 'active', label: 'Active' },
+  ];
+
+  get tableRows() {
+    return this.tenants.map((t) => ({
+      name: t.name,
+      subdomain: t.subdomain,
+      country: t.country,
+      active: t.isActive ? 'active' : 'disabled',
+    }));
+  }
 
   async ngOnInit() {
     await this.load();

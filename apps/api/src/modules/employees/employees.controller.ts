@@ -8,6 +8,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { EmployeeStatus, Role } from '@prisma/client';
+import { parseMultiQuery } from '../../common/http/parse-multi-query';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { Roles } from '../../common/auth/roles.decorator';
@@ -34,15 +35,25 @@ export class EmployeesController {
   @Roles(Role.TENANT_ADMIN, Role.HR, Role.MANAGER)
   findAll(
     @TenantId() tenantId: string,
-    @Query('status') status?: EmployeeStatus,
+    @Query('status') status?: string | string[],
+    @Query('departmentIds') departmentIds?: string | string[],
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
+    @Query('filter') filter?: string,
   ) {
+    const statuses = parseMultiQuery(status) as EmployeeStatus[];
+    const depts = parseMultiQuery(departmentIds);
     return this.employees.findAll(
       tenantId,
-      status,
+      statuses.length ? statuses : undefined,
+      depts.length ? depts : undefined,
       page !== undefined && page !== '' ? parseInt(page, 10) : undefined,
       pageSize !== undefined && pageSize !== '' ? parseInt(pageSize, 10) : undefined,
+      sortBy,
+      sortDir,
+      filter,
     );
   }
 

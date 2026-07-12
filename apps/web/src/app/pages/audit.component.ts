@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
+import { tableListParams, TableSort } from '../core/table-query.util';
 import { AuthService } from '../core/auth.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
@@ -33,10 +34,11 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
           [pageSize]="pageSize"
           [total]="total"
           [loading]="loading"
-          [searchable]="true"
           [stickyHeader]="true"
           (pageChange)="onPageChange($event)"
           (pageSizeChange)="onPageSizeChange($event)"
+          (sortChange)="onSortChange($event)"
+          (filterChange)="onFilterChange($event)"
         />
       </div>
     </e360-module-shell>
@@ -51,6 +53,8 @@ export class AuditComponent implements OnInit {
   page = 1;
   pageSize = 25;
   total = 0;
+  sort: TableSort | null = null;
+  columnFilters: Record<string, string> = {};
   cols = [
     { key: 'createdAt', label: 'When' },
     { key: 'action', label: 'Action' },
@@ -90,13 +94,23 @@ export class AuditComponent implements OnInit {
     this.load();
   }
 
+  onSortChange(s: { key: string; dir: 'asc' | 'desc' }) {
+    this.sort = s;
+    this.page = 1;
+    this.load();
+  }
+
+  onFilterChange(f: Record<string, string>) {
+    this.columnFilters = f;
+    this.page = 1;
+    this.load();
+  }
+
   async load() {
     this.loading = true;
     try {
-      const res = await this.api.get<any>('/audit', {
-        page: String(this.page),
-        pageSize: String(this.pageSize),
-      });
+      const params = tableListParams(this.page, this.pageSize, {}, this.sort, this.columnFilters);
+      const res = await this.api.get<any>('/audit', params);
       const { items, meta } = unwrapPaginated(res);
       this.rows = items;
       this.total = meta?.total ?? items.length;

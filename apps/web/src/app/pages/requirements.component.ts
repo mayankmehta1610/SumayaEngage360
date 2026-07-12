@@ -1,12 +1,15 @@
 import { Component, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent, SelectFieldComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="Requirements hub"
@@ -33,15 +36,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
         <h2 style="margin:0">Module summary</h2>
         <export-bar [rows]="modules" [cols]="modCols" name="module-summary" />
       </div>
-      <table>
-        <tr><th>Domain</th><th>Submodules</th><th>Features</th><th>Must</th><th>Should</th><th>Points</th><th>Phase</th></tr>
-        @for (m of modules; track m.id) {
-          <tr>
-            <td>{{ m.domain }}</td><td>{{ m.submodules }}</td><td>{{ m.featureRows }}</td>
-            <td>{{ m.mustCount }}</td><td>{{ m.shouldCount }}</td><td>{{ m.storyPoints }}</td><td>{{ m.phase }}</td>
-          </tr>
-        }
-      </table>
+      <e360-data-table [columns]="moduleCols" [rows]="moduleRows" [paginated]="false" [stickyHeader]="true" />
     </div>
 
     <div class="card">
@@ -49,15 +44,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
         <h2 style="margin:0">Roles ({{ roles.length }})</h2>
         <export-bar [rows]="roles" [cols]="roleCols" name="roles" />
       </div>
-      <table>
-        <tr><th>Role</th><th>Persona</th><th>Scope</th><th>System role</th><th>Capabilities</th></tr>
-        @for (r of roles; track r.id) {
-          <tr>
-            <td>{{ r.role }}</td><td>{{ r.persona }}</td><td>{{ r.scope }}</td>
-            <td>{{ r.systemRole ?? '—' }}</td><td class="muted" style="font-size:.78rem">{{ r.capabilities }}</td>
-          </tr>
-        }
-      </table>
+      <e360-data-table [columns]="roleTableCols" [rows]="roleRows" [paginated]="false" [stickyHeader]="true" />
     </div>
 
     <div class="card">
@@ -65,45 +52,32 @@ import { ExportBarComponent } from '../core/export-bar.component';
         <h2 style="margin:0">Workflows</h2>
         <export-bar [rows]="workflows" [cols]="wfCols" name="workflows" />
       </div>
-      <table>
-        <tr><th>Name</th><th>Trigger</th><th>Stages</th><th>Outcome</th><th>Live</th></tr>
-        @for (w of workflows; track w.id) {
-          <tr>
-            <td>{{ w.name }}</td><td>{{ w.trigger }}</td>
-            <td class="muted" style="font-size:.78rem">{{ w.stages }}</td>
-            <td>{{ w.outcome }}</td>
-            <td><span class="badge" [class.ok]="w.implemented">{{ w.implemented ? 'yes' : 'planned' }}</span></td>
-          </tr>
-        }
-      </table>
+      <e360-data-table [columns]="wfCols2" [rows]="wfRows" [paginated]="false" [stickyHeader]="true" />
     </div>
 
     <div class="card">
       <div class="toolbar">
         <h2 style="margin:0">Feature catalogue (page {{ featMeta.page }}/{{ featMeta.totalPages }})</h2>
         <div>
-          <select (change)="loadFeatures(1, $any($event.target).value)">
-            <option value="">All statuses</option>
-            <option value="Done">Done</option>
-            <option value="Not Started">Not Started</option>
-          </select>
+          <e360-select-field
+            placeholder="All statuses"
+            [options]="featureStatusOptions"
+            [(ngModel)]="featureStatusFilter"
+            (ngModelChange)="loadFeatures(1, $event)"
+          />
           <export-bar [rows]="features" [cols]="featCols" name="features" />
         </div>
       </div>
-      <table>
-        <tr><th>ID</th><th>Domain</th><th>Module</th><th>Feature</th><th>Status</th></tr>
-        @for (f of features; track f.id) {
-          <tr>
-            <td>{{ f.id }}</td><td>{{ f.domain }}</td><td>{{ f.module }}</td>
-            <td>{{ f.featureName }}</td>
-            <td><span class="badge" [class.ok]="f.status === 'Done'">{{ f.status }}</span></td>
-          </tr>
-        }
-      </table>
-      <div class="pager">
-        <button [disabled]="featMeta.page <= 1" (click)="loadFeatures(featMeta.page - 1)">Prev</button>
-        <button [disabled]="featMeta.page >= featMeta.totalPages" (click)="loadFeatures(featMeta.page + 1)">Next</button>
-      </div>
+      <e360-data-table
+        [columns]="featTableCols"
+        [rows]="featRows"
+        [page]="featMeta.page"
+        [pageSize]="30"
+        [total]="featMeta.total ?? features.length"
+        [paginated]="true"
+        [stickyHeader]="true"
+        (pageChange)="loadFeatures($event, featureStatusFilter)"
+      />
     </div>
   
     </e360-module-shell>
@@ -114,7 +88,6 @@ import { ExportBarComponent } from '../core/export-bar.component';
     .stats strong { font-size: 1.4rem; }
     .stats span { font-size: .75rem; color: #64748b; }
     .pager { margin-top: .75rem; display: flex; gap: .5rem; }
-    select { margin-right: .5rem; }
   `],
 })
 export class RequirementsComponent implements OnInit {
@@ -125,12 +98,89 @@ export class RequirementsComponent implements OnInit {
   roles: any[] = [];
   workflows: any[] = [];
   features: any[] = [];
-  featMeta = { page: 1, totalPages: 1 };
+  featMeta = { page: 1, totalPages: 1, total: 0 };
+  featureStatusFilter = '';
+  featureStatusOptions: SelectOption[] = [
+    { value: 'Done', label: 'Done' },
+    { value: 'Not Started', label: 'Not Started' },
+  ];
   error = '';
   modCols = [{ key: 'domain', label: 'Domain' }, { key: 'featureRows', label: 'Features' }, { key: 'phase', label: 'Phase' }];
   roleCols = [{ key: 'role', label: 'Role' }, { key: 'scope', label: 'Scope' }, { key: 'systemRole', label: 'System' }];
   wfCols = [{ key: 'name', label: 'Name' }, { key: 'implemented', label: 'Live' }];
   featCols = [{ key: 'id', label: 'ID' }, { key: 'domain', label: 'Domain' }, { key: 'featureName', label: 'Feature' }, { key: 'status', label: 'Status' }];
+  moduleCols: TableColumn[] = [
+    { key: 'domain', label: 'Domain' },
+    { key: 'submodules', label: 'Submodules' },
+    { key: 'features', label: 'Features' },
+    { key: 'must', label: 'Must' },
+    { key: 'should', label: 'Should' },
+    { key: 'points', label: 'Points' },
+    { key: 'phase', label: 'Phase' },
+  ];
+  roleTableCols: TableColumn[] = [
+    { key: 'role', label: 'Role' },
+    { key: 'persona', label: 'Persona' },
+    { key: 'scope', label: 'Scope' },
+    { key: 'systemRole', label: 'System role' },
+    { key: 'capabilities', label: 'Capabilities' },
+  ];
+  wfCols2: TableColumn[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'trigger', label: 'Trigger' },
+    { key: 'stages', label: 'Stages' },
+    { key: 'outcome', label: 'Outcome' },
+    { key: 'live', label: 'Live' },
+  ];
+  featTableCols: TableColumn[] = [
+    { key: 'id', label: 'ID' },
+    { key: 'domain', label: 'Domain' },
+    { key: 'module', label: 'Module' },
+    { key: 'feature', label: 'Feature' },
+    { key: 'status', label: 'Status' },
+  ];
+
+  get moduleRows() {
+    return this.modules.map((m) => ({
+      domain: m.domain,
+      submodules: m.submodules,
+      features: m.featureRows,
+      must: m.mustCount,
+      should: m.shouldCount,
+      points: m.storyPoints,
+      phase: m.phase,
+    }));
+  }
+
+  get roleRows() {
+    return this.roles.map((r) => ({
+      role: r.role,
+      persona: r.persona,
+      scope: r.scope,
+      systemRole: r.systemRole ?? '—',
+      capabilities: r.capabilities,
+    }));
+  }
+
+  get wfRows() {
+    return this.workflows.map((w) => ({
+      name: w.name,
+      trigger: w.trigger,
+      stages: w.stages,
+      outcome: w.outcome,
+      live: w.implemented ? 'yes' : 'planned',
+    }));
+  }
+
+  get featRows() {
+    return this.features.map((f) => ({
+      id: f.id,
+      domain: f.domain,
+      module: f.module,
+      feature: f.featureName,
+      status: f.status,
+    }));
+  }
 
   async ngOnInit() {
     if (!this.auth.hasRole('TENANT_ADMIN', 'HR', 'PLATFORM_ADMIN')) return;
@@ -155,7 +205,7 @@ export class RequirementsComponent implements OnInit {
       if (status) params.status = status;
       const res = await this.api.get<any>('/requirements/features', params);
       this.features = res.data;
-      this.featMeta = res.meta;
+      this.featMeta = { ...res.meta, total: res.meta?.total ?? res.data?.length ?? 0 };
     } catch (e) { this.error = errMsg(e); }
   }
 }

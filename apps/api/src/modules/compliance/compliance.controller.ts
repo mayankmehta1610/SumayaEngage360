@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ComplianceCaseStatus, ComplianceCaseType, Role } from '@prisma/client';
+import { parseMultiQuery } from '../../common/http/parse-multi-query';
 import {
   IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min,
 } from 'class-validator';
@@ -76,8 +77,9 @@ export class ComplianceController {
 
   @Get('cases')
   @Roles(Role.TENANT_ADMIN, Role.HR)
-  list(@TenantId() tenantId: string, @Query('status') status?: ComplianceCaseStatus) {
-    return this.compliance.list(tenantId, status);
+  list(@TenantId() tenantId: string, @Query('status') status?: string | string[]) {
+    const statuses = parseMultiQuery(status) as ComplianceCaseStatus[];
+    return this.compliance.list(tenantId, statuses.length ? statuses : undefined);
   }
 
   @Patch('cases/:id')

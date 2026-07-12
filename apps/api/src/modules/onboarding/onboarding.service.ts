@@ -7,9 +7,11 @@ import {
   ApprovalEntity,
   EmployeeStatus,
   OnboardingStatus,
+  Prisma,
   VerificationStatus,
 } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { contains, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ApprovalsService } from '../approvals/approvals.service';
 import {
@@ -252,8 +254,36 @@ export class OnboardingService {
     });
   }
 
-  async listCases(tenantId: string, page?: number, pageSize?: number) {
-    const where = { tenantId };
+  async listCases(
+    tenantId: string,
+    page?: number,
+    pageSize?: number,
+    sortBy?: string,
+    sortDir?: string,
+    filter?: string,
+  ) {
+    const filters = parseFilterJson(filter);
+    const where: Prisma.OnboardingCaseWhereInput = { tenantId };
+    if (filters.code) where.employee = { employeeCode: contains(filters.code) };
+    if (filters.name) {
+      where.employee = {
+        OR: [
+          { user: { firstName: contains(filters.name) } },
+          { user: { lastName: contains(filters.name) } },
+        ],
+      };
+    }
+    if (filters.email) where.employee = { user: { email: contains(filters.email) } };
+    if (filters.status) where.status = filters.status.toUpperCase() as OnboardingStatus;
+    if (filters.__search) {
+      const q = filters.__search;
+      where.OR = [
+        { employee: { employeeCode: contains(q) } },
+        { employee: { user: { firstName: contains(q) } } },
+        { employee: { user: { lastName: contains(q) } } },
+        { employee: { user: { email: contains(q) } } },
+      ];
+    }
     const include = {
       employee: {
         include: {
@@ -262,7 +292,16 @@ export class OnboardingService {
         },
       },
     };
-    const orderBy = { createdAt: 'desc' as const };
+    const dir = parseSortDir(sortDir);
+    const orderBy: Prisma.OnboardingCaseOrderByWithRelationInput = (() => {
+      switch (sortBy) {
+        case 'code': return { employee: { employeeCode: dir } };
+        case 'name': return { employee: { user: { lastName: dir } } };
+        case 'email': return { employee: { user: { email: dir } } };
+        case 'status': return { status: dir };
+        default: return { createdAt: dir };
+      }
+    })();
     const paginated = page !== undefined || pageSize !== undefined;
     if (!paginated) {
       return this.prisma.onboardingCase.findMany({ where, include, orderBy });

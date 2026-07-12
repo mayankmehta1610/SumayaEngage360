@@ -3,10 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ApiService } from '../core/api.service';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule, ModuleShellComponent],
+  imports: [CommonModule, FormsModule, ModuleShellComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Masters & workflow extensions"
@@ -55,10 +56,10 @@ import { ApiService } from '../core/api.service';
         <h3>Salary components</h3>
         <input placeholder="Code" [(ngModel)]="sc.code" />
         <input placeholder="Name" [(ngModel)]="sc.name" />
-        <select [(ngModel)]="sc.type">
-          <option value="EARNING">Earning</option>
-          <option value="DEDUCTION">Deduction</option>
-        </select>
+        <e360-select-field
+          [options]="salaryComponentTypeOptions"
+          [(ngModel)]="sc.type"
+        />
         <button (click)="addSc()">Add</button>
         <ul><li *ngFor="let x of components">{{ x.code }} — {{ x.name }} ({{ x.type }})</li></ul>
       </section>
@@ -101,6 +102,10 @@ export class MastersPageComponent implements OnInit {
   cc: any = { country: 'IN' };
   sc: any = { type: 'EARNING' };
   badgeName = '';
+  salaryComponentTypeOptions: SelectOption[] = [
+    { value: 'DEDUCTION', label: 'Deduction' },
+    { value: 'EARNING', label: 'Earning' },
+  ];
 
   constructor(private api: ApiService) {}
 

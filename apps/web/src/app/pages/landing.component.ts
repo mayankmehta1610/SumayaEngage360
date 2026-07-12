@@ -1,9 +1,10 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { ThemeToggleComponent } from '../ui/theme-toggle.component';
 
 @Component({
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, ThemeToggleComponent],
   styles: [`
     .top {
       display: flex; justify-content: space-between; align-items: center;
@@ -11,6 +12,9 @@ import { RouterLink } from '@angular/router';
       position: sticky; top: 0; z-index: 10;
       border-bottom: 1px solid var(--e360-sidebar-border);
     }
+    .top-actions { display: flex; align-items: center; gap: 0.75rem; }
+    .top-actions .e360-theme-toggle { color: #e2e8f0; }
+    .top-actions .e360-theme-toggle:hover { background: var(--e360-sidebar-hover); color: #fff; }
     .brand { font-weight: 800; font-size: 1.15rem; letter-spacing: .02em; display: flex; align-items: center; gap: .5rem; }
     .brand-icon {
       width: 36px; height: 36px; border-radius: 8px;
@@ -42,10 +46,10 @@ import { RouterLink } from '@angular/router';
     .feature h3 { margin: .6rem 0 .35rem; font-size: 1rem; }
     .feature p { color: var(--e360-text-muted); font-size: .88rem; margin: 0; line-height: 1.5; }
     .band {
-      background: var(--e360-sidebar-bg); color: #94a3b8; text-align: center; padding: 3rem 2rem;
+      background: var(--e360-sidebar-bg); color: var(--e360-sidebar-text); text-align: center; padding: 3rem 2rem;
       border-top: 1px solid var(--e360-sidebar-border);
     }
-    .band h2 { color: #fff; margin-top: 0; }
+    .band h2 { color: var(--e360-sidebar-text-active); margin-top: 0; }
     footer { text-align: center; color: var(--e360-text-muted); font-size: .8rem; padding: 1.5rem; }
     .icon { width: 42px; height: 42px; }
   `],
@@ -57,7 +61,10 @@ import { RouterLink } from '@angular/router';
         </span>
         Sumaya<span>Engage360</span>
       </div>
-      <a class="btn" routerLink="/login">Login</a>
+      <div class="top-actions">
+        <e360-theme-toggle [iconSize]="20" />
+        <a class="btn" routerLink="/login">Login</a>
+      </div>
     </div>
 
     <section class="hero">

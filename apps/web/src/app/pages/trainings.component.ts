@@ -4,10 +4,11 @@ import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent, SelectFieldComponent],
   styles: [`
     .progress { background: #eef2f9; border-radius: 6px; height: 10px; overflow: hidden; }
     .progress div { background: #2f6bff; height: 100%; transition: width .5s; }
@@ -152,11 +153,12 @@ import { ExportBarComponent } from '../core/export-bar.component';
           </p>
           <div class="row" style="align-items:flex-end">
             <div>
-              <label>Assign to</label>
-              <select [(ngModel)]="c._emp">
-                <option [ngValue]="undefined">choose employee…</option>
-                @for (e of directory; track e.id) { <option [ngValue]="e.id">{{ e.user.firstName }} {{ e.user.lastName }} ({{ e.designation }})</option> }
-              </select>
+              <e360-select-field
+                label="Assign to"
+                placeholder="choose employee…"
+                [options]="directoryOptions"
+                [(ngModel)]="c._emp"
+              />
             </div>
             <div style="flex:0"><button class="secondary" (click)="assign(c)">Assign</button></div>
             <div style="flex:0"><button class="secondary" (click)="quizFor = quizFor === c.id ? null : c.id">
@@ -227,6 +229,13 @@ export class TrainingsComponent implements OnInit, OnDestroy {
   qb: any = { title: '', passingScore: 70, questions: [{ q: '', optionsText: '', correct: 1 }] };
 
   get isHr() { return this.auth.hasRole('TENANT_ADMIN', 'HR'); }
+
+  get directoryOptions(): SelectOption[] {
+    return this.directory.map((e) => ({
+      value: e.id,
+      label: `${e.user.firstName} ${e.user.lastName} (${e.designation})`,
+    }));
+  }
 
   async ngOnInit() { await this.load(); }
   ngOnDestroy() { this.stopTimer(); }

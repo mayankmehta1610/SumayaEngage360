@@ -4,10 +4,11 @@ import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="Hiring clients"
@@ -30,27 +31,24 @@ import { ExportBarComponent } from '../core/export-bar.component';
       <div style="margin-top:.75rem"><button (click)="create()">Add client</button></div>
     </div>
     <div class="card">
-      <table>
-        <tr><th>Name</th><th>Careers page</th><th>Type</th><th>Status</th></tr>
-        @for (c of clients; track c.id) {
-          <tr>
-            <td>{{ c.name }}</td>
-            <td><a [href]="'/careers/' + auth.tenant + '/' + c.slug" target="_blank">/careers/{{ auth.tenant }}/{{ c.slug }}</a></td>
-            <td>{{ c.isInternal ? 'internal' : 'client' }}</td>
-            <td>
-              @if (editId === c.id) {
-                <input [(ngModel)]="edit.name" />
-                <button (click)="saveEdit(c.id)">Save</button>
-                <button class="secondary" (click)="editId = null">Cancel</button>
-              } @else {
-                <span class="badge" [class.ok]="c.isActive">{{ c.isActive ? 'active' : 'inactive' }}</span>
-                <button class="secondary" (click)="startEdit(c)">Edit</button>
-                <button class="secondary" (click)="toggleActive(c)">{{ c.isActive ? 'Disable' : 'Enable' }}</button>
-              }
-            </td>
-          </tr>
-        }
-      </table>
+      <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true">
+        <ng-template #rowTemplate let-row>
+          <td>{{ row.name }}</td>
+          <td><a [href]="'/careers/' + auth.tenant + '/' + row.slug" target="_blank">/careers/{{ auth.tenant }}/{{ row.slug }}</a></td>
+          <td>{{ row.type }}</td>
+          <td>
+            @if (editId === row.id) {
+              <input [(ngModel)]="edit.name" />
+              <button (click)="saveEdit(row.id)">Save</button>
+              <button class="secondary" (click)="editId = null">Cancel</button>
+            } @else {
+              <span class="badge" [class.ok]="row._raw.isActive">{{ row._raw.isActive ? 'active' : 'inactive' }}</span>
+              <button class="secondary" (click)="startEdit(row._raw)">Edit</button>
+              <button class="secondary" (click)="toggleActive(row._raw)">{{ row._raw.isActive ? 'Disable' : 'Enable' }}</button>
+            }
+          </td>
+        </ng-template>
+      </e360-data-table>
     </div>
   
     </e360-module-shell>
@@ -70,6 +68,22 @@ export class ClientsComponent implements OnInit {
     { key: 'isInternal', label: 'Internal' },
     { key: 'isActive', label: 'Active' },
   ];
+  tableCols: TableColumn[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'careers', label: 'Careers page', sortable: false, filterable: false },
+    { key: 'type', label: 'Type' },
+    { key: 'status', label: 'Status', sortable: false, filterable: false },
+  ];
+
+  get tableRows() {
+    return this.clients.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      type: c.isInternal ? 'internal' : 'client',
+      _raw: c,
+    }));
+  }
 
   async ngOnInit() {
     await this.load();

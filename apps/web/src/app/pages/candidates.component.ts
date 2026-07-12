@@ -2,6 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
+import { tableListParams, TableSort } from '../core/table-query.util';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
@@ -50,6 +51,8 @@ import { AuthService } from '../core/auth.service';
           [selectedId]="detailFor"
           (pageChange)="onPageChange($event)"
           (pageSizeChange)="onPageSizeChange($event)"
+          (sortChange)="onSortChange($event)"
+          (filterChange)="onTableFilterChange($event)"
           (rowClick)="onRowClick($event)"
           emptyMessage="No candidates yet — they appear when people apply on the careers pages."
         >
@@ -74,34 +77,9 @@ import { AuthService } from '../core/auth.service';
             @if (detail.parsedResume.summary) { <p class="e360-muted">{{ detail.parsedResume.summary }}</p> }
           }
           <h2>Application history</h2>
-          <div class="e360-table-wrap">
-            <table class="e360-table">
-              <tr><th>Role</th><th>Status</th><th>Source</th><th>Date</th></tr>
-              @for (a of detail.applications; track a.id) {
-                <tr>
-                  <td>{{ a.job.title }}</td>
-                  <td><span class="badge">{{ a.status }}</span></td>
-                  <td>{{ a.source ?? '—' }}</td>
-                  <td>{{ a.createdAt | date }}</td>
-                </tr>
-              }
-            </table>
-          </div>
+          <e360-data-table [columns]="appHistCols" [rows]="appHistRows" [paginated]="false" [stickyHeader]="true" />
           <h2>Job match scores</h2>
-          <div class="e360-table-wrap">
-            <table class="e360-table">
-              <tr><th>Job</th><th>Rule %</th><th>AI %</th><th>Final %</th><th>Shortlisted</th></tr>
-              @for (m of detail.matches; track m.id) {
-                <tr>
-                  <td>{{ m.job.title }}</td>
-                  <td>{{ m.ruleScore ?? '—' }}</td>
-                  <td>{{ m.aiScore ?? '—' }}</td>
-                  <td><strong>{{ m.finalScore }}</strong></td>
-                  <td>@if (m.shortlisted) { <span class="badge ok">yes</span> } @else { no }</td>
-                </tr>
-              }
-            </table>
-          </div>
+          <e360-data-table [columns]="matchCols" [rows]="matchRows" [paginated]="false" [stickyHeader]="true" />
         </div>
       }
     </e360-module-shell>
@@ -122,6 +100,8 @@ export class CandidatesComponent implements OnInit {
   pageSize = 25;
   total = 0;
   search = '';
+  sort: TableSort | null = null;
+  columnFilters: Record<string, string> = {};
   private searchTimer?: ReturnType<typeof setTimeout>;
 
   exportCols = [
@@ -142,6 +122,38 @@ export class CandidatesComponent implements OnInit {
     { key: 'matches', label: 'Matches', sortable: true },
     { key: 'added', label: 'Added', sortable: true },
   ];
+  appHistCols: TableColumn[] = [
+    { key: 'role', label: 'Role' },
+    { key: 'status', label: 'Status' },
+    { key: 'source', label: 'Source' },
+    { key: 'date', label: 'Date' },
+  ];
+  matchCols: TableColumn[] = [
+    { key: 'job', label: 'Job' },
+    { key: 'rule', label: 'Rule %' },
+    { key: 'ai', label: 'AI %' },
+    { key: 'final', label: 'Final %' },
+    { key: 'shortlisted', label: 'Shortlisted' },
+  ];
+
+  get appHistRows() {
+    return (this.detail?.applications ?? []).map((a: any) => ({
+      role: a.job.title,
+      status: a.status,
+      source: a.source ?? '—',
+      date: a.createdAt ? new Date(a.createdAt).toLocaleDateString() : '—',
+    }));
+  }
+
+  get matchRows() {
+    return (this.detail?.matches ?? []).map((m: any) => ({
+      job: m.job.title,
+      rule: m.ruleScore ?? '—',
+      ai: m.aiScore ?? '—',
+      final: m.finalScore,
+      shortlisted: m.shortlisted ? 'yes' : 'no',
+    }));
+  }
 
   get tableRows() {
     return this.candidates.map((c) => ({
@@ -180,6 +192,18 @@ export class CandidatesComponent implements OnInit {
     this.load();
   }
 
+  onSortChange(s: { key: string; dir: 'asc' | 'desc' }) {
+    this.sort = s;
+    this.page = 1;
+    this.load();
+  }
+
+  onTableFilterChange(f: Record<string, string>) {
+    this.columnFilters = f;
+    this.page = 1;
+    this.load();
+  }
+
   async onRowClick(row: Record<string, unknown>) {
     const id = String(row['id'] ?? '');
     if (this.detailFor === id) {
@@ -194,11 +218,9 @@ export class CandidatesComponent implements OnInit {
   async load() {
     this.loading = true;
     try {
-      const params: Record<string, string> = {
-        page: String(this.page),
-        pageSize: String(this.pageSize),
-      };
-      if (this.search.trim()) params.search = this.search.trim();
+      const extra: Record<string, string> = {};
+      if (this.search.trim()) extra.search = this.search.trim();
+      const params = tableListParams(this.page, this.pageSize, extra, this.sort, this.columnFilters);
       const res = await this.api.get<any>('/candidates', params);
       const { items, meta } = unwrapPaginated(res);
       this.candidates = items;

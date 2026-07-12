@@ -4,10 +4,11 @@ import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { AuthService } from '../core/auth.service';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Approvals inbox"
@@ -43,36 +44,37 @@ import { AuthService } from '../core/auth.service';
     <div class="card">
       <h2>Configure workflow</h2>
       <div class="row">
-        <div>
-          <label>Entity</label>
-          <select [(ngModel)]="wf.entityType">
-            <option>ONBOARDING</option><option>RESIGNATION</option><option>TIMESHEET</option>
-            <option>OFFER</option><option>ALLOCATION</option>
-          </select>
-        </div>
+          <e360-select-field
+            label="Entity"
+            [options]="entityTypeOptions"
+            [(ngModel)]="wf.entityType"
+          />
         <div><label>Name</label><input [(ngModel)]="wf.name" placeholder="Default resignation chain" /></div>
       </div>
       <label>Approval steps (executed in order)</label>
       @for (s of steps; track $index; let i = $index) {
         <div style="display:flex;gap:.5rem;align-items:center;margin:.35rem 0">
           <span class="badge">Step {{ i + 1 }}</span>
-          <select [(ngModel)]="s.type" style="max-width:230px;margin:0">
-            <option value="REPORTING_MANAGER">Reporting manager</option>
-            <option value="DEPARTMENT_HEAD">Department head</option>
-            <option value="DESIGNATION">Anyone with designation…</option>
-            <option value="USER">Specific person…</option>
-          </select>
+          <e360-select-field
+            [compact]="true"
+            [options]="stepTypeOptions"
+            [(ngModel)]="s.type"
+          />
           @if (s.type === 'DESIGNATION') {
-            <select [(ngModel)]="s.value" style="max-width:230px;margin:0">
-              <option [ngValue]="undefined">choose designation…</option>
-              @for (d of designations; track d.id) { <option [ngValue]="d.name">{{ d.name }}</option> }
-            </select>
+            <e360-select-field
+              [compact]="true"
+              placeholder="choose designation…"
+              [options]="designationOptions"
+              [(ngModel)]="s.value"
+            />
           }
           @if (s.type === 'USER') {
-            <select [(ngModel)]="s.value" style="max-width:260px;margin:0">
-              <option [ngValue]="undefined">choose person…</option>
-              @for (u of users; track u.id) { <option [ngValue]="u.id">{{ u.firstName }} {{ u.lastName }} ({{ u.email }})</option> }
-            </select>
+            <e360-select-field
+              [compact]="true"
+              placeholder="choose person…"
+              [options]="userOptions"
+              [(ngModel)]="s.value"
+            />
           }
           <button class="danger" (click)="steps.splice(i, 1)" [disabled]="steps.length === 1">✕</button>
         </div>
@@ -118,6 +120,30 @@ export class ApprovalsComponent implements OnInit {
   steps: { type: string; value?: string }[] = [{ type: 'REPORTING_MANAGER' }];
   designations: any[] = [];
   users: any[] = [];
+  entityTypeOptions: SelectOption[] = [
+    { value: 'ALLOCATION', label: 'ALLOCATION' },
+    { value: 'OFFER', label: 'OFFER' },
+    { value: 'ONBOARDING', label: 'ONBOARDING' },
+    { value: 'RESIGNATION', label: 'RESIGNATION' },
+    { value: 'TIMESHEET', label: 'TIMESHEET' },
+  ];
+  stepTypeOptions: SelectOption[] = [
+    { value: 'DEPARTMENT_HEAD', label: 'Department head' },
+    { value: 'DESIGNATION', label: 'Anyone with designation…' },
+    { value: 'REPORTING_MANAGER', label: 'Reporting manager' },
+    { value: 'USER', label: 'Specific person…' },
+  ];
+
+  get designationOptions(): SelectOption[] {
+    return this.designations.map((d) => ({ value: d.name, label: d.name }));
+  }
+
+  get userOptions(): SelectOption[] {
+    return this.users.map((u) => ({
+      value: u.id,
+      label: `${u.firstName} ${u.lastName} (${u.email})`,
+    }));
+  }
 
   get isAdmin() { return this.auth.hasRole('TENANT_ADMIN', 'HR'); }
 

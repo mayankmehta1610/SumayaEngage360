@@ -34,11 +34,17 @@ export class OnboardingAdminController {
     @TenantId() tenantId: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
+    @Query('filter') filter?: string,
   ) {
     return this.onboarding.listCases(
       tenantId,
       page !== undefined && page !== '' ? parseInt(page, 10) : undefined,
       pageSize !== undefined && pageSize !== '' ? parseInt(pageSize, 10) : undefined,
+      sortBy,
+      sortDir,
+      filter,
     );
   }
 

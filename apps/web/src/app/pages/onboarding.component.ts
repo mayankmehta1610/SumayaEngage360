@@ -1,6 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
+import { tableListParams, TableSort } from '../core/table-query.util';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
@@ -29,14 +30,12 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
           <div><label>Name</label><input [(ngModel)]="req.name" placeholder="Aadhaar card" /></div>
           <div style="flex:0"><button class="secondary" (click)="addReq()">Add</button></div>
         </div>
-        <div class="e360-table-wrap">
-          <table class="e360-table">
-            <tr><th>Country</th><th>Code</th><th>Name</th><th>Mandatory</th></tr>
-            @for (r of requirements; track r.id) {
-              <tr><td>{{ r.country }}</td><td>{{ r.code }}</td><td>{{ r.name }}</td><td>{{ r.mandatory ? 'yes' : 'no' }}</td></tr>
-            }
-          </table>
-        </div>
+        <e360-data-table
+          [columns]="reqCols"
+          [rows]="reqRows"
+          [paginated]="false"
+          [stickyHeader]="true"
+        />
       </div>
 
       <div class="card">
@@ -55,6 +54,8 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
           [selectedId]="selectedCaseId"
           (pageChange)="onPageChange($event)"
           (pageSizeChange)="onPageSizeChange($event)"
+          (sortChange)="onSortChange($event)"
+          (filterChange)="onFilterChange($event)"
           (rowClick)="onCaseClick($event)"
           emptyMessage="No onboarding cases yet."
         />
@@ -67,23 +68,23 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
               <span class="e360-muted">({{ selectedCase.employee.employeeCode }})</span></strong>
             <span class="badge" [class.ok]="selectedCase.status === 'COMPLETED'">{{ selectedCase.status }}</span>
           </div>
-          <div class="e360-table-wrap">
-            <table class="e360-table">
-              <tr><th>Document</th><th>Status</th><th></th></tr>
-              @for (d of selectedCase.employee.documents; track d.id) {
-                <tr>
-                  <td>{{ d.code }}</td>
-                  <td><span class="badge" [class.ok]="d.status==='VERIFIED'" [class.err]="d.status==='REJECTED'">{{ d.status }}</span></td>
-                  <td>
-                    @if (d.status === 'SUBMITTED') {
-                      <button class="secondary" (click)="verify(d.id, true)">Verify</button>
-                      <button class="danger" (click)="verify(d.id, false)">Reject</button>
-                    }
-                  </td>
-                </tr>
-              } @empty { <tr><td colspan="3" class="e360-muted">No documents submitted yet</td></tr> }
-            </table>
-          </div>
+          <e360-data-table
+            [columns]="docCols"
+            [rows]="docRows"
+            [paginated]="false"
+            [stickyHeader]="true"
+          >
+            <ng-template #rowTemplate let-row>
+              <td>{{ row.document }}</td>
+              <td><span class="badge" [class.ok]="row.status==='VERIFIED'" [class.err]="row.status==='REJECTED'">{{ row.status }}</span></td>
+              <td>
+                @if (row.status === 'SUBMITTED') {
+                  <button class="secondary" (click)="verify(row.id, true)">Verify</button>
+                  <button class="danger" (click)="verify(row.id, false)">Reject</button>
+                }
+              </td>
+            </ng-template>
+          </e360-data-table>
           @if (selectedCase.status !== 'COMPLETED') {
             <button style="margin-top:.5rem" (click)="approve(selectedCase.id)">Approve onboarding → employee ACTIVE</button>
           }
@@ -102,6 +103,8 @@ export class OnboardingComponent implements OnInit {
   page = 1;
   pageSize = 25;
   total = 0;
+  sort: TableSort | null = null;
+  columnFilters: Record<string, string> = {};
   selectedCaseId: string | null = null;
   selectedCase: any = null;
 
@@ -119,6 +122,34 @@ export class OnboardingComponent implements OnInit {
     { key: 'status', label: 'Status', sortable: true },
     { key: 'documents', label: 'Documents', sortable: true },
   ];
+  reqCols: TableColumn[] = [
+    { key: 'country', label: 'Country' },
+    { key: 'code', label: 'Code' },
+    { key: 'name', label: 'Name' },
+    { key: 'mandatory', label: 'Mandatory' },
+  ];
+  docCols: TableColumn[] = [
+    { key: 'document', label: 'Document' },
+    { key: 'status', label: 'Status', filterable: false },
+    { key: 'actions', label: '', sortable: false, filterable: false },
+  ];
+
+  get reqRows() {
+    return this.requirements.map((r) => ({
+      country: r.country,
+      code: r.code,
+      name: r.name,
+      mandatory: r.mandatory ? 'yes' : 'no',
+    }));
+  }
+
+  get docRows() {
+    return (this.selectedCase?.employee?.documents ?? []).map((d: any) => ({
+      id: d.id,
+      document: d.code,
+      status: d.status,
+    }));
+  }
 
   get caseRows() {
     return this.cases.map((c) => ({
@@ -145,6 +176,18 @@ export class OnboardingComponent implements OnInit {
     this.loadCases();
   }
 
+  onSortChange(s: { key: string; dir: 'asc' | 'desc' }) {
+    this.sort = s;
+    this.page = 1;
+    this.loadCases();
+  }
+
+  onFilterChange(f: Record<string, string>) {
+    this.columnFilters = f;
+    this.page = 1;
+    this.loadCases();
+  }
+
   onCaseClick(row: Record<string, unknown>) {
     const id = String(row['id'] ?? '');
     if (this.selectedCaseId === id) {
@@ -166,10 +209,8 @@ export class OnboardingComponent implements OnInit {
   async loadCases() {
     this.loading = true;
     try {
-      const res = await this.api.get<any>('/onboarding/cases', {
-        page: String(this.page),
-        pageSize: String(this.pageSize),
-      });
+      const params = tableListParams(this.page, this.pageSize, {}, this.sort, this.columnFilters);
+      const res = await this.api.get<any>('/onboarding/cases', params);
       const { items, meta } = unwrapPaginated(res);
       this.cases = items;
       this.total = meta?.total ?? items.length;

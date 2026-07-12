@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { AuthService } from '../core/auth.service';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ModuleShellComponent],
+  imports: [FormsModule, DatePipe, ModuleShellComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Privacy & DSR"
@@ -54,12 +55,11 @@ import { AuthService } from '../core/auth.service';
         }
       </table>
       <form (ngSubmit)="submitDsr()" class="inline-form">
-        <select [(ngModel)]="dsrType" name="type">
-          <option value="ACCESS">Access</option>
-          <option value="ERASURE">Erasure</option>
-          <option value="PORTABILITY">Portability</option>
-          <option value="RECTIFICATION">Rectification</option>
-        </select>
+        <e360-select-field
+          [options]="dsrTypeOptions"
+          [(ngModel)]="dsrType"
+          name="type"
+        />
         <input [(ngModel)]="dsrDetails" name="details" placeholder="Details (optional)" />
         <button type="submit">Submit DSR</button>
       </form>
@@ -103,6 +103,12 @@ export class PrivacyComponent implements OnInit {
   consentGranted = true;
   dsrType = 'ACCESS';
   dsrDetails = '';
+  dsrTypeOptions: SelectOption[] = [
+    { value: 'ACCESS', label: 'Access' },
+    { value: 'ERASURE', label: 'Erasure' },
+    { value: 'PORTABILITY', label: 'Portability' },
+    { value: 'RECTIFICATION', label: 'Rectification' },
+  ];
   error = '';
   msg = '';
 

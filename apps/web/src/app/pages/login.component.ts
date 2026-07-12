@@ -5,12 +5,14 @@ import { errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { homeForRoles } from '../core/rbac';
 import { IconComponent } from '../ui/icon.component';
+import { ThemeToggleComponent } from '../ui/theme-toggle.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, IconComponent],
+  imports: [FormsModule, IconComponent, ThemeToggleComponent],
   template: `
     <div class="e360-login-page">
+      <e360-theme-toggle class="e360-login-theme-toggle" [iconSize]="20" />
       <div class="e360-login-card">
         <div class="e360-login-brand">
           <div class="logo" aria-hidden="true">

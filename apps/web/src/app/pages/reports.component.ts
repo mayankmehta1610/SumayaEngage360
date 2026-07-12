@@ -5,6 +5,7 @@ import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { DataTableComponent } from '../ui/data-table.component';
 
 interface ReportDef {
   id: string;
@@ -17,7 +18,7 @@ interface ReportDef {
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, JsonPipe, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, DatePipe, JsonPipe, ExportBarComponent, ModuleShellComponent, DataTableComponent],
   styles: [`
     .grid { display: grid; grid-template-columns: 280px 1fr; gap: 1rem; }
     @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
@@ -84,16 +85,7 @@ interface ReportDef {
               }
               @if (tableRows.length) {
                 <export-bar [rows]="tableRows" [cols]="tableCols" [name]="selected.code" />
-                <table>
-                  <tr>
-                    @for (c of tableCols; track c.key) { <th>{{ c.label }}</th> }
-                  </tr>
-                  @for (row of tableRows; track $index) {
-                    <tr>
-                      @for (c of tableCols; track c.key) { <td>{{ row[c.key] }}</td> }
-                    </tr>
-                  }
-                </table>
+                <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true" />
               }
               <details style="margin-top:.75rem">
                 <summary class="muted">Raw JSON</summary>

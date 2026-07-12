@@ -1,11 +1,13 @@
 import { Component, Input, OnChanges, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
+import { tableListParams, TableSort } from '../core/table-query.util';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { HasRoleDirective } from '../core/has-role.directive';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { IconComponent } from '../ui/icon.component';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
@@ -16,6 +18,7 @@ import { IconComponent } from '../ui/icon.component';
     ModuleShellComponent,
     DataTableComponent,
     IconComponent,
+    SelectFieldComponent,
   ],
   template: `
     <e360-module-shell
@@ -41,16 +44,14 @@ import { IconComponent } from '../ui/icon.component';
           <div><label>Email</label><input type="email" [(ngModel)]="f.email" /></div>
           <div><label>Designation</label><input [(ngModel)]="f.designation" /></div>
           <div><label>Join date</label><input type="date" [(ngModel)]="f.joinDate" /></div>
-          <div>
-            <label>Status filter</label>
-            <select [(ngModel)]="statusFilter" (ngModelChange)="page = 1; load()">
-              <option value="">All statuses</option>
-              <option value="ACTIVE">Active</option>
-              <option value="ONBOARDING">Onboarding</option>
-              <option value="ON_NOTICE">On notice</option>
-              <option value="EXITED">Exited</option>
-            </select>
-          </div>
+          <e360-select-field
+            label="Status filter"
+            placeholder="All statuses"
+            [multiple]="true"
+            [options]="statusOptions"
+            [(ngModel)]="statusFilter"
+            (ngModelChange)="page = 1; load()"
+          />
         </div>
         <button (click)="create()"><e360-icon name="plus" [size]="14" /> Add employee</button>
       </div>
@@ -58,8 +59,8 @@ import { IconComponent } from '../ui/icon.component';
       <div class="card">
         <div class="e360-toolbar">
           <h2 style="margin:0">Employee directory ({{ total }})</h2>
-          @if (statusFilter) {
-            <span class="e360-badge warning">Filtered: {{ statusFilter }}</span>
+          @if (statusFilter.length) {
+            <span class="e360-badge warning">Filtered: {{ statusFilter.join(', ') }}</span>
           }
         </div>
         <e360-data-table
@@ -72,6 +73,8 @@ import { IconComponent } from '../ui/icon.component';
           [stickyHeader]="true"
           (pageChange)="onPageChange($event)"
           (pageSizeChange)="onPageSizeChange($event)"
+          (sortChange)="onSortChange($event)"
+          (filterChange)="onFilterChange($event)"
         />
       </div>
     </e360-module-shell>
@@ -82,11 +85,19 @@ export class EmployeesComponent implements OnInit, OnChanges {
   @Input() status?: string;
   employees: any[] = [];
   error = '';
-  statusFilter = '';
+  statusFilter: string[] = [];
+  statusOptions: SelectOption[] = [
+    { value: 'ACTIVE', label: 'Active' },
+    { value: 'EXITED', label: 'Exited' },
+    { value: 'ONBOARDING', label: 'Onboarding' },
+    { value: 'ON_NOTICE', label: 'On notice' },
+  ];
   loading = false;
   page = 1;
   pageSize = 25;
   total = 0;
+  sort: TableSort | null = null;
+  columnFilters: Record<string, string> = {};
   f: any = {};
   exportCols = [
     { key: 'employeeCode', label: 'Code' },
@@ -121,11 +132,11 @@ export class EmployeesComponent implements OnInit, OnChanges {
   }
 
   async ngOnInit() {
-    this.statusFilter = this.status ?? '';
+    this.statusFilter = this.status ? [this.status] : [];
     await this.load();
   }
   ngOnChanges() {
-    this.statusFilter = this.status ?? '';
+    this.statusFilter = this.status ? [this.status] : [];
     this.page = 1;
     this.load();
   }
@@ -141,15 +152,25 @@ export class EmployeesComponent implements OnInit, OnChanges {
     this.load();
   }
 
+  onSortChange(s: { key: string; dir: 'asc' | 'desc' }) {
+    this.sort = s;
+    this.page = 1;
+    this.load();
+  }
+
+  onFilterChange(f: Record<string, string>) {
+    this.columnFilters = f;
+    this.page = 1;
+    this.load();
+  }
+
   async load() {
     this.loading = true;
     try {
-      const q = this.statusFilter || this.status;
-      const params: Record<string, string> = {
-        page: String(this.page),
-        pageSize: String(this.pageSize),
-      };
-      if (q) params.status = q;
+      const extra: Record<string, string | string[]> = {};
+      if (this.statusFilter.length) extra.status = this.statusFilter;
+      else if (this.status) extra.status = [this.status];
+      const params = tableListParams(this.page, this.pageSize, extra, this.sort, this.columnFilters);
       const res = await this.api.get<any>('/employees', params);
       const { items, meta } = unwrapPaginated(res);
       this.employees = items;

@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ModuleShellComponent],
+  imports: [FormsModule, DatePipe, ModuleShellComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Compliance"
@@ -23,15 +24,11 @@ import { ModuleShellComponent } from '../ui/module-shell.component';
     <div class="card">
       <h2 style="margin-top:0">🛡 Raise a concern</h2>
       <div class="row">
-        <div><label>Type</label>
-          <select [(ngModel)]="f.type">
-            <option value="POSH">POSH complaint</option>
-            <option value="WHISTLEBLOWER">Whistleblower report</option>
-            <option value="INCIDENT">Incident report</option>
-            <option value="GRIEVANCE">Grievance</option>
-            <option value="CONFLICT_OF_INTEREST">Conflict of interest declaration</option>
-          </select>
-        </div>
+        <e360-select-field
+          label="Type"
+          [options]="caseTypeOptions"
+          [(ngModel)]="f.type"
+        />
         <div><label>Title</label><input [(ngModel)]="f.title" /></div>
       </div>
       <label>Details</label>
@@ -77,11 +74,11 @@ import { ModuleShellComponent } from '../ui/module-shell.component';
       <div class="card">
         <h2 style="margin-top:0">Data retention & purge (tenant admin)</h2>
         <div class="row" style="align-items:flex-end">
-          <div><label>Entity</label>
-            <select [(ngModel)]="rf.entity">
-              <option>CANDIDATE</option><option>AUDIT_LOG</option><option>ATTENDANCE</option><option>COMPLIANCE_CASE</option>
-            </select>
-          </div>
+          <e360-select-field
+            label="Entity"
+            [options]="retentionEntityOptions"
+            [(ngModel)]="rf.entity"
+          />
           <div><label>Retain (months)</label><input type="number" [(ngModel)]="rf.retainMonths" min="1" /></div>
           <div style="flex:0"><button class="secondary" (click)="setRetention()">Save policy</button></div>
           <div style="flex:0"><button class="secondary" (click)="preview()">Purge preview</button></div>
@@ -108,6 +105,19 @@ export class ComplianceComponent implements OnInit {
   purge: any[] = [];
   f: any = { type: 'INCIDENT', anonymous: false };
   rf: any = { entity: 'CANDIDATE', retainMonths: 24 };
+  caseTypeOptions: SelectOption[] = [
+    { value: 'CONFLICT_OF_INTEREST', label: 'Conflict of interest declaration' },
+    { value: 'GRIEVANCE', label: 'Grievance' },
+    { value: 'INCIDENT', label: 'Incident report' },
+    { value: 'POSH', label: 'POSH complaint' },
+    { value: 'WHISTLEBLOWER', label: 'Whistleblower report' },
+  ];
+  retentionEntityOptions: SelectOption[] = [
+    { value: 'ATTENDANCE', label: 'ATTENDANCE' },
+    { value: 'AUDIT_LOG', label: 'AUDIT_LOG' },
+    { value: 'CANDIDATE', label: 'CANDIDATE' },
+    { value: 'COMPLIANCE_CASE', label: 'COMPLIANCE_CASE' },
+  ];
 
   get isHr() { return this.auth.hasRole('TENANT_ADMIN', 'HR'); }
   get isAdmin() { return this.auth.hasRole('TENANT_ADMIN'); }

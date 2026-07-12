@@ -3,9 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EmployeeStatus, Role } from '@prisma/client';
+import { EmployeeStatus, Prisma, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
+import { contains, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AddSkillsDto,
@@ -65,16 +66,59 @@ export class EmployeesService {
 
   async findAll(
     tenantId: string,
-    status?: EmployeeStatus,
+    statuses?: EmployeeStatus[],
+    departmentIds?: string[],
     page?: number,
     pageSize?: number,
+    sortBy?: string,
+    sortDir?: string,
+    filter?: string,
   ) {
-    const where = { tenantId, ...(status ? { status } : {}) };
+    const filters = parseFilterJson(filter);
+    const where: Prisma.EmployeeWhereInput = {
+      tenantId,
+      ...(statuses?.length === 1 ? { status: statuses[0] } : {}),
+      ...(statuses && statuses.length > 1 ? { status: { in: statuses } } : {}),
+      ...(departmentIds?.length ? { departmentId: { in: departmentIds } } : {}),
+    };
+    if (filters.code) where.employeeCode = contains(filters.code);
+    if (filters.designation) where.designation = contains(filters.designation);
+    if (filters.status) where.status = filters.status.toUpperCase() as EmployeeStatus;
+    if (filters.department) where.department = { name: contains(filters.department) };
+    if (filters.name) {
+      where.OR = [
+        { user: { firstName: contains(filters.name) } },
+        { user: { lastName: contains(filters.name) } },
+      ];
+    }
+    if (filters.email) where.user = { email: contains(filters.email) };
+    if (filters.__search) {
+      const q = filters.__search;
+      where.OR = [
+        { employeeCode: contains(q) },
+        { designation: contains(q) },
+        { user: { firstName: contains(q) } },
+        { user: { lastName: contains(q) } },
+        { user: { email: contains(q) } },
+        { department: { name: contains(q) } },
+      ];
+    }
     const include = {
       user: { select: { email: true, firstName: true, lastName: true } },
       department: { select: { name: true } },
     };
-    const orderBy = { employeeCode: 'asc' as const };
+    const dir = parseSortDir(sortDir);
+    const orderBy: Prisma.EmployeeOrderByWithRelationInput = (() => {
+      switch (sortBy) {
+        case 'name': return { user: { firstName: dir } };
+        case 'email': return { user: { email: dir } };
+        case 'designation': return { designation: dir };
+        case 'department': return { department: { name: dir } };
+        case 'joined': return { joinDate: dir };
+        case 'status': return { status: dir };
+        default: return { employeeCode: dir };
+      }
+    })();
     const paginated = page !== undefined || pageSize !== undefined;
     if (!paginated) {
       return this.prisma.employee.findMany({ where, include, orderBy });
@@ -179,7 +223,7 @@ export class EmployeesService {
         user: { select: { firstName: true, lastName: true } },
         department: { select: { name: true } },
       },
-      orderBy: { employeeCode: 'asc' },
+      orderBy: [{ user: { lastName: 'asc' } }, { user: { firstName: 'asc' } }],
     });
   }
 

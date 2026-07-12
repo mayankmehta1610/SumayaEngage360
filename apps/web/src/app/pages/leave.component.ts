@@ -5,10 +5,11 @@ import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Attendance & leave"
@@ -84,12 +85,12 @@ import { ExportBarComponent } from '../core/export-bar.component';
         </div>
         <h2>Apply for leave</h2>
         <div class="row" style="align-items:flex-end">
-          <div><label>Type</label>
-            <select [(ngModel)]="lr.leaveTypeId">
-              <option [ngValue]="undefined">choose…</option>
-              @for (t of types; track t.id) { <option [ngValue]="t.id">{{ t.name }} ({{ t.code }})</option> }
-            </select>
-          </div>
+          <e360-select-field
+            label="Type"
+            placeholder="choose…"
+            [options]="leaveTypeOptions"
+            [(ngModel)]="lr.leaveTypeId"
+          />
           <div><label>From</label><input type="date" [(ngModel)]="lr.startDate" /></div>
           <div><label>To</label><input type="date" [(ngModel)]="lr.endDate" /></div>
         </div>
@@ -219,6 +220,10 @@ export class LeaveComponent implements OnInit {
 
   get isHr() { return this.auth.hasRole('TENANT_ADMIN', 'HR'); }
   get isOps() { return this.auth.hasRole('TENANT_ADMIN', 'HR', 'MANAGER'); }
+
+  get leaveTypeOptions(): SelectOption[] {
+    return this.types.map((t) => ({ value: t.id, label: `${t.name} (${t.code})` }));
+  }
 
   async ngOnInit() { await this.load(); }
 

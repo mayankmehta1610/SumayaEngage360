@@ -4,10 +4,11 @@ import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { AuthService } from '../core/auth.service';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Projects & allocation"
@@ -26,21 +27,19 @@ import { AuthService } from '../core/auth.service';
       <div class="row">
         <div><label>Name</label><input [(ngModel)]="f.name" /></div>
         <div><label>Code</label><input [(ngModel)]="f.code" placeholder="PRJ-001" /></div>
-        <div>
-          <label>Client (empty = internal)</label>
-          <select [(ngModel)]="f.hiringClientId">
-            <option [ngValue]="undefined">— internal —</option>
-            @for (c of clients; track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
-          </select>
-        </div>
+        <e360-select-field
+          label="Client (empty = internal)"
+          placeholder="— internal —"
+          [options]="clientOptions"
+          [(ngModel)]="f.hiringClientId"
+        />
         <div><label>Deployment location</label><input [(ngModel)]="f.location" /></div>
-        <div>
-          <label>Project manager</label>
-          <select [(ngModel)]="f.managerId">
-            <option [ngValue]="undefined">choose…</option>
-            @for (e of employees; track e.id) { <option [ngValue]="e.id">{{ e.user.firstName }} {{ e.user.lastName }}</option> }
-          </select>
-        </div>
+        <e360-select-field
+          label="Project manager"
+          placeholder="choose…"
+          [options]="employeeOptions"
+          [(ngModel)]="f.managerId"
+        />
       </div>
       <button (click)="create()">Create project</button>
     </div>
@@ -53,13 +52,12 @@ import { AuthService } from '../core/auth.service';
           <span class="badge">{{ p.client?.name ?? 'internal' }}</span>
         </div>
         <div class="row" style="align-items:flex-end">
-          <div>
-            <label>Allocate employee</label>
-            <select [(ngModel)]="p._emp">
-              <option [ngValue]="undefined">choose…</option>
-              @for (e of employees; track e.id) { <option [ngValue]="e.id">{{ e.user.firstName }} {{ e.user.lastName }}</option> }
-            </select>
-          </div>
+            <e360-select-field
+              label="Allocate employee"
+              placeholder="choose…"
+              [options]="employeeOptions"
+              [(ngModel)]="p._emp"
+            />
           <div><label>%</label><input type="number" [(ngModel)]="p._pct" min="1" max="100" /></div>
           <div><label>From</label><input type="date" [(ngModel)]="p._from" /></div>
           <div style="flex:0"><button class="secondary" (click)="allocate(p)">Allocate</button></div>
@@ -88,6 +86,17 @@ export class ProjectsComponent implements OnInit {
     { key: '_count.allocations', label: 'Allocations' },
   ];
 
+  get clientOptions(): SelectOption[] {
+    return this.clients.map((c) => ({ value: c.id, label: c.name }));
+  }
+
+  get employeeOptions(): SelectOption[] {
+    return this.employees.map((e) => ({
+      value: e.id,
+      label: `${e.user.firstName} ${e.user.lastName}`,
+    }));
+  }
+
   async ngOnInit() { await this.load(); }
   async load() {
     try {
@@ -99,7 +108,11 @@ export class ProjectsComponent implements OnInit {
     } catch (e) { this.error = errMsg(e); }
   }
   async create() {
-    try { await this.api.post('/projects', this.f); this.f = {}; await this.load(); }
+    try { await this.api.post('/projects', {
+      ...this.f,
+      hiringClientId: this.f.hiringClientId || undefined,
+      managerId: this.f.managerId || undefined,
+    }); this.f = {}; await this.load(); }
     catch (e) { this.error = errMsg(e); }
   }
   async allocate(p: any) {

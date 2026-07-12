@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:engage360_mobile/core/theme_controller.dart';
 import 'package:engage360_mobile/main.dart' as app;
 
 /// Integration tests against live API.
@@ -14,14 +15,14 @@ void main() {
   const password = String.fromEnvironment('TEST_PASSWORD', defaultValue: 'Owner@12345');
 
   testWidgets('login screen loads', (tester) async {
-    await tester.pumpWidget(const app.Engage360App());
+    await tester.pumpWidget(app.Engage360App(themeController: ThemeController()));
     await tester.pumpAndSettle();
     expect(find.text('SumayaEngage360'), findsOneWidget);
     expect(find.text('Sign in'), findsOneWidget);
   });
 
   testWidgets('login and navigate modules', (tester) async {
-    await tester.pumpWidget(const app.Engage360App());
+    await tester.pumpWidget(app.Engage360App(themeController: ThemeController()));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextFormField).at(0), tenant);

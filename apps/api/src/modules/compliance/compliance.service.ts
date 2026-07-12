@@ -45,9 +45,13 @@ export class ComplianceService {
     return rows.map((r) => this.strip(r));
   }
 
-  async list(tenantId: string, status?: ComplianceCaseStatus) {
+  async list(tenantId: string, statuses?: ComplianceCaseStatus[]) {
     const rows = await this.prisma.complianceCase.findMany({
-      where: { tenantId, ...(status ? { status } : {}) },
+      where: {
+        tenantId,
+        ...(statuses?.length === 1 ? { status: statuses[0] } : {}),
+        ...(statuses && statuses.length > 1 ? { status: { in: statuses } } : {}),
+      },
       orderBy: { createdAt: 'desc' },
     });
     return rows.map((r) => this.strip(r));

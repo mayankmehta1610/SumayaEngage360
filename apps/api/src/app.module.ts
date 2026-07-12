@@ -47,7 +47,8 @@ import { ManpowerModule } from './modules/manpower/manpower.module';
 import { PreboardingModule } from './modules/preboarding/preboarding.module';
 import { RequirementsModule } from './modules/requirements/requirements.module';
 import { MastersModule } from './modules/masters/masters.module';
-import { HealthController } from './health.controller';
+import { AgencyModule } from './modules/agency/agency.module';
+import { StaffingModule } from './modules/staffing/staffing.module';
 
 @Module({
   imports: [
@@ -92,6 +93,8 @@ import { HealthController } from './health.controller';
     MastersModule,
     SurveysModule,
     ComplianceModule,
+    AgencyModule,
+    StaffingModule,
   ],
   controllers: [HealthController],
   providers: [

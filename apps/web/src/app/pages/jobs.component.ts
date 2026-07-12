@@ -1,11 +1,13 @@
 import { Component, Input, OnChanges, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
+import { tableListParams, TableSort } from '../core/table-query.util';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { HasRoleDirective } from '../core/has-role.directive';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { IconComponent } from '../ui/icon.component';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
@@ -16,6 +18,7 @@ import { IconComponent } from '../ui/icon.component';
     ModuleShellComponent,
     DataTableComponent,
     IconComponent,
+    SelectFieldComponent,
   ],
   template: `
     <e360-module-shell
@@ -35,30 +38,28 @@ import { IconComponent } from '../ui/icon.component';
         <h2>Create job requisition</h2>
         <div class="e360-form-grid">
           <div><label>Title</label><input [(ngModel)]="f.title" placeholder="e.g. Senior Backend Engineer" /></div>
-          <div>
-            <label>Hiring client</label>
-            <select [(ngModel)]="f.hiringClientId">
-              <option [ngValue]="undefined">— Internal —</option>
-              @for (c of clients; track c.id) { <option [ngValue]="c.id">{{ c.name }}</option> }
-            </select>
-          </div>
+          <e360-select-field
+            label="Hiring client"
+            placeholder="— Internal —"
+            [options]="clientOptions"
+            [(ngModel)]="f.hiringClientId"
+          />
           <div><label for="job-location">Location</label><input id="job-location" [(ngModel)]="f.location" /></div>
           <div><label>Vacancies</label><input type="number" [(ngModel)]="f.vacancies" min="1" /></div>
-          <div><label>Employment type</label>
-            <select [(ngModel)]="f.employmentType">
-              <option [ngValue]="undefined">choose…</option>
-              @for (et of employmentTypes; track et.id) { <option [value]="et.code">{{ et.name }}</option> }
-            </select>
-          </div>
-          <div><label>Status filter</label>
-            <select [(ngModel)]="statusFilter" (ngModelChange)="page = 1; load()">
-              <option value="">All statuses</option>
-              <option value="DRAFT">Draft</option>
-              <option value="PUBLISHED">Published</option>
-              <option value="ON_HOLD">On hold</option>
-              <option value="CLOSED">Closed</option>
-            </select>
-          </div>
+          <e360-select-field
+            label="Employment type"
+            placeholder="choose…"
+            [options]="employmentTypeOptions"
+            [(ngModel)]="f.employmentType"
+          />
+          <e360-select-field
+            label="Status filter"
+            placeholder="All statuses"
+            [multiple]="true"
+            [options]="statusOptions"
+            [(ngModel)]="statusFilter"
+            (ngModelChange)="page = 1; load()"
+          />
         </div>
         <label>Job description</label>
         <textarea rows="4" [(ngModel)]="f.description" placeholder="Full JD…"></textarea>
@@ -74,54 +75,37 @@ import { IconComponent } from '../ui/icon.component';
         <div class="e360-toolbar">
           <h2 style="margin:0">Job catalogue ({{ total }})</h2>
         </div>
-        @if (!loading && !jobs.length) {
-          <p class="e360-muted">No jobs found.</p>
-        } @else {
-          <div class="e360-table-wrap e360-table-sticky" style="max-height:min(70vh, 640px)">
-            <table class="e360-table e360-table-zebra">
-              <thead>
-                <tr>
-                  @for (col of tableCols; track col.key) { <th>{{ col.label }}</th> }
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (j of jobs; track j.id) {
-                  <tr>
-                    <td>{{ j.title }}</td>
-                    <td>{{ j.hiringClient?.name ?? '—' }}</td>
-                    <td>{{ j.location }}</td>
-                    <td>{{ j.vacancies }}</td>
-                    <td>{{ j._count?.applications ?? 0 }}</td>
-                    <td><span class="e360-badge" [class.success]="j.status === 'PUBLISHED'">{{ j.status }}</span></td>
-                    <td style="white-space:nowrap">
-                      @if (j.status === 'DRAFT') {
-                        <button class="sm" (click)="publish(j.id)">Publish</button>
-                      }
-                      <button class="secondary sm" (click)="toggleMatches(j)">
-                        {{ matchesFor === j.id ? 'Hide matches' : 'Matches' }}
-                      </button>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          <div class="e360-pagination">
-            <span>{{ pageFrom }}–{{ pageTo }} of {{ total }}</span>
-            <div class="pages">
-              <label class="e360-muted" style="font-size:.75rem;margin-right:.35rem">Rows</label>
-              <select [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange(pageSize)">
-                <option [ngValue]="10">10</option>
-                <option [ngValue]="25">25</option>
-                <option [ngValue]="50">50</option>
-              </select>
-              <button class="secondary sm" [disabled]="page <= 1" (click)="onPageChange(page - 1)">‹</button>
-              <span>Page {{ page }} / {{ totalPages }}</span>
-              <button class="secondary sm" [disabled]="page >= totalPages" (click)="onPageChange(page + 1)">›</button>
-            </div>
-          </div>
-        }
+        <e360-data-table
+          [columns]="tableCols"
+          [rows]="tableRows"
+          [page]="page"
+          [pageSize]="pageSize"
+          [total]="total"
+          [loading]="loading"
+          [stickyHeader]="true"
+          (pageChange)="onPageChange($event)"
+          (pageSizeChange)="onPageSizeChange($event)"
+          (sortChange)="onSortChange($event)"
+          (filterChange)="onFilterChange($event)"
+          emptyMessage="No jobs found."
+        >
+          <ng-template #rowTemplate let-row>
+            <td>{{ row.title }}</td>
+            <td>{{ row.client }}</td>
+            <td>{{ row.location }}</td>
+            <td>{{ row.vacancies }}</td>
+            <td>{{ row.applications }}</td>
+            <td><span class="e360-badge" [class.success]="row.status === 'PUBLISHED'">{{ row.status }}</span></td>
+            <td style="white-space:nowrap">
+              @if (row.status === 'DRAFT') {
+                <button class="sm" (click)="publish(row.id)">Publish</button>
+              }
+              <button class="secondary sm" (click)="toggleMatches(row._raw)">
+                {{ matchesFor === row.id ? 'Hide matches' : 'Matches' }}
+              </button>
+            </td>
+          </ng-template>
+        </e360-data-table>
       </div>
 
       @if (matchesFor) {
@@ -135,7 +119,7 @@ import { IconComponent } from '../ui/icon.component';
             </span>
           </div>
           @if (matching) { <p class="e360-muted">Scoring candidates…</p> }
-          <e360-data-table [columns]="matchTableCols" [rows]="matchRows" [searchable]="true" [pageSize]="15" />
+          <e360-data-table [columns]="matchTableCols" [rows]="matchRows" [pageSize]="15" />
         </div>
       }
     </e360-module-shell>
@@ -148,14 +132,35 @@ export class JobsComponent implements OnInit, OnChanges {
   clients: any[] = [];
   employmentTypes: any[] = [];
   error = '';
-  statusFilter = '';
+  statusFilter: string[] = [];
+  statusOptions: SelectOption[] = [
+    { value: 'CLOSED', label: 'Closed' },
+    { value: 'DRAFT', label: 'Draft' },
+    { value: 'ON_HOLD', label: 'On hold' },
+    { value: 'PUBLISHED', label: 'Published' },
+  ];
   loading = false;
   page = 1;
   pageSize = 25;
   total = 0;
+  sort: TableSort | null = null;
+  columnFilters: Record<string, string> = {};
   get totalPages() { return Math.max(1, Math.ceil(this.total / this.pageSize)); }
   get pageFrom() { return this.total ? (this.page - 1) * this.pageSize + 1 : 0; }
   get pageTo() { return Math.min(this.page * this.pageSize, this.total); }
+
+  get tableRows() {
+    return this.jobs.map((j) => ({
+      id: j.id,
+      title: j.title,
+      client: j.hiringClient?.name ?? '—',
+      location: j.location ?? '—',
+      vacancies: j.vacancies,
+      applications: j._count?.applications ?? 0,
+      status: j.status,
+      _raw: j,
+    }));
+  }
   exportCols = [
     { key: 'title', label: 'Title' },
     { key: 'hiringClient.name', label: 'Client' },
@@ -171,6 +176,7 @@ export class JobsComponent implements OnInit, OnChanges {
     { key: 'vacancies', label: 'Vacancies' },
     { key: 'applications', label: 'Applications' },
     { key: 'status', label: 'Status' },
+    { key: 'actions', label: '', sortable: false, filterable: false },
   ];
   f: any = { vacancies: 1 };
   skills = '';
@@ -196,6 +202,14 @@ export class JobsComponent implements OnInit, OnChanges {
     { key: 'shortlisted', label: 'Status', sortable: true },
   ];
 
+  get clientOptions(): SelectOption[] {
+    return this.clients.map((c) => ({ value: c.id, label: c.name }));
+  }
+
+  get employmentTypeOptions(): SelectOption[] {
+    return this.employmentTypes.map((et) => ({ value: et.code, label: et.name }));
+  }
+
   get matchRows() {
     return this.matches.map((m) => ({
       name: `${m.candidate.firstName} ${m.candidate.lastName}`,
@@ -208,7 +222,7 @@ export class JobsComponent implements OnInit, OnChanges {
   }
 
   async ngOnInit() {
-    this.statusFilter = this.status ?? '';
+    this.statusFilter = this.status ? [this.status] : [];
     await this.load();
     try { this.clients = await this.api.get<any[]>('/hiring-clients'); } catch { /* optional */ }
     try {
@@ -219,7 +233,7 @@ export class JobsComponent implements OnInit, OnChanges {
     } catch { /* optional */ }
   }
   ngOnChanges() {
-    this.statusFilter = this.status ?? '';
+    this.statusFilter = this.status ? [this.status] : [];
     this.page = 1;
     this.load();
   }
@@ -235,15 +249,25 @@ export class JobsComponent implements OnInit, OnChanges {
     this.load();
   }
 
+  onSortChange(s: { key: string; dir: 'asc' | 'desc' }) {
+    this.sort = s;
+    this.page = 1;
+    this.load();
+  }
+
+  onFilterChange(f: Record<string, string>) {
+    this.columnFilters = f;
+    this.page = 1;
+    this.load();
+  }
+
   async load() {
     this.loading = true;
     try {
-      const q = this.statusFilter || this.status;
-      const params: Record<string, string> = {
-        page: String(this.page),
-        pageSize: String(this.pageSize),
-      };
-      if (q) params.status = q;
+      const extra: Record<string, string | string[]> = {};
+      if (this.statusFilter.length) extra.status = this.statusFilter;
+      else if (this.status) extra.status = [this.status];
+      const params = tableListParams(this.page, this.pageSize, extra, this.sort, this.columnFilters);
       const res = await this.api.get<any>('/jobs', params);
       const { items, meta } = unwrapPaginated(res);
       this.jobs = items;
@@ -257,6 +281,7 @@ export class JobsComponent implements OnInit, OnChanges {
     try {
       const body = {
         ...this.f,
+        hiringClientId: this.f.hiringClientId || undefined,
         skills: this.skills.split(',').map((s) => s.trim()).filter(Boolean),
         interviewPlan: this.rounds.split(',').map((s) => s.trim()).filter(Boolean)
           .map((name, i) => ({ level: i + 1, name })),

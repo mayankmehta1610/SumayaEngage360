@@ -38,7 +38,7 @@ export class LeaveService {
   }
 
   listTypes(tenantId: string) {
-    return this.prisma.leaveType.findMany({ where: { tenantId, isActive: true } });
+    return this.prisma.leaveType.findMany({ where: { tenantId, isActive: true }, orderBy: { name: 'asc' } });
   }
 
   // ── balances ───────────────────────────────────────────────────────

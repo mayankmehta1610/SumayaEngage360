@@ -3,10 +3,11 @@ import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 
 @Component({
   standalone: true,
-  imports: [ExportBarComponent, ModuleShellComponent],
+  imports: [ExportBarComponent, ModuleShellComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="Data & API catalogues"
@@ -23,18 +24,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
         <h2 style="margin:0">Data entities ({{ entityMeta.total }} total, {{ entityImpl }} implemented)</h2>
         <export-bar [rows]="entities" [cols]="entCols" name="data-entities" />
       </div>
-      <table>
-        <tr><th>Domain</th><th>Entity</th><th>PII</th><th>Prisma table</th><th>Status</th></tr>
-        @for (e of entities; track e.id) {
-          <tr>
-            <td>{{ e.domain }}</td>
-            <td>{{ e.entity }}</td>
-            <td>{{ e.pii }}</td>
-            <td>{{ e.prismaModel ?? '—' }}</td>
-            <td><span class="badge" [class.ok]="e.implemented">{{ e.implemented ? 'implemented' : 'planned' }}</span></td>
-          </tr>
-        }
-      </table>
+      <e360-data-table [columns]="entityCols" [rows]="entityRows" [paginated]="false" [stickyHeader]="true" />
     </div>
 
     <div class="card">
@@ -42,18 +32,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
         <h2 style="margin:0">API catalogue ({{ apiMeta.total }} total, {{ apiImpl }} implemented)</h2>
         <export-bar [rows]="apis" [cols]="apiCols" name="api-catalogue" />
       </div>
-      <table>
-        <tr><th>ID</th><th>Resource</th><th>Endpoint</th><th>Actual path</th><th>Status</th></tr>
-        @for (a of apis; track a.id) {
-          <tr>
-            <td>{{ a.id }}</td>
-            <td>{{ a.resource }}</td>
-            <td class="muted" style="font-size:.78rem">{{ a.endpoint }}</td>
-            <td>{{ a.actualPath ?? '—' }}</td>
-            <td><span class="badge" [class.ok]="a.implemented">{{ a.implemented ? 'live' : 'planned' }}</span></td>
-          </tr>
-        }
-      </table>
+      <e360-data-table [columns]="apiTableCols" [rows]="apiRows" [paginated]="false" [stickyHeader]="true" />
     </div>
   
     </e360-module-shell>
@@ -81,6 +60,40 @@ export class CataloguesComponent implements OnInit {
     { key: 'actualPath', label: 'Path' },
     { key: 'implemented', label: 'Implemented' },
   ];
+  entityCols: TableColumn[] = [
+    { key: 'domain', label: 'Domain' },
+    { key: 'entity', label: 'Entity' },
+    { key: 'pii', label: 'PII' },
+    { key: 'table', label: 'Prisma table' },
+    { key: 'status', label: 'Status' },
+  ];
+  apiTableCols: TableColumn[] = [
+    { key: 'id', label: 'ID' },
+    { key: 'resource', label: 'Resource' },
+    { key: 'endpoint', label: 'Endpoint' },
+    { key: 'path', label: 'Actual path' },
+    { key: 'status', label: 'Status' },
+  ];
+
+  get entityRows() {
+    return this.entities.map((e) => ({
+      domain: e.domain,
+      entity: e.entity,
+      pii: e.pii,
+      table: e.prismaModel ?? '—',
+      status: e.implemented ? 'implemented' : 'planned',
+    }));
+  }
+
+  get apiRows() {
+    return this.apis.map((a) => ({
+      id: a.id,
+      resource: a.resource,
+      endpoint: a.endpoint,
+      path: a.actualPath ?? '—',
+      status: a.implemented ? 'live' : 'planned',
+    }));
+  }
 
   async ngOnInit() {
     if (!this.auth.hasRole('TENANT_ADMIN', 'HR')) return;

@@ -1,11 +1,15 @@
 import {
+  IsArray,
   IsBoolean,
   IsEmail,
+  IsEnum,
+  IsObject,
   IsOptional,
   IsString,
   Matches,
   MinLength,
 } from 'class-validator';
+import { TenantType } from '@prisma/client';
 
 export class CreateTenantDto {
   @IsString()
@@ -16,6 +20,19 @@ export class CreateTenantDto {
     message: 'subdomain must be lowercase letters, digits and hyphens',
   })
   subdomain: string;
+
+  @IsOptional()
+  @IsEnum(TenantType)
+  tenantType?: TenantType;
+
+  @IsOptional()
+  @IsObject()
+  onboardingQuestionnaire?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  enabledPortals?: string[];
 
   @IsOptional()
   @IsString()
@@ -49,6 +66,19 @@ export class UpdateTenantDto {
   name?: string;
 
   @IsOptional()
+  @IsEnum(TenantType)
+  tenantType?: TenantType;
+
+  @IsOptional()
+  @IsObject()
+  onboardingQuestionnaire?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  enabledPortals?: string[];
+
+  @IsOptional()
   @IsString()
   country?: string;
 
@@ -67,4 +97,29 @@ export class UpdateTenantDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+}
+
+export class OnboardingWizardDto {
+  @IsEnum(TenantType)
+  tenantType: TenantType;
+
+  @IsOptional()
+  @IsObject()
+  questionnaire?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  enabledPortals?: string[];
+}
+
+export class PatchOnboardingDto {
+  @IsOptional()
+  @IsObject()
+  questionnaire?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  enabledPortals?: string[];
 }

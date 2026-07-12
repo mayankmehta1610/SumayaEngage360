@@ -88,3 +88,23 @@ These are **status/type enums** defined in API contracts, not tenant-configurabl
 | Recognition badge | `/recognition-badges` |
 | Country | `/masters/country-configs` |
 | Rating scale | `/masters/rating-scales` |
+
+---
+
+## Searchable select component (2026-07-12)
+
+All web dropdowns now use `e360-select-field` (`apps/web/src/app/ui/select-field.component.ts`):
+
+- **Searchable** — type-to-filter inside the panel
+- **Alphabetical** — options sorted A–Z by label on init
+- **Multi-select** — `[multiple]="true"` for filter bars (applications status/job, employees status, jobs status, compliance status, audit entity type)
+- **Chips** — selected values shown as removable chips in multi mode
+- **Theme** — uses CSS variables (`--e360-surface`, `--e360-border`, etc.) for light/dark
+
+API multi-value query support via `parseMultiQuery()` in `apps/api/src/common/http/parse-multi-query.ts`:
+
+- Repeated params: `?status=ACTIVE&status=PENDING`
+- Comma-separated: `?status=ACTIVE,PENDING`
+- Plural aliases: `jobIds`, `departmentIds`
+
+Master list endpoints return A–Z sorted data (`orderBy: { name: 'asc' }` or `title`/`country` where applicable).

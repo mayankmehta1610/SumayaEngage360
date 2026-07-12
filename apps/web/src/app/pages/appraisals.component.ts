@@ -5,10 +5,12 @@ import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent, SelectFieldComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="Appraisals"
@@ -71,10 +73,13 @@ import { ExportBarComponent } from '../core/export-bar.component';
               <label>{{ s }}</label>
               <textarea rows="2" [(ngModel)]="a._mgr[s]"></textarea>
             }
-            <label>Rating (1–5)</label>
-            <select [(ngModel)]="a._rating" style="max-width:120px">
-              <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
-            </select>
+            <e360-select-field
+              label="Rating (1–5)"
+              [compact]="true"
+              [searchable]="false"
+              [options]="ratingOptions"
+              [(ngModel)]="a._rating"
+            />
             <div style="margin-top:.5rem"><button (click)="submitManager(a)" [disabled]="busy">Submit manager review</button></div>
           } @else {
             <span class="muted">Rating: {{ a.finalRating ?? 'pending' }}</span>
@@ -90,11 +95,11 @@ import { ExportBarComponent } from '../core/export-bar.component';
         <h2 style="margin-top:0">Create cycle</h2>
         <div class="row">
           <div><label>Name</label><input [(ngModel)]="f.name" placeholder="FY27 Q3" /></div>
-          <div><label>Frequency</label>
-            <select [(ngModel)]="f.frequency">
-              <option>QUARTERLY</option><option>HALF_YEARLY</option><option>YEARLY</option><option>MONTHLY</option><option>CUSTOM</option>
-            </select>
-          </div>
+          <e360-select-field
+            label="Frequency"
+            [options]="frequencyOptions"
+            [(ngModel)]="f.frequency"
+          />
           <div><label>Start</label><input type="date" [(ngModel)]="f.startDate" /></div>
           <div><label>End</label><input type="date" [(ngModel)]="f.endDate" /></div>
         </div>
@@ -109,17 +114,15 @@ import { ExportBarComponent } from '../core/export-bar.component';
         <button style="margin-left:.5rem" (click)="createCycle()" [disabled]="!f.name || !f.startDate">Create cycle</button>
       </div>
       <div class="card">
-        <table>
-          <tr><th>Cycle</th><th>Frequency</th><th>Window</th><th>Appraisals</th><th></th></tr>
-          @for (c of cycles; track c.id) {
-            <tr>
-              <td>{{ c.name }}</td><td>{{ c.frequency }}</td>
-              <td>{{ c.startDate | date }} – {{ c.endDate | date }}</td>
-              <td>{{ c._count?.appraisals ?? 0 }}</td>
-              <td><button class="secondary" (click)="launch(c.id)">Launch for all active employees</button></td>
-            </tr>
-          }
-        </table>
+        <e360-data-table [columns]="cycleCols" [rows]="cycleRows" [paginated]="false" [stickyHeader]="true">
+          <ng-template #rowTemplate let-row>
+            <td>{{ row.name }}</td>
+            <td>{{ row.frequency }}</td>
+            <td>{{ row.window }}</td>
+            <td>{{ row.appraisals }}</td>
+            <td><button class="secondary" (click)="launch(row.id)">Launch for all active employees</button></td>
+          </ng-template>
+        </e360-data-table>
       </div>
     }
   
@@ -136,6 +139,14 @@ export class AppraisalsComponent implements OnInit {
   busy = false;
   f: any = { frequency: 'QUARTERLY' };
   tplSections: string[] = ['Delivery quality', 'Collaboration'];
+  ratingOptions: SelectOption[] = ['1', '2', '3', '4', '5'].map((v) => ({ value: v, label: v }));
+  frequencyOptions: SelectOption[] = [
+    { value: 'CUSTOM', label: 'CUSTOM' },
+    { value: 'HALF_YEARLY', label: 'HALF_YEARLY' },
+    { value: 'MONTHLY', label: 'MONTHLY' },
+    { value: 'QUARTERLY', label: 'QUARTERLY' },
+    { value: 'YEARLY', label: 'YEARLY' },
+  ];
   exportCols = [
     { key: 'name', label: 'Cycle' },
     { key: 'frequency', label: 'Frequency' },
@@ -143,6 +154,23 @@ export class AppraisalsComponent implements OnInit {
     { key: 'endDate', label: 'End' },
     { key: '_count.appraisals', label: 'Appraisals' },
   ];
+  cycleCols: TableColumn[] = [
+    { key: 'name', label: 'Cycle' },
+    { key: 'frequency', label: 'Frequency' },
+    { key: 'window', label: 'Window' },
+    { key: 'appraisals', label: 'Appraisals' },
+    { key: 'actions', label: '', sortable: false, filterable: false },
+  ];
+
+  get cycleRows() {
+    return this.cycles.map((c) => ({
+      id: c.id,
+      name: c.name,
+      frequency: c.frequency,
+      window: `${new Date(c.startDate).toLocaleDateString()} – ${new Date(c.endDate).toLocaleDateString()}`,
+      appraisals: c._count?.appraisals ?? 0,
+    }));
+  }
 
   get isHr() { return this.auth.hasRole('TENANT_ADMIN', 'HR'); }
 
