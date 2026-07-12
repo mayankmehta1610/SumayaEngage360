@@ -3,6 +3,8 @@ import { Component, Input } from '@angular/core';
 /** Lightweight Lucide-style icon set (inline SVG, no npm dependency). */
 const ICONS: Record<string, string> = {
   'layout-dashboard': 'M3 3h7v9H3zm11 0h7v5h-7zm0 7h7v9h-7zM3 16h7v5H3z',
+  pencil: 'M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z',
+  'trash-2': 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6',
   sparkles: 'M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3zM5 3v4M3 5h4M19 17v4M17 19h4',
   video: 'M23 7l-7 5 7 5V7zM14 5H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z',
   'trending-up': 'M23 6l-9.5 9.5-5-5L1 18M17 6h6v6',

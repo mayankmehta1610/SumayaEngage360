@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 type MasterDto = { code: string; name: string; level?: number };
@@ -15,6 +15,17 @@ export class OrgMastersService {
     return {
       list: () => m.findMany({ where: { tenantId, isActive: true }, orderBy: { name: 'asc' } }),
       create: (dto: MasterDto) => m.create({ data: { tenantId, ...dto } }),
+      update: async (id: string, dto: Partial<MasterDto>) => {
+        const res = await m.updateMany({ where: { id, tenantId }, data: dto });
+        if (res.count === 0) throw new NotFoundException('Record not found');
+        return m.findFirst({ where: { id, tenantId } });
+      },
+      // Soft-delete: reference data is FK-referenced elsewhere, so deactivate.
+      remove: async (id: string) => {
+        const res = await m.updateMany({ where: { id, tenantId }, data: { isActive: false } });
+        if (res.count === 0) throw new NotFoundException('Record not found');
+        return { deactivated: true };
+      },
     };
   }
 

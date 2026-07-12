@@ -35,6 +35,14 @@ export class ApiService {
       }),
     );
   }
+
+  delete<T>(path: string, tenant?: string): Promise<T> {
+    return firstValueFrom(
+      this.http.delete<T>(`${this.base}${path}`, {
+        headers: tenant ? { 'x-tenant-id': tenant } : undefined,
+      }),
+    );
+  }
 }
 
 export function errMsg(e: unknown): string {
