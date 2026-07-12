@@ -62,6 +62,30 @@ const main = async () => {
     adminFirstName: 'Owner', adminLastName: 'One' } });
   check('tenant created', tenantRes.status === 201, JSON.stringify(tenantRes.data));
 
+  const AGENCY_TENANT = `e2e-agency-${RUN}`;
+  const agencyTenantRes = await req('POST', '/tenants', { token: admin, body: {
+    name: `E2E Agency ${RUN}`, subdomain: AGENCY_TENANT, country: 'IN',
+    tenantType: 'RECRUITMENT_AGENCY',
+    enabledPortals: ['ats', 'agency'],
+    adminEmail: `agency@${AGENCY_TENANT}.test`, adminPassword: 'Agency@12345',
+    adminFirstName: 'Asha', adminLastName: 'Agency' } });
+  check('agency tenant created', agencyTenantRes.status === 201, JSON.stringify(agencyTenantRes.data));
+  check('agency tenant type', agencyTenantRes.data?.tenantType === 'RECRUITMENT_AGENCY');
+
+  const agencyLogin = await req('POST', '/auth/login', { tenant: AGENCY_TENANT, body: {
+    email: `agency@${AGENCY_TENANT}.test`, password: 'Agency@12345' } });
+  check('agency admin login', !!agencyLogin.data.accessToken);
+  const agency = { token: agencyLogin.data.accessToken, tenant: AGENCY_TENANT };
+
+  const tenantMe = await req('GET', '/tenant/me', agency);
+  check('tenant me returns type', tenantMe.data?.tenantType === 'RECRUITMENT_AGENCY');
+
+  const wizard = await req('POST', '/tenant/onboarding-wizard', { ...agency, body: {
+    tenantType: 'RECRUITMENT_AGENCY',
+    questionnaire: { headcount: '1-5', primaryMarket: 'IT' },
+    enabledPortals: ['ats', 'agency'] } });
+  check('onboarding wizard', wizard.status === 200 || wizard.status === 201);
+
   const ownerLogin = await req('POST', '/auth/login', { tenant: TENANT, body: {
     email: `owner@${TENANT}.test`, password: 'Owner@12345' } });
   check('tenant admin login', !!ownerLogin.data.accessToken);

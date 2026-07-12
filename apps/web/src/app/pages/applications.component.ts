@@ -1,5 +1,5 @@
 import { Component, Input, OnChanges, OnInit, inject } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { DatePipe, JsonPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, QueryParams, errMsg, unwrapPaginated } from '../core/api.service';
 import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
@@ -12,7 +12,7 @@ import { AuthService } from '../core/auth.service';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent, DataTableComponent, SelectFieldComponent],
+  imports: [FormsModule, DatePipe, JsonPipe, ExportBarComponent, ModuleShellComponent, DataTableComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Applications"
@@ -99,6 +99,102 @@ import { AuthService } from '../core/auth.service';
                   [class.err]="selectedApp.status === 'REJECTED'">{{ selectedApp.status }}</span>
           </div>
 
+          <div class="e360-tabs" style="display:flex;gap:.35rem;flex-wrap:wrap;margin:.5rem 0">
+            @for (tab of profileTabs; track tab.key) {
+              <button type="button" class="secondary sm"
+                      [class.ok]="profileTab === tab.key"
+                      (click)="profileTab = tab.key">{{ tab.label }}</button>
+            }
+          </div>
+
+          @if (profileTab === 'personal') {
+            <div class="e360-detail-panel">
+              <div class="row">
+                <div><label>First name</label><input [value]="selectedApp.candidate.firstName" readonly /></div>
+                <div><label>Last name</label><input [value]="selectedApp.candidate.lastName" readonly /></div>
+                <div><label>Email</label><input [value]="selectedApp.candidate.email" readonly /></div>
+                <div><label>Phone</label><input [value]="selectedApp.candidate.phone ?? '—'" readonly /></div>
+              </div>
+              @if (selectedApp.candidate.demographics) {
+                <pre style="font-size:.8rem;margin-top:.5rem">{{ selectedApp.candidate.demographics | json }}</pre>
+              }
+            </div>
+          }
+
+          @if (profileTab === 'professional') {
+            <div class="e360-detail-panel">
+              <label>Professional summary</label>
+              <textarea rows="4" [(ngModel)]="profile.professionalSummary"></textarea>
+              <label>Domain expertise (comma-separated)</label>
+              <input [(ngModel)]="domainExpertiseText" />
+              @if (isHr) {
+                <button style="margin-top:.5rem" (click)="saveProfile()">Save profile</button>
+              }
+            </div>
+          }
+
+          @if (profileTab === 'skills') {
+            <div class="e360-detail-panel">
+              <ul>
+                @for (s of selectedApp.candidate.skills ?? []; track s.skillId) {
+                  <li>{{ s.skill?.name }} @if (s.yearsOfExp) { ({{ s.yearsOfExp }} yrs) }</li>
+                } @empty { <li class="e360-muted">No skills tagged.</li> }
+              </ul>
+            </div>
+          }
+
+          @if (profileTab === 'experience') {
+            <div class="e360-detail-panel">
+              @for (e of selectedApp.candidate.experiences ?? []; track e.id) {
+                <div style="margin-bottom:.5rem">
+                  <strong>{{ e.title }}</strong> at {{ e.company }}
+                  <span class="e360-muted"> · {{ e.startDate | date }} – {{ e.endDate ? (e.endDate | date) : 'Present' }}</span>
+                  @if (e.description) { <p style="margin:.25rem 0 0">{{ e.description }}</p> }
+                </div>
+              } @empty { <p class="e360-muted">No experience recorded.</p> }
+            </div>
+          }
+
+          @if (profileTab === 'education') {
+            <div class="e360-detail-panel">
+              <label>Education (JSON array)</label>
+              <textarea rows="5" [(ngModel)]="educationJson"></textarea>
+              @if (isHr) { <button style="margin-top:.5rem" (click)="saveProfile()">Save education</button> }
+            </div>
+          }
+
+          @if (profileTab === 'documents') {
+            <div class="e360-detail-panel">
+              <p>Resume: {{ selectedApp.candidate.resumeFileId ? 'Uploaded' : '—' }}</p>
+              <label>Cover letter file ID</label>
+              <input [(ngModel)]="profile.coverLetterFileId" />
+              @if (isHr) { <button style="margin-top:.5rem" (click)="saveProfile()">Save documents</button> }
+            </div>
+          }
+
+          @if (profileTab === 'contacts') {
+            <div class="e360-detail-panel">
+              <label>Contacts (JSON array)</label>
+              <textarea rows="4" [(ngModel)]="contactsJson"></textarea>
+              @if (isHr) { <button style="margin-top:.5rem" (click)="saveProfile()">Save contacts</button> }
+            </div>
+          }
+
+          @if (profileTab === 'custom') {
+            <div class="e360-detail-panel">
+              @for (fd of fieldDefs; track fd.id) {
+                <label>{{ fd.label }}@if (fd.required) { * }</label>
+                <input [(ngModel)]="customFields[fd.fieldKey]" />
+              } @empty {
+                <p class="e360-muted">No custom fields configured. Add definitions in tenant settings.</p>
+              }
+              @if (isHr && fieldDefs.length) {
+                <button style="margin-top:.5rem" (click)="saveProfile()">Save custom fields</button>
+              }
+            </div>
+          }
+
+          @if (profileTab === 'pipeline') {
           @if (isHr) {
           <div class="row" style="align-items:flex-end">
             <div>
@@ -201,6 +297,7 @@ import { AuthService } from '../core/auth.service';
               }
             </p>
           }
+          }
         </div>
       }
     </e360-module-shell>
@@ -224,6 +321,24 @@ export class ApplicationsComponent implements OnInit, OnChanges {
   jobs: any[] = [];
   selectedId: string | null = null;
   selectedApp: any = null;
+  profileTab = 'personal';
+  profile: any = {};
+  fieldDefs: any[] = [];
+  customFields: Record<string, string> = {};
+  domainExpertiseText = '';
+  educationJson = '[]';
+  contactsJson = '[]';
+  profileTabs = [
+    { key: 'personal', label: 'Personal' },
+    { key: 'professional', label: 'Professional' },
+    { key: 'skills', label: 'Skills' },
+    { key: 'experience', label: 'Experience' },
+    { key: 'education', label: 'Education' },
+    { key: 'documents', label: 'Documents' },
+    { key: 'contacts', label: 'Contacts' },
+    { key: 'custom', label: 'Custom fields' },
+    { key: 'pipeline', label: 'Pipeline & offers' },
+  ];
   error = '';
   loading = false;
   page = 1;
@@ -395,11 +510,56 @@ export class ApplicationsComponent implements OnInit, OnChanges {
       return;
     }
     this.selectedId = a.id;
+    this.profileTab = 'personal';
     try {
       const full = await this.api.get<any>(`/applications/${a.id}`);
       full._status = full.status;
       full._roundMode = 'TEAMS';
       this.selectedApp = full;
+      await Promise.all([this.loadProfile(a.id), this.loadFieldDefs()]);
+    } catch (e) { this.error = errMsg(e); }
+  }
+
+  async loadProfile(applicationId: string) {
+    try {
+      const p = await this.api.get<any>(`/applications/${applicationId}/profile`);
+      this.profile = p;
+      this.domainExpertiseText = (p.domainExpertise ?? []).join(', ');
+      this.educationJson = JSON.stringify(p.education ?? [], null, 2);
+      this.contactsJson = JSON.stringify(p.contacts ?? [], null, 2);
+      this.customFields = { ...(p.customFields ?? {}) };
+    } catch { /* optional */ }
+  }
+
+  async loadFieldDefs() {
+    try {
+      this.fieldDefs = await this.api.get<any[]>('/tenant-field-definitions/entity/APPLICATION');
+    } catch {
+      try {
+        this.fieldDefs = await this.api.get<any[]>('/tenant-field-definitions');
+      } catch { this.fieldDefs = []; }
+    }
+  }
+
+  async saveProfile() {
+    if (!this.selectedId) return;
+    try {
+      let education: unknown[] = [];
+      let contacts: unknown[] = [];
+      try { education = JSON.parse(this.educationJson); } catch { /* keep */ }
+      try { contacts = JSON.parse(this.contactsJson); } catch { /* keep */ }
+      await this.api.post(`/applications/${this.selectedId}/profile`, {
+        professionalSummary: this.profile.professionalSummary,
+        domainExpertise: this.domainExpertiseText
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+        education,
+        coverLetterFileId: this.profile.coverLetterFileId,
+        contacts,
+        customFields: this.customFields,
+      });
+      await this.loadProfile(this.selectedId);
     } catch (e) { this.error = errMsg(e); }
   }
 

@@ -49,6 +49,7 @@ import { RequirementsModule } from './modules/requirements/requirements.module';
 import { MastersModule } from './modules/masters/masters.module';
 import { AgencyModule } from './modules/agency/agency.module';
 import { StaffingModule } from './modules/staffing/staffing.module';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [

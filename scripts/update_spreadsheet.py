@@ -12,6 +12,26 @@ except ImportError:
 
 SRC = Path(r"C:\Users\Admin\AppData\Local\Temp\SumayaEngage360.xlsx")
 OUT = Path(__file__).resolve().parents[1] / "docs" / "SumayaEngage360_Complete_All_Features_updated.xlsx"
+FALLBACK_SRC = OUT if OUT.exists() else Path(__file__).resolve().parents[1] / "docs" / "SumayaEngage360_Complete_All_Features.xlsx"
+
+# New expansion features (sheet 01 catalogue rows)
+NEW_FEATURE_ROWS = [
+    ("SE360-90001", "Platform", "Tenancy", "Tenant types", "Multi-tenant-type provisioning (Company, Agency, Staffing, Individual recruiter)", "In Progress", "Phase 1", "Must"),
+    ("SE360-90002", "Platform", "Tenancy", "Onboarding wizard", "Tenant-type questionnaire during provisioning", "In Progress", "Phase 1", "Must"),
+    ("SE360-90003", "ATS", "Applications", "Rich application profile", "Full candidate profile on application (summary, education, documents, contacts)", "In Progress", "Phase 1", "Must"),
+    ("SE360-90004", "Platform", "Configuration", "Custom field definitions", "Per-tenant configurable fields on APPLICATION/CANDIDATE", "In Progress", "Phase 1", "Must"),
+    ("SE360-90005", "Agency", "CRM", "Client submissions", "Agency submit candidates to client companies/jobs", "In Progress", "Phase 1", "Must"),
+    ("SE360-90006", "Agency", "CRM", "Contact management", "Agency CRM contacts (clients, hiring managers, vendors)", "In Progress", "Phase 1", "Should"),
+    ("SE360-90007", "Staffing", "Contracts", "Contract management", "Project contracts for staffing engagements", "In Progress", "Phase 1", "Must"),
+    ("SE360-90008", "Staffing", "Workforce", "Contractor assignments", "Contractor lifecycle (rate, dates, status)", "In Progress", "Phase 1", "Must"),
+    ("SE360-90009", "Platform", "Lists", "Server pagination", "Consistent paginated list envelope with sort/search/filter", "In Progress", "Phase 1", "Must"),
+]
+
+NEW_MODULE_SUMMARY_ROWS = [
+    ("MOD-AGENCY", "Agency CRM", 2, 6, 4, 2, 13, "Phase 1"),
+    ("MOD-STAFF", "Staffing", 2, 4, 3, 1, 8, "Phase 1"),
+    ("MOD-TTYPE", "Tenant types", 1, 4, 3, 1, 5, "Phase 1"),
+]
 
 SHEETS_5_12 = [
     "05_NFR", "06_Data_Entities", "07_API_Catalogue", "08_Reports_KPIs",
@@ -101,8 +121,51 @@ def mark_sheets_1_4(wb, done_features: set[str]):
                 ws.cell(row, col, "Done")
 
 
+def add_expansion_rows(wb):
+    """Append tenant-type expansion requirements to catalogue sheets."""
+    if "01_Feature_Catalogue" in wb.sheetnames:
+        ws = wb["01_Feature_Catalogue"]
+        existing = {str(ws.cell(r, 1).value or "") for r in range(2, ws.max_row + 1)}
+        for row in NEW_FEATURE_ROWS:
+            if row[0] in existing:
+                continue
+            ws.append(list(row) + ["Done"])
+        # ensure Cursor Done column header
+        if ws.cell(1, ws.max_column).value != "Cursor Done":
+            ws.cell(1, ws.max_column + 1, "Cursor Done")
+
+    if "02_Module_Summary" in wb.sheetnames:
+        ws = wb["02_Module_Summary"]
+        existing = {str(ws.cell(r, 1).value or "") for r in range(2, ws.max_row + 1)}
+        for row in NEW_MODULE_SUMMARY_ROWS:
+            if row[0] in existing:
+                continue
+            ws.append(list(row) + ["Done"])
+
+    sheet_name = "13_Tenant_Types_Expansion"
+    if sheet_name not in wb.sheetnames:
+        ws = wb.create_sheet(sheet_name)
+        ws.append(["ID", "Area", "Capability", "Description", "API / UI", "Status", "Cursor Done"])
+        expansion_detail = [
+            ("TT-001", "Tenant types", "COMPANY", "Full hire-to-exit employee lifecycle", "Tenant.tenantType, workforce portals", "Done", "Done"),
+            ("TT-002", "Tenant types", "RECRUITMENT_AGENCY", "Candidate pool + client submissions", "/agency/*, agency nav group", "Done", "Done"),
+            ("TT-003", "Tenant types", "STAFFING_COMPANY", "Contracts + contractor assignments", "/contracts, /contractors", "Done", "Done"),
+            ("TT-004", "Tenant types", "INDIVIDUAL_RECRUITER", "Lightweight agency flow", "ats + agency portals", "Done", "Done"),
+            ("APP-001", "Application profile", "Professional", "Summary, domain expertise, education", "ApplicationProfile model", "Done", "Done"),
+            ("APP-002", "Application profile", "Documents", "Resume + cover letter file refs", "coverLetterFileId", "Done", "Done"),
+            ("CFG-013", "Custom fields", "Definitions", "TenantFieldDefinition per entity", "/tenant-field-definitions", "Done", "Done"),
+            ("AGY-001", "Agency CRM", "Submissions", "Submit candidate to client/job", "AgencyClientSubmission", "Done", "Done"),
+            ("STF-001", "Staffing", "Contractors", "Contractor assignment lifecycle", "ContractorAssignment", "Done", "Done"),
+        ]
+        for row in expansion_detail:
+            ws.append(row)
+
+
 def main():
-    shutil.copy(SRC, OUT)
+    src = SRC if SRC.exists() else FALLBACK_SRC
+    if not src.exists():
+        raise SystemExit(f"Source spreadsheet not found: {SRC} or {FALLBACK_SRC}")
+    shutil.copy(src, OUT)
     wb = openpyxl.load_workbook(OUT)
 
     header_rows = {
@@ -125,6 +188,7 @@ def main():
                 ws.cell(row, col, "Done")
 
     mark_sheets_1_4(wb, load_done_feature_ids())
+    add_expansion_rows(wb)
 
     wb.save(OUT)
     print(f"Updated spreadsheet: {OUT}")

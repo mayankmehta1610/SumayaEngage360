@@ -43,6 +43,10 @@ const shellChildren = [
   { path: 'exit', loadComponent: () => import('./pages/exit.component').then((m) => m.ExitComponent) },
   { path: 'approvals', loadComponent: () => import('./pages/approvals.component').then((m) => m.ApprovalsComponent) },
   { path: 'tenants', loadComponent: () => import('./pages/tenants.component').then((m) => m.TenantsComponent) },
+  { path: 'agency/submissions', loadComponent: () => import('./pages/agency-submissions.component').then((m) => m.AgencySubmissionsComponent) },
+  { path: 'agency/contacts', loadComponent: () => import('./pages/agency-contacts.component').then((m) => m.AgencyContactsComponent) },
+  { path: 'contracts', loadComponent: () => import('./pages/contracts.component').then((m) => m.ContractsComponent) },
+  { path: 'contractors', loadComponent: () => import('./pages/contractors.component').then((m) => m.ContractorsComponent) },
 ].map((r) => ({ ...r, canActivate: [roleGuard] }));
 
 export const routes: Routes = [
