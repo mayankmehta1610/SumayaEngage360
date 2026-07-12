@@ -111,11 +111,24 @@ test.describe.serial('role-controlled two-tenant workflows', () => {
       skills: ['Angular'], interviewPlan: [{ level: 1, name: 'Technical' }],
     }));
     await api(request, 'POST', `/jobs/${job.body.id}/publish`, scoped());
+    const resumeRes = await request.post(`${API}/files`, {
+      headers: { 'x-tenant-id': TENANT_A },
+      multipart: { file: { name: 'resume.pdf', mimeType: 'application/pdf', buffer: Buffer.from('resume') } },
+    });
+    const resumeBody = await resumeRes.json();
     const application = await api(request, 'POST', `/public/careers/jobs/${job.body.id}/apply`, {
       tenant: TENANT_A,
       data: {
         email: `candidate@${TENANT_A}.test`, firstName: 'Casey', lastName: 'Candidate',
+        phone: '9999999999', city: 'Remote', country: 'India',
+        linkedIn: 'https://linkedin.com/in/casey',
+        professionalSummary: 'Frontend engineer.',
+        domainExpertise: ['Web'], yearsExperience: 3,
         skills: ['Angular'],
+        experiences: [{ company: 'WebCo', title: 'Dev', startDate: '2022-01-01' }],
+        education: [{ institution: 'Uni', degree: 'BS', field: 'CS', year: 2020 }],
+        contacts: [{ name: 'Mgr', relationship: 'Manager', email: 'm@ex.com', phone: '8888888888' }],
+        resumeFileId: resumeBody.id,
       },
     });
     await api(request, 'POST', `/applications/${application.body.id}/interviews`, scoped({

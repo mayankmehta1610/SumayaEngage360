@@ -1,7 +1,9 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsEmail,
   IsObject,
   IsDateString,
   IsEnum,
@@ -158,6 +160,36 @@ export class ExperienceDto {
   description?: string;
 }
 
+export class EducationDto {
+  @IsString()
+  institution: string;
+
+  @IsString()
+  degree: string;
+
+  @IsString()
+  field: string;
+
+  @IsInt()
+  @Min(1950)
+  @Max(2100)
+  year: number;
+}
+
+export class ContactDto {
+  @IsString()
+  name: string;
+
+  @IsString()
+  relationship: string;
+
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  phone: string;
+}
+
 export class ApplyDto {
   @IsString()
   email: string;
@@ -168,30 +200,69 @@ export class ApplyDto {
   @IsString()
   lastName: string;
 
-  @IsOptional()
   @IsString()
-  phone?: string;
+  phone: string;
 
-  // dob, gender, address, nationality…
+  @IsString()
+  city: string;
+
+  @IsString()
+  country: string;
+
+  @IsString()
+  linkedIn: string;
+
   @IsOptional()
-  @IsObject()
-  demographics?: Record<string, unknown>;
+  @IsDateString()
+  dateOfBirth?: string;
+
+  @IsString()
+  professionalSummary: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @ArrayMinSize(1)
+  domainExpertise: string[];
+
+  @IsNumber()
+  @Min(0)
+  yearsExperience: number;
 
   // Skills are tagged at application time (carried into onboarding).
   @IsArray()
   @IsString({ each: true })
+  @ArrayMinSize(1)
   skills: string[];
 
-  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
+  @ArrayMinSize(1)
   @Type(() => ExperienceDto)
-  experiences?: ExperienceDto[];
+  experiences: ExperienceDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @ArrayMinSize(1)
+  @Type(() => EducationDto)
+  education: EducationDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @ArrayMinSize(1)
+  @Type(() => ContactDto)
+  contacts: ContactDto[];
 
   // FileObject id from the resume upload endpoint; LLM parsing planned.
+  @IsString()
+  resumeFileId: string;
+
   @IsOptional()
   @IsString()
-  resumeFileId?: string;
+  coverLetterFileId?: string;
+
+  @IsOptional()
+  @IsObject()
+  customFields?: Record<string, unknown>;
 }
 
 export class UpdateApplicationStatusDto {

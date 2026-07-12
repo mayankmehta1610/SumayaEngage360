@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';import { ApplicationStatus, JobStatus, Prisma } from '@prisma/client';
+} from '@nestjs/common';
+import { ApplicationStatus, JobStatus, Prisma } from '@prisma/client';
 import { contains, paginatedResponse, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ResumeParserService } from '../integrations/resume-parser.service';
@@ -24,6 +26,17 @@ export class ApplicationsService {
       where: { id: jobId, tenantId, status: JobStatus.PUBLISHED },
     });
     if (!job) throw new NotFoundException('Job not open for applications');
+    if (!dto.resumeFileId) {
+      throw new BadRequestException('Resume upload is required');
+    }
+
+    const demographics = {
+      city: dto.city,
+      country: dto.country,
+      linkedIn: dto.linkedIn,
+      yearsExperience: dto.yearsExperience,
+      ...(dto.dateOfBirth ? { dateOfBirth: dto.dateOfBirth } : {}),
+    };
 
     const application = await this.prisma.$transaction(async (tx) => {
       const email = dto.email.toLowerCase();
@@ -35,15 +48,15 @@ export class ApplicationsService {
           firstName: dto.firstName,
           lastName: dto.lastName,
           phone: dto.phone,
-          demographics: dto.demographics as any,
+          demographics: demographics as any,
           resumeFileId: dto.resumeFileId,
         },
         update: {
           firstName: dto.firstName,
           lastName: dto.lastName,
           phone: dto.phone,
-          demographics: dto.demographics as any,
-          ...(dto.resumeFileId ? { resumeFileId: dto.resumeFileId } : {}),
+          demographics: demographics as any,
+          resumeFileId: dto.resumeFileId,
         },
       });
 
@@ -62,28 +75,30 @@ export class ApplicationsService {
           where: {
             candidateId_skillId: { candidateId: candidate.id, skillId: skill.id },
           },
-          create: { candidateId: candidate.id, skillId: skill.id },
-          update: {},
-        });
-      }
-
-      if (dto.experiences?.length) {
-        await tx.candidateExperience.deleteMany({
-          where: { candidateId: candidate.id },
-        });
-        await tx.candidateExperience.createMany({
-          data: dto.experiences.map((e) => ({
+          create: {
             candidateId: candidate.id,
-            company: e.company,
-            title: e.title,
-            startDate: new Date(e.startDate),
-            endDate: e.endDate ? new Date(e.endDate) : null,
-            description: e.description,
-          })),
+            skillId: skill.id,
+            yearsOfExp: dto.yearsExperience,
+          },
+          update: { yearsOfExp: dto.yearsExperience },
         });
       }
 
-      return tx.application.create({
+      await tx.candidateExperience.deleteMany({
+        where: { candidateId: candidate.id },
+      });
+      await tx.candidateExperience.createMany({
+        data: dto.experiences.map((e) => ({
+          candidateId: candidate.id,
+          company: e.company,
+          title: e.title,
+          startDate: new Date(e.startDate),
+          endDate: e.endDate ? new Date(e.endDate) : null,
+          description: e.description,
+        })),
+      });
+
+      const app = await tx.application.create({
         data: {
           tenantId,
           jobId,
@@ -92,6 +107,21 @@ export class ApplicationsService {
         },
         include: { job: { select: { title: true } } },
       });
+
+      await tx.applicationProfile.create({
+        data: {
+          tenantId,
+          applicationId: app.id,
+          professionalSummary: dto.professionalSummary,
+          domainExpertise: dto.domainExpertise,
+          education: dto.education as any,
+          coverLetterFileId: dto.coverLetterFileId,
+          contacts: dto.contacts as any,
+          customFields: dto.customFields as any,
+        },
+      });
+
+      return app;
     });
 
     // ONLINE pipeline: parse the resume immediately in the background and

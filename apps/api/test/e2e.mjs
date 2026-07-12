@@ -41,6 +41,34 @@ function jwtSub(token) {
   }
 }
 
+function fullApplyBody(overrides = {}) {
+  return {
+    email: `cand@${TENANT}.test`,
+    firstName: 'Chetan',
+    lastName: 'Candidate',
+    phone: '9999999999',
+    city: 'Pune',
+    country: 'India',
+    linkedIn: 'https://linkedin.com/in/chetan-candidate',
+    professionalSummary: 'Backend engineer with API and database experience.',
+    domainExpertise: ['FinTech', 'SaaS'],
+    yearsExperience: 5,
+    skills: ['NestJS', 'PostgreSQL'],
+    experiences: [{
+      company: 'OldCo', title: 'Dev', startDate: '2021-01-01',
+      description: 'Built REST APIs',
+    }],
+    education: [{
+      institution: 'State University', degree: 'B.Tech', field: 'CS', year: 2019,
+    }],
+    contacts: [{
+      name: 'Ref Manager', relationship: 'Manager',
+      email: 'ref@example.com', phone: '8888888888',
+    }],
+    ...overrides,
+  };
+}
+
 const main = async () => {
   console.log(`E2E against ${BASE} (tenant: ${TENANT})`);
 
@@ -139,14 +167,25 @@ const main = async () => {
   const careers = await req('GET', '/public/careers/acme', { tenant: TENANT });
   check('public careers lists published job', careers.data?.jobs?.length === 1);
 
+  const resumeForm = new FormData();
+  resumeForm.append('file', new Blob(['fake resume'], { type: 'application/pdf' }), 'resume.pdf');
+  const resumeUp = await req('POST', '/files', { tenant: TENANT, form: resumeForm });
+  check('resume upload for apply', resumeUp.status === 201 && !!resumeUp.data.id);
+
+  const applyBody = fullApplyBody({ resumeFileId: resumeUp.data.id });
   const applyRes = await req('POST', `/public/careers/jobs/${job.data.id}/apply`, {
-    tenant: TENANT, body: {
-      email: `cand@${TENANT}.test`, firstName: 'Chetan', lastName: 'Candidate',
-      phone: '9999999999', skills: ['NestJS', 'PostgreSQL'],
-      experiences: [{ company: 'OldCo', title: 'Dev', startDate: '2021-01-01' }] } });
+    tenant: TENANT, body: applyBody });
   check('candidate applied via public API', applyRes.status === 201, JSON.stringify(applyRes.data));
+  const profile = await req('GET', `/applications/${applyRes.data.id}/profile`, { ...t });
+  check('application profile created on apply',
+    profile.status === 200
+    && profile.data?.professionalSummary === applyBody.professionalSummary
+    && profile.data?.domainExpertise?.length === 2
+    && profile.data?.education?.length === 1
+    && profile.data?.contacts?.length === 1,
+    JSON.stringify(profile.data ?? {}));
   const dup = await req('POST', `/public/careers/jobs/${job.data.id}/apply`, {
-    tenant: TENANT, body: { email: `cand@${TENANT}.test`, firstName: 'C', lastName: 'C', skills: ['x'] } });
+    tenant: TENANT, body: fullApplyBody({ resumeFileId: resumeUp.data.id }) });
   check('duplicate application rejected', dup.status === 409);
 
   // ─── Interviews (mandatory screenshot rule) ───────────────────────
@@ -388,7 +427,16 @@ const main = async () => {
   const apply2 = await req('POST', `/public/careers/jobs/${job2.data.id}/apply`, {
     tenant: TENANT, body: {
       email: `priya@${TENANT}.test`, firstName: 'Priya', lastName: 'Sharma',
-      skills: ['NestJS'], resumeFileId: cvUp.data.id } });
+      phone: '9876543210', city: 'Mumbai', country: 'India',
+      linkedIn: 'https://linkedin.com/in/priya-sharma',
+      professionalSummary: 'Senior developer with NestJS experience.',
+      domainExpertise: ['Enterprise'], yearsExperience: 6,
+      skills: ['NestJS'],
+      experiences: [{ company: 'TechCo', title: 'Senior Dev', startDate: '2019-06-01' }],
+      education: [{ institution: 'IIT', degree: 'B.Tech', field: 'IT', year: 2015 }],
+      contacts: [{ name: 'Lead', relationship: 'Manager', email: 'lead@example.com', phone: '7777777777' }],
+      resumeFileId: cvUp.data.id,
+    } });
   check('second candidate applied with CV', apply2.status === 201);
 
   const batch = await req('POST', '/matching/parse-pending', { ...t });

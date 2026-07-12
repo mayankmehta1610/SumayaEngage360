@@ -192,6 +192,108 @@ a:hover { color: var(--e360-primary-hover); text-decoration: underline; }
   margin: 2rem auto;
   padding: 0 1rem;
 }
+.e360-careers-hero h1 { margin: 0; }
+.e360-job-card { margin-top: var(--e360-space-md); }
+.e360-job-desc { white-space: pre-wrap; margin: var(--e360-space-sm) 0; }
+
+/* ── Careers apply form ───────────────────────────────────────────── */
+.e360-apply-form {
+  position: relative;
+  padding-bottom: 4.5rem;
+}
+.e360-apply-section {
+  border: 1px solid var(--e360-border-strong);
+  border-radius: var(--e360-radius-sm);
+  margin-bottom: var(--e360-space-sm);
+  background: var(--surface-2);
+}
+.e360-apply-section summary {
+  display: flex;
+  align-items: center;
+  gap: var(--e360-space-sm);
+  padding: var(--e360-space-sm) var(--e360-space-md);
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--e360-text);
+  list-style: none;
+  user-select: none;
+}
+.e360-apply-section summary::-webkit-details-marker { display: none; }
+.e360-apply-section summary::after {
+  content: '▾';
+  margin-left: auto;
+  color: var(--e360-text-muted);
+  transition: transform 0.15s;
+}
+.e360-apply-section:not([open]) summary::after { transform: rotate(-90deg); }
+.e360-apply-section-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--e360-radius-full);
+  background: var(--e360-primary-soft);
+  color: var(--e360-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.e360-apply-section-badge { margin-left: auto; margin-right: 1.5rem; }
+.e360-apply-section-body {
+  padding: 0 var(--e360-space-md) var(--e360-space-md);
+  border-top: 1px solid var(--e360-border);
+}
+.e360-form-grid-span { grid-column: 1 / -1; }
+.e360-repeat-block {
+  border: 1px solid var(--e360-border);
+  border-radius: var(--e360-radius-sm);
+  padding: var(--e360-space-sm) var(--e360-space-md);
+  margin-bottom: var(--e360-space-sm);
+  background: var(--e360-surface);
+}
+.e360-repeat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--e360-space-sm);
+  gap: var(--e360-space-sm);
+}
+.e360-field-error {
+  display: block;
+  color: var(--e360-danger);
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-top: 0.2rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.e360-apply-footer {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: var(--e360-space-md) calc(-1 * var(--e360-space-lg)) calc(-1 * var(--e360-space-lg));
+  padding: var(--e360-space-md) var(--e360-space-lg);
+  background: var(--e360-surface);
+  border-top: 2px solid var(--e360-border-strong);
+  box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.08);
+  z-index: 2;
+}
+.e360-apply-footer button {
+  width: 100%;
+  max-width: 320px;
+  font-size: 1rem;
+  padding: 0.65rem 1.25rem;
+}
+@media (max-width: 767px) {
+  .e360-apply-footer {
+    margin-left: calc(-1 * var(--e360-space-md));
+    margin-right: calc(-1 * var(--e360-space-md));
+    padding: var(--e360-space-sm) var(--e360-space-md);
+  }
+  .e360-apply-footer button { max-width: none; width: 100%; }
+}
 
 /* ── Cards & surfaces ───────────────────────────────────────────────── */
 .card, .e360-card {

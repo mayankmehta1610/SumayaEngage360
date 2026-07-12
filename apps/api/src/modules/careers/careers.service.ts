@@ -33,6 +33,27 @@ export class CareersService {
     return { client, jobs };
   }
 
+  async getFieldDefinitions(tenantId: string, jobId: string) {
+    const job = await this.prisma.job.findFirst({
+      where: { id: jobId, tenantId, status: JobStatus.PUBLISHED },
+      select: { id: true },
+    });
+    if (!job) throw new NotFoundException('Job not found');
+    return this.prisma.tenantFieldDefinition.findMany({
+      where: { tenantId, entity: 'APPLICATION', isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { label: 'asc' }],
+      select: {
+        id: true,
+        fieldKey: true,
+        label: true,
+        type: true,
+        required: true,
+        options: true,
+        sortOrder: true,
+      },
+    });
+  }
+
   async getJob(tenantId: string, jobId: string) {
     const job = await this.prisma.job.findFirst({
       where: { id: jobId, tenantId, status: JobStatus.PUBLISHED },

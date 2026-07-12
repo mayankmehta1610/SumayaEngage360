@@ -27,7 +27,15 @@ export class CareersController {
     return this.careers.getJob(tenantId, jobId);
   }
 
-  // Candidate applies: profile + demographics + experience + skills (mandatory)
+  @Get('jobs/:jobId/field-definitions')
+  fieldDefinitions(
+    @TenantId() tenantId: string,
+    @Param('jobId') jobId: string,
+  ) {
+    return this.careers.getFieldDefinitions(tenantId, jobId);
+  }
+
+  // Candidate applies: full profile + demographics + experience + skills (mandatory)
   // + resume upload reference. LLM resume parsing plugs in behind this later.
   @Post('jobs/:jobId/apply')
   apply(
