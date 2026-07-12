@@ -592,7 +592,8 @@ export class ReportsService {
 
   private async auditAccess(tenantId: string, dto: ReportQueryDto) {
     const { from, to } = this.dateRange(dto);
-    const logs = await this.audit.list(tenantId, { from, to, limit: 100 });
+    const result = await this.audit.list(tenantId, { from, to, limit: 100 });
+    const logs = Array.isArray(result) ? result : result.data;
     const byAction = logs.reduce<Record<string, number>>((acc, l) => {
       acc[l.action] = (acc[l.action] ?? 0) + 1;
       return acc;
