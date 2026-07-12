@@ -53,6 +53,19 @@ async function login(page: Page, creds: LoginCreds = {}) {
   await expect(page).toHaveURL(/\/(dashboard|home)/, { timeout: 30_000 });
 }
 
+function selectField(page: Page, label: string) {
+  return page.locator('.e360-select').filter({
+    has: page.locator('.e360-select-label', { hasText: label }),
+  });
+}
+
+async function openSelectOptions(page: Page, label: string) {
+  const field = selectField(page, label);
+  await field.locator('.e360-select-trigger').click();
+  await expect(field.locator('.e360-select-panel')).toBeVisible();
+  return field.locator('.e360-select-option');
+}
+
 test.describe.serial('full lifecycle UI data generation', () => {
   let ownerToken = '';
 
@@ -113,11 +126,8 @@ test.describe.serial('full lifecycle UI data generation', () => {
   test('login and verify employment types load from API', async ({ page }) => {
     await login(page);
     await page.goto('/jobs');
-    await page.waitForTimeout(1500);
-    const options = page.locator('label:has-text("Employment type") + select option, select option');
-    await expect(options).not.toHaveCount(0);
-    const count = await options.count();
-    expect(count).toBeGreaterThan(1);
+    const options = await openSelectOptions(page, 'Employment type');
+    expect(await options.count()).toBeGreaterThan(0);
   });
 
   test('create department and designation via UI', async ({ page }) => {
@@ -155,7 +165,9 @@ test.describe.serial('full lifecycle UI data generation', () => {
     await jobForm.locator('#job-location').or(jobForm.locator('input').nth(1)).fill('Remote');
     await jobForm.locator('textarea').fill('Automated UI test job');
     await jobForm.getByPlaceholder(/screening, technical/i).fill('Screening, Technical');
-    await jobForm.getByRole('combobox').nth(1).selectOption({ index: 1 });
+    const empOptions = await openSelectOptions(page, 'Employment type');
+    if ((await empOptions.count()) > 1) await empOptions.nth(1).click();
+    else await page.keyboard.press('Escape');
     await page.getByRole('button', { name: /create job/i }).click();
     await expect(page.getByRole('cell', { name: title })).toBeVisible({ timeout: 15_000 });
   });
@@ -179,21 +191,17 @@ test.describe.serial('full lifecycle UI data generation', () => {
     await login(page, { email: LEAVE_EMAIL, password: LEAVE_PASSWORD });
     await page.goto('/leave');
 
-    const applyLeave = page.getByRole('heading', { name: 'Apply for leave' }).locator('xpath=..');
-    const typeSelect = applyLeave.locator('select');
-    await expect(typeSelect.locator('option', { hasText: code })).toHaveCount(1, { timeout: 15_000 });
-    await typeSelect.evaluate((sel, leaveCode) => {
-      const select = sel as HTMLSelectElement;
-      const idx = Array.from(select.options).findIndex((o) => o.text.includes(leaveCode));
-      if (idx < 0) throw new Error(`Leave option not found for ${leaveCode}`);
-      select.selectedIndex = idx;
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-      select.dispatchEvent(new Event('input', { bubbles: true }));
-    }, code);
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    const leaveOptions = page.locator('.e360-select-panel [role="option"]');
+    await expect(leaveOptions.filter({ hasText: code })).toHaveCount(1, { timeout: 15_000 });
+    await leaveOptions.filter({ hasText: code }).click();
 
+    const applyCard = page.locator('.card').filter({
+      has: page.getByRole('heading', { name: 'Apply for leave' }),
+    });
     const leaveDay = nextWeekdayISO();
-    await applyLeave.locator('input[type="date"]').nth(0).fill(leaveDay);
-    await applyLeave.locator('input[type="date"]').nth(1).fill(leaveDay);
+    await applyCard.locator('input[type="date"]').nth(0).fill(leaveDay);
+    await applyCard.locator('input[type="date"]').nth(1).fill(leaveDay);
     await expect(page.getByRole('button', { name: /submit leave request/i })).toBeEnabled();
     await page.getByRole('button', { name: /submit leave request/i }).click();
     await expect(page.getByText(/PENDING|APPROVED/).first()).toBeVisible({ timeout: 15_000 });
@@ -210,12 +218,7 @@ test.describe.serial('full lifecycle UI data generation', () => {
   test('recognition badges load from API', async ({ page }) => {
     await login(page);
     await page.goto('/recognition');
-    await page.waitForTimeout(1500);
-    const giveRecognition = page
-      .getByRole('heading', { name: /Give instant recognition/i })
-      .locator('xpath=..');
-    const badgeOptions = giveRecognition.getByRole('combobox').nth(1).locator('option');
-    await expect(badgeOptions).not.toHaveCount(0);
-    expect(await badgeOptions.count()).toBeGreaterThan(0);
+    const options = await openSelectOptions(page, 'Badge');
+    expect(await options.count()).toBeGreaterThan(0);
   });
 });
