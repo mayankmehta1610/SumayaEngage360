@@ -10,15 +10,15 @@ import { environment } from '../../environments/environment';
   standalone: true,
   imports: [FormsModule],
   template: `
-    <div style="max-width:860px;margin:2rem auto;padding:0 1rem">
-      @if (error) { <div class="card error">{{ error }}</div> }
+    <div class="e360-careers-page">
+      @if (error) { <div class="e360-card error">{{ error }}</div> }
       @if (client) {
-        <div class="card">
+        <div class="e360-card">
           <h1 style="margin:0">{{ client.name }} — Careers</h1>
           @if (client.description) { <p class="muted">{{ client.description }}</p> }
         </div>
         @for (j of jobs; track j.id) {
-          <div class="card">
+          <div class="e360-card">
             <div class="toolbar" style="margin-bottom:.25rem">
               <h2 style="margin:0">{{ j.title }}</h2>
               <span class="badge ok">{{ j.vacancies }} vacanc{{ j.vacancies === 1 ? 'y' : 'ies' }}</span>
@@ -36,36 +36,36 @@ import { environment } from '../../environments/environment';
               {{ applyingTo === j.id ? 'Close form' : 'Apply now' }}
             </button>
             @if (applyingTo === j.id) {
-              <div style="background:#f7f9fd;border-radius:8px;padding:1rem;margin-top:.75rem">
+              <form class="e360-form" (submit)="$event.preventDefault(); apply(j)">
                 <div class="row">
-                  <div><label>First name *</label><input [(ngModel)]="f.firstName" /></div>
-                  <div><label>Last name *</label><input [(ngModel)]="f.lastName" /></div>
+                  <div><label>First name *</label><input [(ngModel)]="f.firstName" name="firstName" required /></div>
+                  <div><label>Last name *</label><input [(ngModel)]="f.lastName" name="lastName" required /></div>
                 </div>
                 <div class="row">
-                  <div><label>Email *</label><input type="email" [(ngModel)]="f.email" /></div>
-                  <div><label>Phone</label><input [(ngModel)]="f.phone" /></div>
+                  <div><label>Email *</label><input type="email" [(ngModel)]="f.email" name="email" required /></div>
+                  <div><label>Phone</label><input [(ngModel)]="f.phone" name="phone" /></div>
                 </div>
                 <label>Your skills * (comma separated — required at application time)</label>
-                <input [(ngModel)]="skillsText" placeholder="Angular, NestJS, SQL" />
+                <input [(ngModel)]="skillsText" name="skills" placeholder="Angular, NestJS, SQL" />
                 <label>Experience — most recent role</label>
                 <div class="row">
-                  <div><input [(ngModel)]="exp.company" placeholder="Company" /></div>
-                  <div><input [(ngModel)]="exp.title" placeholder="Title" /></div>
-                  <div><input type="date" [(ngModel)]="exp.startDate" /></div>
-                  <div><input type="date" [(ngModel)]="exp.endDate" /></div>
+                  <div><input [(ngModel)]="exp.company" name="expCompany" placeholder="Company" /></div>
+                  <div><input [(ngModel)]="exp.title" name="expTitle" placeholder="Title" /></div>
+                  <div><input type="date" [(ngModel)]="exp.startDate" name="expStart" /></div>
+                  <div><input type="date" [(ngModel)]="exp.endDate" name="expEnd" /></div>
                 </div>
                 <label>Resume (PDF/DOCX)</label>
-                <input type="file" accept=".pdf,.doc,.docx" (change)="resume = fileOf($event)" />
+                <input class="e360-file-input" type="file" accept=".pdf,.doc,.docx" (change)="resume = fileOf($event)" />
                 @if (applyError) { <div class="error">{{ applyError }}</div> }
                 @if (applied) { <div class="badge ok" style="margin:.5rem 0">Application submitted — thank you!</div> }
                 <div style="margin-top:.75rem">
-                  <button (click)="apply(j)" [disabled]="busy">{{ busy ? 'Submitting…' : 'Submit application' }}</button>
+                  <button type="submit" [disabled]="busy">{{ busy ? 'Submitting…' : 'Submit application' }}</button>
                 </div>
-              </div>
+              </form>
             }
           </div>
         } @empty {
-          <div class="card muted">No open roles right now — check back soon.</div>
+          <div class="e360-card muted">No open roles right now — check back soon.</div>
         }
       }
     </div>

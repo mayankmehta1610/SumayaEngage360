@@ -38,11 +38,12 @@ import { ThemeToggleComponent } from '../ui/theme-toggle.component';
       display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;
     }
     .feature {
-      background: var(--e360-surface); border: 1px solid var(--e360-border);
+      background: var(--e360-surface); border: 1px solid var(--e360-border-strong);
       border-radius: var(--e360-radius-md); padding: 1.25rem;
+      box-shadow: var(--e360-shadow-sm);
       transition: box-shadow .15s, border-color .15s;
     }
-    .feature:hover { box-shadow: var(--e360-shadow-md); border-color: var(--e360-border-strong); }
+    .feature:hover { box-shadow: var(--e360-shadow-md); }
     .feature h3 { margin: .6rem 0 .35rem; font-size: 1rem; }
     .feature p { color: var(--e360-text-muted); font-size: .88rem; margin: 0; line-height: 1.5; }
     .band {

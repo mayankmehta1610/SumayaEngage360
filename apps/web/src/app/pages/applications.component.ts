@@ -341,11 +341,12 @@ import { AuthService } from '../core/auth.service';
   `,
   styles: [`
     .e360-detail-panel {
-      background: var(--surface-2);
-      border: 1px solid var(--e360-border-strong);
+      background: var(--e360-surface);
+      border: 1px solid var(--e360-card-border);
       border-radius: var(--e360-radius-md);
-      padding: .75rem;
-      margin-top: .5rem;
+      padding: var(--e360-space-md);
+      margin-top: var(--e360-space-sm);
+      box-shadow: var(--e360-shadow-sm);
     }
   `],
 })
