@@ -24,15 +24,17 @@ interface ReportDef {
     @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
     .list button {
       display: block; width: 100%; text-align: left; margin: .25rem 0;
-      padding: .55rem .7rem; border: 1px solid #e3e8f0; border-radius: 8px;
-      background: #fff; cursor: pointer;
+      padding: .55rem .7rem; border: 1px solid var(--e360-border); border-radius: 8px;
+      background: var(--e360-surface); color: var(--e360-text); cursor: pointer;
+      font-weight: 500;
     }
-    .list button.sel { border-color: #2f6bff; background: #eef3ff; }
+    .list button:hover:not(.sel) { background: var(--surface-2); border-color: var(--e360-border-strong); }
+    .list button.sel { border-color: var(--e360-primary); background: var(--e360-primary-soft); color: var(--e360-text); }
     .kpis { display: flex; flex-wrap: wrap; gap: .6rem; margin: .75rem 0; }
-    .kpi { border: 1px solid #e3e8f0; border-radius: 8px; padding: .6rem .9rem; min-width: 120px; }
-    .kpi .n { font-size: 1.4rem; font-weight: 700; }
-    .kpi .l { font-size: .75rem; color: #5b6577; }
-    pre { background: #f6f8fc; padding: .75rem; border-radius: 8px; overflow: auto; max-height: 320px; font-size: .78rem; }
+    .kpi { border: 1px solid var(--e360-border); border-radius: 8px; padding: .6rem .9rem; min-width: 120px; background: var(--e360-surface); }
+    .kpi .n { font-size: 1.4rem; font-weight: 700; color: var(--e360-text); }
+    .kpi .l { font-size: .75rem; color: var(--e360-text-muted); }
+    pre { background: var(--surface-2); color: var(--e360-text); padding: .75rem; border-radius: 8px; overflow: auto; max-height: 320px; font-size: .78rem; }
   `],
   template: `
     <e360-module-shell

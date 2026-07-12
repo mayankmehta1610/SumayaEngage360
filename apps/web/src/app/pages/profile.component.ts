@@ -74,7 +74,7 @@ import { ExportService } from '../core/export.service';
             <export-bar [rows]="salary" [cols]="salaryCols" name="my-salary-history" />
           </div>
           @for (s of salary; track s.id) {
-            <div style="border:1px solid #eef1f6;border-radius:8px;padding: .7rem .9rem;margin-bottom:.6rem">
+            <div style="border:1px solid var(--e360-border);border-radius:8px;padding: .7rem .9rem;margin-bottom:.6rem">
               <strong>₹ {{ s.annualCtc | number }}</strong> / year
               @if (s.isOffered) { <span class="badge">as offered</span> } @else { <span class="badge ok">revision</span> }
               <span class="muted"> · effective {{ s.effectiveFrom | date }}@if (s.effectiveTo) { – {{ s.effectiveTo | date }} }</span>

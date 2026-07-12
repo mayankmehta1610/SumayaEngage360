@@ -90,7 +90,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
   `,
   styles: [`
     .inline-form { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; align-items: center; }
-    .ok { background: #ecfdf5; color: #065f46; padding: .5rem .75rem; border-radius: 6px; margin-bottom: .75rem; }
+    .ok { background: var(--e360-success-bg); color: var(--e360-success); padding: .5rem .75rem; border-radius: 6px; margin-bottom: .75rem; }
   `],
 })
 export class PrivacyComponent implements OnInit {

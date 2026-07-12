@@ -65,7 +65,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
         <label>Reason</label><input [(ngModel)]="reg.reason" placeholder="e.g. forgot to punch out" />
         <button class="secondary" style="margin-top:.4rem" (click)="submitReg()" [disabled]="!reg.workDate || !reg.reason">Request correction</button>
         @for (r of myRegs; track r.id) {
-          <div style="border-top:1px solid #eef1f6;padding:.4rem 0">
+          <div style="border-top:1px solid var(--e360-border);padding:.4rem 0">
             {{ r.workDate | date }} — {{ r.reason }}
             <span class="badge" [class.ok]="r.status==='APPROVED'" [class.err]="r.status==='REJECTED'">{{ r.status }}</span>
           </div>
@@ -77,7 +77,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
         <h2 style="margin-top:0">🌴 My leave balances ({{ year }})</h2>
         <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.75rem">
           @for (b of balances; track b.leaveType.id) {
-            <div style="border:1px solid #e3e8f0;border-radius:10px;padding:.6rem .9rem;min-width:120px">
+            <div style="border:1px solid var(--e360-border);border-radius:10px;padding:.6rem .9rem;min-width:120px;background:var(--e360-surface)">
               <div style="font-size:1.4rem;font-weight:700">{{ b.remaining }}</div>
               <div class="muted" style="font-size:.75rem">{{ b.leaveType.name }} ({{ b.leaveType.code }})<br/>of {{ b.allocated }}</div>
             </div>
@@ -119,7 +119,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
       <div class="card">
         <h2 style="margin-top:0">👥 Waiting for my approval</h2>
         @for (r of pendingLeave; track r.id) {
-          <div class="row" style="align-items:center;border-bottom:1px solid #eef1f6;padding:.45rem 0">
+          <div class="row" style="align-items:center;border-bottom:1px solid var(--e360-border);padding:.45rem 0">
             <div style="flex:3">🌴 <strong>{{ r.employee?.user?.firstName }} {{ r.employee?.user?.lastName }}</strong>
               — {{ r.leaveType.name }}, {{ r.startDate | date }} – {{ r.endDate | date }} ({{ r.days }}d)
               <span class="muted">{{ r.reason }}</span></div>
@@ -130,7 +130,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
           </div>
         }
         @for (r of pendingRegs; track r.id) {
-          <div class="row" style="align-items:center;border-bottom:1px solid #eef1f6;padding:.45rem 0">
+          <div class="row" style="align-items:center;border-bottom:1px solid var(--e360-border);padding:.45rem 0">
             <div style="flex:3">⏰ <strong>{{ r.employee?.user?.firstName }} {{ r.employee?.user?.lastName }}</strong>
               — attendance correction for {{ r.workDate | date }} <span class="muted">{{ r.reason }}</span></div>
             <div style="flex:0;white-space:nowrap">
@@ -165,7 +165,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
         <div class="card">
           <h2 style="margin-top:0">Leave calendar (this month, approved)</h2>
           @for (c of calendar; track c.id) {
-            <div style="border-bottom:1px solid #eef1f6;padding:.4rem 0">
+            <div style="border-bottom:1px solid var(--e360-border);padding:.4rem 0">
               <span class="badge">{{ c.leaveType.code }}</span>
               {{ c.employee?.user?.firstName }} {{ c.employee?.user?.lastName }} —
               {{ c.startDate | date }} to {{ c.endDate | date }} ({{ c.days }}d)

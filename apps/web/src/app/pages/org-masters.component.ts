@@ -29,7 +29,7 @@ import { ApiService, errMsg } from '../core/api.service';
     </div>
     </e360-module-shell>
   `,
-  styles: [`.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; } .card { background: #fff; padding: 1rem; border-radius: 8px; }`],
+  styles: [`.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; } .card { background: var(--e360-surface); padding: 1rem; border-radius: 10px; }`],
 })
 export class OrgMastersComponent implements OnInit {
   private api = inject(ApiService);

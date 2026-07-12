@@ -10,14 +10,14 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
   standalone: true,
   imports: [FormsModule, ExportBarComponent, ModuleShellComponent, SelectFieldComponent],
   styles: [`
-    .progress { background: #eef2f9; border-radius: 6px; height: 10px; overflow: hidden; }
-    .progress div { background: #2f6bff; height: 100%; transition: width .5s; }
+    .progress { background: var(--surface-3); border-radius: 6px; height: 10px; overflow: hidden; }
+    .progress div { background: var(--e360-primary); height: 100%; transition: width .5s; }
     .modal-back { position: fixed; inset: 0; background: rgba(10,18,40,.55); z-index: 40;
       display: flex; align-items: center; justify-content: center; }
-    .modal { background: #fff; border-radius: 12px; padding: 1.25rem 1.5rem; width: min(620px, 92vw); }
-    .qopt { display: block; padding: .55rem .8rem; border: 1px solid #cbd4e1; border-radius: 8px;
+    .modal { background: var(--e360-surface); color: var(--e360-text); border-radius: 12px; padding: 1.25rem 1.5rem; width: min(620px, 92vw); }
+    .qopt { display: block; padding: .55rem .8rem; border: 1px solid var(--e360-border-strong); border-radius: 8px;
       margin: .4rem 0; cursor: pointer; }
-    .qopt.sel { border-color: #2f6bff; background: #eef3ff; }
+    .qopt.sel { border-color: var(--e360-primary); background: var(--e360-primary-soft); }
   `],
   template: `
     <e360-module-shell
@@ -45,12 +45,12 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
             </span>
           </div>
           @for (v of a.course.videos; track v.id) {
-            <div class="row" style="align-items:center;border-bottom:1px solid #eef1f6;padding:.45rem 0">
+            <div class="row" style="align-items:center;border-bottom:1px solid var(--e360-border);padding:.45rem 0">
               <div style="flex:2">🎬 {{ v.title }} <span class="muted">({{ v.durationSeconds }}s@if (v.noSkip) { , no-skip })</span></div>
               <div style="flex:2">
                 <div class="progress"><div [style.width.%]="vpct(v)"></div></div>
                 <span class="muted" style="font-size:.75rem">{{ v.progress?.watchedSeconds ?? 0 }}s / {{ v.durationSeconds }}s
-                  @if (v.progress?.completed) { · <span style="color:#137333">completed ✓</span> }</span>
+                  @if (v.progress?.completed) { · <span style="color:var(--e360-success)">completed ✓</span> }</span>
               </div>
               <div style="flex:0">
                 @if (!v.progress?.completed) { <button (click)="watch(v)">▶ Watch</button> }
@@ -99,8 +99,8 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
           @if (quizResult) {
             <p style="font-size:1.3rem;text-align:center">
               Score: <strong>{{ quizResult.score }}%</strong> —
-              @if (quizResult.passed) { <span style="color:#137333">PASSED ✓</span> }
-              @else { <span style="color:#b42318">NOT PASSED — you can retry</span> }
+              @if (quizResult.passed) { <span style="color:var(--e360-success)">PASSED ✓</span> }
+              @else { <span style="color:var(--e360-danger)">NOT PASSED — you can retry</span> }
             </p>
             <div style="text-align:center"><button (click)="quiz = null">Close</button></div>
           } @else {
@@ -166,14 +166,14 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
           </div>
 
           @if (quizFor === c.id) {
-            <div style="background:#f7f9fd;border-radius:8px;padding:1rem;margin-top:.75rem">
+            <div style="background:var(--surface-2);border-radius:8px;padding:1rem;margin-top:.75rem">
               <h2 style="margin-top:0">Quiz builder</h2>
               <div class="row">
                 <div><label>Test title</label><input [(ngModel)]="qb.title" /></div>
                 <div><label>Passing score %</label><input type="number" [(ngModel)]="qb.passingScore" /></div>
               </div>
               @for (qq of qb.questions; track $index; let i = $index) {
-                <div style="border:1px solid #dbe5fa;border-radius:8px;padding:.7rem;margin:.5rem 0">
+                <div style="border:1px solid var(--e360-border);border-radius:8px;padding:.7rem;margin:.5rem 0">
                   <label>Question {{ i + 1 }}</label>
                   <input [(ngModel)]="qq.q" placeholder="e.g. Should you share your password?" />
                   <label>Options (comma separated)</label>

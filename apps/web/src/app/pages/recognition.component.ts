@@ -69,7 +69,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
     <div class="card">
       <h2 style="margin-top:0">🏆 Recognition feed</h2>
       @for (x of feed; track x.id) {
-        <div style="border-bottom:1px solid #eef1f6;padding:.6rem 0">
+        <div style="border-bottom:1px solid var(--e360-border);padding:.6rem 0">
           <span class="badge ok">{{ x.badge }}</span>
           <strong> {{ x.receiver.user.firstName }} {{ x.receiver.user.lastName }}</strong>
           <span class="muted">({{ x.receiver.employeeCode }})</span>
@@ -83,7 +83,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
     <div class="card">
       <h2 style="margin-top:0">📥 Feedback I received</h2>
       @for (x of received; track x.id) {
-        <div style="border-bottom:1px solid #eef1f6;padding:.6rem 0">
+        <div style="border-bottom:1px solid var(--e360-border);padding:.6rem 0">
           <span class="badge">{{ x.type }}</span>
           @if (x.anonymous) { <span class="badge warn">anonymous</span> }
           <span class="muted" style="font-size:.75rem"> {{ x.createdAt | date }}</span>

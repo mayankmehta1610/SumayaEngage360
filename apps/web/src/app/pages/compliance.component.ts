@@ -36,7 +36,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
         Report anonymously (your identity is never shown, even to HR)</label>
       <div style="margin-top:.5rem"><button (click)="report()" [disabled]="!f.title || !f.details">Submit</button></div>
       @for (c of mine; track c.id) {
-        <div style="border-top:1px solid #eef1f6;padding:.4rem 0">
+        <div style="border-top:1px solid var(--e360-border);padding:.4rem 0">
           <span class="badge">{{ c.type }}</span> {{ c.title }}
           <span class="badge" [class.ok]="c.status==='RESOLVED'" [class.warn]="c.status==='UNDER_INVESTIGATION'">{{ c.status }}</span>
           @if (c.resolution) { <div class="muted">Resolution: {{ c.resolution }}</div> }

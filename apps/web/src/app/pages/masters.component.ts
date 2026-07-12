@@ -83,7 +83,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
   
     </e360-module-shell>
   `,
-  styles: [`.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; } section { background: #fff; padding: 1rem; border-radius: 8px; }`],
+  styles: [`.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; } section { background: var(--e360-surface); border: 1px solid var(--e360-border); padding: 1rem; border-radius: 10px; }`],
 })
 export class MastersPageComponent implements OnInit {
   families: any[] = [];

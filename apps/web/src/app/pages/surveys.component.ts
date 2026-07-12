@@ -24,7 +24,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
     <div class="card">
       <h2 style="margin-top:0">📮 Open surveys for you</h2>
       @for (s of open; track s.id) {
-        <div style="border:1px solid #e3e8f0;border-radius:10px;padding: .8rem 1rem;margin-bottom:.6rem">
+        <div style="border:1px solid var(--e360-border);border-radius:10px;padding: .8rem 1rem;margin-bottom:.6rem;background:var(--e360-surface)">
           <strong>{{ s.title }}</strong> <span class="badge">{{ s.type }}</span>
           @if (s.anonymous) { <span class="badge warn">anonymous</span> }
           @if (s.alreadyAnswered) { <span class="badge ok">answered ✓</span> }

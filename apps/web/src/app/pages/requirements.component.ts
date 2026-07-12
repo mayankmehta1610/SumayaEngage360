@@ -86,7 +86,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
     .stats { display: flex; gap: 1.5rem; flex-wrap: wrap; }
     .stats div { display: flex; flex-direction: column; align-items: center; min-width: 80px; }
     .stats strong { font-size: 1.4rem; }
-    .stats span { font-size: .75rem; color: #64748b; }
+    .stats span { font-size: .75rem; color: var(--e360-text-muted); }
     .pager { margin-top: .75rem; display: flex; gap: .5rem; }
   `],
 })

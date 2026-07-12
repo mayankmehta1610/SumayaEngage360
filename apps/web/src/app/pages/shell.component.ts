@@ -29,7 +29,7 @@ const SECTION_STORAGE_KEY = 'e360-nav-sections';
 
       <aside class="e360-sidebar" [attr.aria-hidden]="isMobile && !sidebarOpen ? true : null">
         <div class="e360-sidebar-brand">
-          <e360-icon name="layout-dashboard" [size]="22" />
+          <span class="e360-brand-mark" aria-hidden="true"><e360-icon name="layout-dashboard" [size]="17" /></span>
           <div class="e360-sidebar-brand-text">Engage360</div>
           @if (isCompact) {
             <e360-theme-toggle [iconSize]="16" />

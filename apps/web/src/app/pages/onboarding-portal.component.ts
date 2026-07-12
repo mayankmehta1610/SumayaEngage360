@@ -25,7 +25,7 @@ import { environment } from '../../environments/environment';
         <div class="card">
           <h2>1 · Identity documents ({{ portal.country }})</h2>
           @for (r of portal.requirements; track r.code) {
-            <div class="row" style="align-items:center;border-bottom:1px solid #eef1f6;padding:.4rem 0">
+            <div class="row" style="align-items:center;border-bottom:1px solid var(--e360-border);padding:.4rem 0">
               <div><strong>{{ r.name }}</strong> ({{ r.code }})
                 @if (r.mandatory) { <span class="badge warn">mandatory</span> }
               </div>
@@ -54,7 +54,7 @@ import { environment } from '../../environments/environment';
         <div class="card">
           <h2>3 · Company policies</h2>
           @for (p of portal.policies; track p.id) {
-            <div class="row" style="align-items:center;border-bottom:1px solid #eef1f6;padding:.4rem 0">
+            <div class="row" style="align-items:center;border-bottom:1px solid var(--e360-border);padding:.4rem 0">
               <div>{{ p.title }} <span class="muted">v{{ p.version }}</span>
                 @if (p.mandatory) { <span class="badge warn">mandatory</span> }
               </div>

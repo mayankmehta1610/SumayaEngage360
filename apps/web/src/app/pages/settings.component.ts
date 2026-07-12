@@ -141,7 +141,7 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
     <div class="card">
       <h2 style="margin-top:0">📋 Config master areas</h2>
       @for (a of areas; track a.id) {
-        <div style="border-bottom:1px solid #eef1f6;padding:.5rem 0">
+        <div style="border-bottom:1px solid var(--e360-border);padding:.5rem 0">
           <strong>{{ a.id }}</strong> — {{ a.area }}
           <div class="muted" style="font-size:.8rem">{{ a.examples }}</div>
         </div>
