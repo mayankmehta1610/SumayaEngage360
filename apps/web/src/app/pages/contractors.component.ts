@@ -5,10 +5,11 @@ import { ModuleShellComponent } from '../ui/module-shell.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 import { tableListParams, TableSort } from '../core/table-query.util';
+import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ModuleShellComponent, DataTableComponent, SelectFieldComponent],
+  imports: [FormsModule, ModuleShellComponent, DataTableComponent, SelectFieldComponent, LifecycleWizardComponent],
   template: `
     <e360-module-shell
       title="Contractor assignments"
@@ -62,12 +63,24 @@ import { tableListParams, TableSort } from '../core/table-query.util';
           [total]="total"
           [loading]="loading"
           [stickyHeader]="true"
+          [rowClickable]="true"
+          [selectedId]="selectedContractor?.id ?? null"
           (pageChange)="onPageChange($event)"
           (pageSizeChange)="onPageSizeChange($event)"
           (sortChange)="onSortChange($event)"
           (filterChange)="onFilterChange($event)"
+          (rowClick)="onContractorClick($event)"
         />
       </div>
+      @if (selectedContractor) {
+        <e360-lifecycle-wizard
+          entityType="CONTRACTOR_ASSIGNMENT"
+          [entityId]="selectedContractor.id"
+          workflowCode="CONTRACTOR_LIFECYCLE"
+          [title]="personLabel(selectedContractor) + ' — ' + (selectedContractor.role || 'contractor assignment')"
+          [metadata]="{ clientRef: selectedContractor.clientRef, startDate: selectedContractor.startDate, endDate: selectedContractor.endDate }"
+        />
+      }
     </e360-module-shell>
   `,
 })
@@ -85,6 +98,7 @@ export class ContractorsComponent implements OnInit {
   sort: TableSort | null = null;
   columnFilters: Record<string, string> = {};
   form: any = { rateType: 'HOURLY', currency: 'INR' };
+  selectedContractor: any = null;
 
   cols: TableColumn[] = [
     { key: 'person', label: 'Person' },
@@ -118,6 +132,7 @@ export class ContractorsComponent implements OnInit {
 
   get rows() {
     return this.contractors.map((c) => ({
+      id: c.id,
       person: this.personLabel(c),
       role: c.role ?? '—',
       client: c.clientRef ?? '—',
@@ -190,12 +205,17 @@ export class ContractorsComponent implements OnInit {
       );
       const { items, meta } = unwrapPaginated(res);
       this.contractors = items;
+      if (this.selectedContractor) this.selectedContractor = items.find((item: any) => item.id === this.selectedContractor.id) ?? null;
       this.total = meta?.total ?? items.length;
     } catch (e) {
       this.error = errMsg(e);
     } finally {
       this.loading = false;
     }
+  }
+  onContractorClick(row: Record<string, unknown>) {
+    const id = String(row['id'] ?? '');
+    this.selectedContractor = this.selectedContractor?.id === id ? null : this.contractors.find((item) => item.id === id) ?? null;
   }
 
   async add() {

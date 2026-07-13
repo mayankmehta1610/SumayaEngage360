@@ -26,6 +26,7 @@ export const ROUTE_PORTAL: Record<string, string> = {
   '/clients': 'ats',
   '/jobs': 'ats',
   '/candidates': 'ats',
+  '/global-mobility': 'ats',
   '/applications': 'ats',
   '/employees': 'workforce',
   '/onboarding': 'workforce',
@@ -189,6 +190,7 @@ export const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/clients', label: 'Hiring clients', roles: ['TENANT_ADMIN', 'HR'], icon: 'briefcase', group: 'ats' },
   { path: '/jobs', label: 'Jobs', roles: ['TENANT_ADMIN', 'HR'], icon: 'file-text', group: 'ats' },
   { path: '/candidates', label: 'Talent pool', roles: ['TENANT_ADMIN', 'HR', 'INTERVIEWER'], icon: 'user-search', group: 'ats' },
+  { path: '/global-mobility', label: 'Global mobility', roles: ['TENANT_ADMIN', 'HR', 'MANAGER'], icon: 'globe-2', group: 'ats' },
   { path: '/applications', label: 'Applications', roles: ['TENANT_ADMIN', 'HR', 'INTERVIEWER'], icon: 'inbox', group: 'ats' },
 
   { path: '/agency/submissions', label: 'Client submissions', roles: ['TENANT_ADMIN', 'HR'], icon: 'send', group: 'agency' },

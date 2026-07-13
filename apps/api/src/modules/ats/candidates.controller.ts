@@ -63,7 +63,7 @@ export class CandidatesController {
     }
     const include = {
       skills: { include: { skill: { select: { name: true } } } },
-      _count: { select: { applications: true, matches: true } },
+      _count: { select: { applications: true, matches: true, workAuthorizations: true } },
     };
     const dir = parseSortDir(sortDir);
     const orderBy: Prisma.CandidateOrderByWithRelationInput = (() => {
@@ -132,6 +132,8 @@ export class CandidatesController {
           include: { job: { select: { title: true } } },
           orderBy: { finalScore: 'desc' },
         },
+        jurisdictionProfiles: { orderBy: { updatedAt: 'desc' } },
+        workAuthorizations: { orderBy: { createdAt: 'desc' } },
       },
     });
   }

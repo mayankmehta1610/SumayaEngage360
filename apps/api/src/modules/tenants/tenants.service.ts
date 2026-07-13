@@ -22,6 +22,8 @@ export class TenantsService {
 
     const tenantType = dto.tenantType ?? TenantType.COMPANY;
     const enabledPortals = dto.enabledPortals ?? defaultPortalsForType(tenantType);
+    const country = dto.country?.trim().toUpperCase() ?? 'IN';
+    const operatingCountries = [...new Set((dto.operatingCountries ?? [country]).map((code) => code.trim().toUpperCase()))];
 
     return this.prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
@@ -31,7 +33,8 @@ export class TenantsService {
           tenantType,
           onboardingQuestionnaire: dto.onboardingQuestionnaire as any,
           enabledPortals: enabledPortals as any,
-          country: dto.country ?? 'IN',
+          country,
+          operatingCountries: operatingCountries as any,
           currency: dto.currency ?? 'INR',
           timezone: dto.timezone ?? 'Asia/Kolkata',
         },
@@ -66,6 +69,8 @@ export class TenantsService {
       where: { id },
       data: {
         ...dto,
+        ...(dto.country ? { country: dto.country.trim().toUpperCase() } : {}),
+        ...(dto.operatingCountries ? { operatingCountries: [...new Set(dto.operatingCountries.map((code) => code.trim().toUpperCase()))] as any } : {}),
         onboardingQuestionnaire: dto.onboardingQuestionnaire as any,
         enabledPortals: dto.enabledPortals as any,
       },
@@ -82,6 +87,8 @@ export class TenantsService {
         tenantType: dto.tenantType,
         onboardingQuestionnaire: dto.questionnaire as any,
         enabledPortals: enabledPortals as any,
+        ...(dto.operatingCountries ? { operatingCountries: [...new Set(dto.operatingCountries.map((code) => code.trim().toUpperCase()))] as any } : {}),
+        ...(dto.primaryCountry ? { country: dto.primaryCountry.trim().toUpperCase() } : {}),
       },
     });
   }

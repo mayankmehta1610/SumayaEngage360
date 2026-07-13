@@ -7,10 +7,11 @@ import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { AuthService } from '../core/auth.service';
+import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent, DataTableComponent],
+  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent, DataTableComponent, LifecycleWizardComponent],
   template: `
     <e360-module-shell
       title="Talent pool"
@@ -66,6 +67,15 @@ import { AuthService } from '../core/auth.service';
       </div>
 
       @if (detailFor && detail) {
+        @if (auth.hasRole('TENANT_ADMIN', 'HR')) {
+          <e360-lifecycle-wizard
+            entityType="CANDIDATE"
+            [entityId]="detail.id"
+            workflowCode="CANDIDATE_INTAKE"
+            [title]="detail.firstName + ' ' + detail.lastName + ' — candidate readiness'"
+            [metadata]="{ email: detail.email, source: 'Talent pool' }"
+          />
+        }
         <div class="card">
           <h2 style="margin-top:0">{{ detail.firstName }} {{ detail.lastName }} — profile</h2>
           @if (detail.parsedResume) {
@@ -80,6 +90,11 @@ import { AuthService } from '../core/auth.service';
           <e360-data-table [columns]="appHistCols" [rows]="appHistRows" [paginated]="false" [stickyHeader]="true" />
           <h2>Job match scores</h2>
           <e360-data-table [columns]="matchCols" [rows]="matchRows" [paginated]="false" [stickyHeader]="true" />
+          <h2>Global mobility</h2>
+          <p class="e360-muted">Country profiles: {{ detail.jurisdictionProfiles?.length ?? 0 }} · Work authorization cases: {{ detail.workAuthorizations?.length ?? 0 }}</p>
+          @for (wa of detail.workAuthorizations ?? []; track wa.id) {
+            <div class="row"><div><strong>{{ wa.jurisdictionCode }}{{ wa.memberStateCode ? '/' + wa.memberStateCode : '' }}</strong></div><div>{{ wa.authorizationType }}</div><div>{{ wa.status }}</div><div>{{ wa.expiresAt ? (wa.expiresAt | date:'mediumDate') : 'No expiry recorded' }}</div></div>
+          }
         </div>
       }
     </e360-module-shell>
@@ -120,6 +135,7 @@ export class CandidatesComponent implements OnInit {
     { key: 'parsed', label: 'Parsed' },
     { key: 'applications', label: 'Apps', sortable: true },
     { key: 'matches', label: 'Matches', sortable: true },
+    { key: 'authorizationCases', label: 'Work auth' },
     { key: 'added', label: 'Added', sortable: true },
   ];
   appHistCols: TableColumn[] = [
@@ -167,6 +183,7 @@ export class CandidatesComponent implements OnInit {
         : (c.resumeFileId ? 'Pending' : '—'),
       applications: c._count?.applications ?? 0,
       matches: c._count?.matches ?? 0,
+      authorizationCases: c._count?.workAuthorizations ?? 0,
       added: c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—',
     }));
   }

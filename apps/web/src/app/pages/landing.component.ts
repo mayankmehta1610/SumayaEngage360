@@ -1,12 +1,14 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { ApiService } from '../core/api.service';
 import { SEGMENTS } from '../core/rbac';
 import { IconComponent } from '../ui/icon.component';
 import { ThemeToggleComponent } from '../ui/theme-toggle.component';
 
 @Component({
   standalone: true,
-  imports: [RouterLink, IconComponent, ThemeToggleComponent],
+  imports: [RouterLink, FormsModule, IconComponent, ThemeToggleComponent],
   styles: [`
     :host { display: block; }
     .top {
@@ -43,6 +45,9 @@ import { ThemeToggleComponent } from '../ui/theme-toggle.component';
     .hero h1 { font-size: 2.75rem; line-height: 1.12; margin: 0 0 1rem; letter-spacing: -0.03em; }
     .hero h1 em { font-style: normal; background: linear-gradient(90deg, var(--e360-primary), var(--e360-accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .hero p { color: var(--e360-text-secondary); font-size: 1.05rem; line-height: 1.65; max-width: 640px; margin: 0 auto; }
+    .country-picker { max-width: 720px; margin: 1.5rem auto 0; padding: 1rem; background: var(--e360-surface); border: 1px solid var(--e360-border); border-radius: var(--e360-radius-lg); text-align:left; box-shadow:var(--e360-shadow-sm); }
+    .country-picker select { width:100%; margin-top:.35rem; }
+    .country-flow { color:var(--e360-text-muted); font-size:.82rem; margin:.55rem 0 0; }
 
     .segments {
       max-width: 1160px; margin: 0 auto; padding: 1.5rem 2rem 3rem;
@@ -152,6 +157,13 @@ import { ThemeToggleComponent } from '../ui/theme-toggle.component';
         projects and timesheets, payroll, performance and governed exits — as a multi-tenant
         SaaS where every organization gets its own branded, workflow-driven workspace.
       </p>
+      <div class="country-picker">
+        <label for="country">Where will you recruit or deploy talent?</label>
+        <select id="country" [(ngModel)]="selectedCountry" (ngModelChange)="selectCountry($event)">
+          @for (j of jurisdictions; track j.code) { <option [value]="j.code">{{ j.name }}</option> }
+        </select>
+        <p class="country-flow">{{ selectedJurisdiction?.lifecycle?.join(' → ') }}</p>
+      </div>
     </section>
 
     <section class="segments">
@@ -168,7 +180,7 @@ import { ThemeToggleComponent } from '../ui/theme-toggle.component';
             <ul>
               @for (step of s.workflow; track step) { <li>{{ step }}</li> }
             </ul>
-            <a class="btn" [routerLink]="['/login', s.key]">
+            <a class="btn" [routerLink]="['/login', s.key]" [queryParams]="{ country: selectedCountry }">
               <e360-icon name="log-in" [size]="15" />
               {{ s.shortLabel }} sign in
             </a>
@@ -224,8 +236,26 @@ import { ThemeToggleComponent } from '../ui/theme-toggle.component';
     </footer>
   `,
 })
-export class LandingComponent {
+export class LandingComponent implements OnInit {
+  private api = inject(ApiService);
   year = new Date().getFullYear();
   // Business segments (exclude platform ops from the main grid — linked in footer)
   segments = SEGMENTS.filter((s) => s.tenantType !== null);
+  jurisdictions: any[] = [
+    { code: 'US', name: 'United States' }, { code: 'GB', name: 'United Kingdom' },
+    { code: 'CA', name: 'Canada' }, { code: 'AU', name: 'Australia' },
+    { code: 'NZ', name: 'New Zealand' }, { code: 'EU', name: 'European Union' },
+    { code: 'AE', name: 'United Arab Emirates' }, { code: 'SA', name: 'Saudi Arabia' },
+    { code: 'QA', name: 'Qatar' }, { code: 'BH', name: 'Bahrain' },
+    { code: 'KW', name: 'Kuwait' }, { code: 'OM', name: 'Oman' },
+  ];
+  selectedCountry = localStorage.getItem('e360_country') || 'US';
+  get selectedJurisdiction() { return this.jurisdictions.find((j) => j.code === this.selectedCountry); }
+
+  async ngOnInit() {
+    try { this.jurisdictions = await this.api.get<any[]>('/jurisdictions/catalog'); }
+    catch { /* Keep the built-in country list if the public catalogue is temporarily unavailable. */ }
+  }
+
+  selectCountry(code: string) { localStorage.setItem('e360_country', code); }
 }

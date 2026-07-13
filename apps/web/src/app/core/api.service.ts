@@ -36,6 +36,14 @@ export class ApiService {
     );
   }
 
+  put<T>(path: string, body?: unknown, tenant?: string): Promise<T> {
+    return firstValueFrom(
+      this.http.put<T>(`${this.base}${path}`, body ?? {}, {
+        headers: tenant ? { 'x-tenant-id': tenant } : undefined,
+      }),
+    );
+  }
+
   delete<T>(path: string, tenant?: string): Promise<T> {
     return firstValueFrom(
       this.http.delete<T>(`${this.base}${path}`, {

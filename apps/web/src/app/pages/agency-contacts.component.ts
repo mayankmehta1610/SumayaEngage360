@@ -33,6 +33,11 @@ import { tableListParams, TableSort } from '../core/table-query.util';
           <div><label>Email</label><input [(ngModel)]="form.email" /></div>
           <div><label>Phone</label><input [(ngModel)]="form.phone" /></div>
           <div><label>Company</label><input [(ngModel)]="form.company" /></div>
+          <div><label>Country</label><select [(ngModel)]="form.jurisdictionCode">@for (c of countries; track c.code) { <option [value]="c.code">{{ c.name }}</option> }</select></div>
+          <div><label>Lifecycle</label><select [(ngModel)]="form.lifecycleStatus">@for (s of lifecycleStatuses; track s) { <option [value]="s">{{ s }}</option> }</select></div>
+          <div><label>Company/agency registration</label><input [(ngModel)]="form.registrationNumber" /></div>
+          <div><label>Tax identifier/reference</label><input [(ngModel)]="form.taxIdentifier" /></div>
+          <div style="min-width:18rem"><label>Candidate submission requirements</label><textarea [(ngModel)]="form.requirementsText" placeholder="Security clearance, visa, profile and document requirements"></textarea></div>
           <div style="flex:0"><button (click)="add()">Add</button></div>
         </div>
       </div>
@@ -65,7 +70,14 @@ export class AgencyContactsComponent implements OnInit {
   total = 0;
   sort: TableSort | null = null;
   columnFilters: Record<string, string> = {};
-  form: any = { type: 'CLIENT' };
+  form: any = { type: 'CLIENT', jurisdictionCode: 'US', lifecycleStatus: 'PROSPECT' };
+  countries = [
+    { code: 'US', name: 'United States' }, { code: 'GB', name: 'United Kingdom' }, { code: 'CA', name: 'Canada' },
+    { code: 'AU', name: 'Australia' }, { code: 'NZ', name: 'New Zealand' }, { code: 'EU', name: 'European Union' },
+    { code: 'AE', name: 'United Arab Emirates' }, { code: 'SA', name: 'Saudi Arabia' }, { code: 'QA', name: 'Qatar' },
+    { code: 'BH', name: 'Bahrain' }, { code: 'KW', name: 'Kuwait' }, { code: 'OM', name: 'Oman' },
+  ];
+  lifecycleStatuses = ['PROSPECT', 'QUALIFIED', 'ONBOARDING', 'ACTIVE', 'ON_HOLD', 'INACTIVE', 'CLOSED'];
 
   typeOptions: SelectOption[] = [
     'CLIENT', 'HIRING_MANAGER', 'RECRUITER', 'VENDOR', 'OTHER',
@@ -77,6 +89,8 @@ export class AgencyContactsComponent implements OnInit {
     { key: 'email', label: 'Email' },
     { key: 'phone', label: 'Phone' },
     { key: 'company', label: 'Company' },
+    { key: 'country', label: 'Country' },
+    { key: 'lifecycle', label: 'Lifecycle' },
   ];
 
   get rows() {
@@ -86,6 +100,8 @@ export class AgencyContactsComponent implements OnInit {
       email: c.email ?? '—',
       phone: c.phone ?? '—',
       company: c.company ?? '—',
+      country: c.jurisdictionCode ?? '—',
+      lifecycle: c.lifecycleStatus,
     }));
   }
 
@@ -136,8 +152,9 @@ export class AgencyContactsComponent implements OnInit {
 
   async add() {
     try {
-      await this.api.post('/agency/contacts', this.form);
-      this.form = { type: 'CLIENT' };
+      const { requirementsText, ...payload } = this.form;
+      await this.api.post('/agency/contacts', { ...payload, requirements: requirementsText ? { candidateSubmission: requirementsText } : undefined });
+      this.form = { type: 'CLIENT', jurisdictionCode: 'US', lifecycleStatus: 'PROSPECT' };
       await this.load();
     } catch (e) {
       this.error = errMsg(e);

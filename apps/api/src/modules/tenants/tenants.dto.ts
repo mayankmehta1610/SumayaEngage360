@@ -39,6 +39,11 @@ export class CreateTenantDto {
   country?: string;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  operatingCountries?: string[];
+
+  @IsOptional()
   @IsString()
   currency?: string;
 
@@ -83,6 +88,11 @@ export class UpdateTenantDto {
   country?: string;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  operatingCountries?: string[];
+
+  @IsOptional()
   @IsString()
   currency?: string;
 
@@ -111,6 +121,15 @@ export class OnboardingWizardDto {
   @IsArray()
   @IsString({ each: true })
   enabledPortals?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  operatingCountries?: string[];
+
+  @IsOptional()
+  @IsString()
+  primaryCountry?: string;
 }
 
 export class PatchOnboardingDto {

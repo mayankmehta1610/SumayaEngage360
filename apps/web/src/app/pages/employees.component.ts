@@ -8,6 +8,7 @@ import { ModuleShellComponent } from '../ui/module-shell.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { IconComponent } from '../ui/icon.component';
 import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
+import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
 
 @Component({
   standalone: true,
@@ -19,6 +20,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
     DataTableComponent,
     IconComponent,
     SelectFieldComponent,
+    LifecycleWizardComponent,
   ],
   template: `
     <e360-module-shell
@@ -75,12 +77,24 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
           [total]="total"
           [loading]="loading"
           [stickyHeader]="true"
+          [rowClickable]="true"
+          [selectedId]="selectedEmployee?.id ?? null"
           (pageChange)="onPageChange($event)"
           (pageSizeChange)="onPageSizeChange($event)"
           (sortChange)="onSortChange($event)"
           (filterChange)="onFilterChange($event)"
+          (rowClick)="onEmployeeClick($event)"
         />
       </div>
+      @if (selectedEmployee) {
+        <e360-lifecycle-wizard
+          entityType="EMPLOYEE"
+          [entityId]="selectedEmployee.id"
+          workflowCode="EMPLOYEE_LIFECYCLE"
+          [title]="selectedEmployee.user.firstName + ' ' + selectedEmployee.user.lastName + ' — employee lifecycle'"
+          [metadata]="{ employeeCode: selectedEmployee.employeeCode, status: selectedEmployee.status, designation: selectedEmployee.designation }"
+        />
+      }
       <div *hasRole="'TENANT_ADMIN','HR'" class="card">
         <h2>Employment status actions</h2>
         <table><tr><th>Employee</th><th>Current status</th><th>Allowed action</th></tr>
@@ -119,6 +133,7 @@ export class EmployeesComponent implements OnInit, OnChanges {
   sort: TableSort | null = null;
   columnFilters: Record<string, string> = {};
   f: any = {};
+  selectedEmployee: any = null;
   exportCols = [
     { key: 'employeeCode', label: 'Code' },
     { key: 'user.firstName', label: 'First name' },
@@ -141,6 +156,7 @@ export class EmployeesComponent implements OnInit, OnChanges {
 
   get tableRows() {
     return this.employees.map((e) => ({
+      id: e.id,
       code: e.employeeCode,
       name: `${e.user.firstName} ${e.user.lastName}`,
       email: e.user.email,
@@ -198,10 +214,15 @@ export class EmployeesComponent implements OnInit, OnChanges {
       const res = await this.api.get<any>('/employees', params);
       const { items, meta } = unwrapPaginated(res);
       this.employees = items;
+      if (this.selectedEmployee) this.selectedEmployee = items.find((item: any) => item.id === this.selectedEmployee.id) ?? null;
       this.total = meta?.total ?? items.length;
       this.error = '';
     } catch (e) { this.error = errMsg(e); }
     finally { this.loading = false; }
+  }
+  onEmployeeClick(row: Record<string, unknown>) {
+    const id = String(row['id'] ?? '');
+    this.selectedEmployee = this.selectedEmployee?.id === id ? null : this.employees.find((item) => item.id === id) ?? null;
   }
   async loadReferences() {
     try {

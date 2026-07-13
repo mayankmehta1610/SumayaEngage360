@@ -29,6 +29,7 @@ const shellChildren = [
   { path: 'profile', loadComponent: () => import('./pages/profile.component').then((m) => m.ProfileComponent) },
   { path: 'users', loadComponent: () => import('./pages/users.component').then((m) => m.UsersComponent) },
   { path: 'candidates', loadComponent: () => import('./pages/candidates.component').then((m) => m.CandidatesComponent) },
+  { path: 'global-mobility', loadComponent: () => import('./pages/global-mobility.component').then((m) => m.GlobalMobilityComponent) },
   { path: 'recognition', loadComponent: () => import('./pages/recognition.component').then((m) => m.RecognitionComponent) },
   { path: 'clients', loadComponent: () => import('./pages/clients.component').then((m) => m.ClientsComponent) },
   { path: 'jobs', loadComponent: () => import('./pages/jobs.component').then((m) => m.JobsComponent) },

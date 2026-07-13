@@ -9,10 +9,11 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { tableListParams, TableSort } from '../core/table-query.util';
 import { environment } from '../../environments/environment';
 import { AuthService } from '../core/auth.service';
+import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, JsonPipe, ExportBarComponent, ModuleShellComponent, DataTableComponent, SelectFieldComponent],
+  imports: [FormsModule, DatePipe, JsonPipe, ExportBarComponent, ModuleShellComponent, DataTableComponent, SelectFieldComponent, LifecycleWizardComponent],
   template: `
     <e360-module-shell
       title="Applications"
@@ -89,6 +90,15 @@ import { AuthService } from '../core/auth.service';
       </div>
 
       @if (selectedApp) {
+        @if (isHr) {
+          <e360-lifecycle-wizard
+            entityType="APPLICATION"
+            [entityId]="selectedApp.id"
+            workflowCode="HIRING"
+            [title]="selectedApp.candidate.firstName + ' ' + selectedApp.candidate.lastName + ' — ' + selectedApp.job.title"
+            [metadata]="{ candidateId: selectedApp.candidate.id, jobId: selectedApp.job.id, applicationStatus: selectedApp.status }"
+          />
+        }
         <div class="card">
           <div class="toolbar" style="margin-bottom:.25rem">
             <div>

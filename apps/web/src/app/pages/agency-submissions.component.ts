@@ -5,10 +5,11 @@ import { ModuleShellComponent } from '../ui/module-shell.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 import { tableListParams, TableSort } from '../core/table-query.util';
+import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ModuleShellComponent, DataTableComponent, SelectFieldComponent],
+  imports: [FormsModule, ModuleShellComponent, DataTableComponent, SelectFieldComponent, LifecycleWizardComponent],
   template: `
     <e360-module-shell
       title="Client submissions"
@@ -56,10 +57,13 @@ import { tableListParams, TableSort } from '../core/table-query.util';
           [total]="total"
           [loading]="loading"
           [stickyHeader]="true"
+          [rowClickable]="true"
+          [selectedId]="selectedSubmission?.id ?? null"
           (pageChange)="onPageChange($event)"
           (pageSizeChange)="onPageSizeChange($event)"
           (sortChange)="onSortChange($event)"
           (filterChange)="onFilterChange($event)"
+          (rowClick)="onSubmissionClick($event)"
         >
           <ng-template #rowTemplate let-row>
             <td>{{ row.candidate }}</td>
@@ -74,6 +78,15 @@ import { tableListParams, TableSort } from '../core/table-query.util';
           </ng-template>
         </e360-data-table>
       </div>
+      @if (selectedSubmission) {
+        <e360-lifecycle-wizard
+          entityType="AGENCY_SUBMISSION"
+          [entityId]="selectedSubmission.id"
+          workflowCode="AGENCY_PLACEMENT"
+          [title]="(selectedSubmission.candidate?.firstName || 'Candidate') + ' ' + (selectedSubmission.candidate?.lastName || '') + ' — ' + (selectedSubmission.clientName || 'client placement')"
+          [metadata]="{ candidateId: selectedSubmission.candidateId, jobId: selectedSubmission.jobId, clientName: selectedSubmission.clientName }"
+        />
+      }
     </e360-module-shell>
   `,
 })
@@ -91,6 +104,7 @@ export class AgencySubmissionsComponent implements OnInit {
   jobs: any[] = [];
   clientTenants: any[] = [];
   form: any = {};
+  selectedSubmission: any = null;
 
   cols: TableColumn[] = [
     { key: 'candidate', label: 'Candidate' },
@@ -224,5 +238,9 @@ export class AgencySubmissionsComponent implements OnInit {
     } catch (e) {
       this.error = errMsg(e);
     }
+  }
+  onSubmissionClick(row: Record<string, unknown>) {
+    const id = String(row['id'] ?? '');
+    this.selectedSubmission = this.selectedSubmission?.id === id ? null : this.submissions.find((item) => item.id === id) ?? null;
   }
 }

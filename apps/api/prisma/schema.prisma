@@ -27,6 +27,7 @@ model Tenant {
   onboardingQuestionnaire Json? // provisioning wizard answers
   enabledPortals          Json? // ["ats","workforce","agency","staffing"]
   country                 String     @default("IN") // drives identity-document requirements
+  operatingCountries      Json? // ISO country/region codes enabled for hiring and staffing
   currency                String     @default("INR")
   timezone                String     @default("Asia/Kolkata")
   logoUrl                 String?
@@ -144,26 +145,26 @@ enum JobStatus {
 }
 
 model Job {
-  id             String        @id @default(uuid())
-  tenantId       String
-  hiringClientId String?
-  hiringClient   HiringClient? @relation(fields: [hiringClientId], references: [id])
-  title          String
-  description    String // full JD
-  vacancies      Int           @default(1)
-  vacanciesFilled Int          @default(0)
+  id              String        @id @default(uuid())
+  tenantId        String
+  hiringClientId  String?
+  hiringClient    HiringClient? @relation(fields: [hiringClientId], references: [id])
+  title           String
+  description     String // full JD
+  vacancies       Int           @default(1)
+  vacanciesFilled Int           @default(0)
   headcountBudget Decimal?
-  recruiterIds   String[]      @default([])
-  hiringTeamIds  String[]      @default([])
-  jobFamilyId    String?
-  location       String
-  employmentType String        @default("FULL_TIME") // FULL_TIME | PART_TIME | CONTRACT
-  minExperience  Float?
-  maxExperience  Float?
-  status         JobStatus     @default(DRAFT)
-  interviewPlan  Json? // ordered round definitions [{level:1,name:"Technical"},…]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  recruiterIds    String[]      @default([])
+  hiringTeamIds   String[]      @default([])
+  jobFamilyId     String?
+  location        String
+  employmentType  String        @default("FULL_TIME") // FULL_TIME | PART_TIME | CONTRACT
+  minExperience   Float?
+  maxExperience   Float?
+  status          JobStatus     @default(DRAFT)
+  interviewPlan   Json? // ordered round definitions [{level:1,name:"Technical"},…]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   skills       JobSkill[]
   applications Application[]
@@ -235,11 +236,13 @@ model Candidate {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  skills              CandidateSkill[]
-  experiences         CandidateExperience[]
-  applications        Application[]
-  matches             MatchScore[]
-  agencySubmissions   AgencyClientSubmission[]
+  skills               CandidateSkill[]
+  experiences          CandidateExperience[]
+  applications         Application[]
+  matches              MatchScore[]
+  agencySubmissions    AgencyClientSubmission[]
+  jurisdictionProfiles CandidateJurisdictionProfile[]
+  workAuthorizations   WorkAuthorizationCase[]
 
   @@unique([tenantId, email])
   @@map("candidates")
@@ -336,18 +339,20 @@ enum AgencySubmissionStatus {
 
 // Recruitment agency: submit candidates to client companies / jobs.
 model AgencyClientSubmission {
-  id             String                 @id @default(uuid())
-  agencyTenantId String
-  clientTenantId String?
-  clientName     String?
-  jobId          String?
-  candidateId    String
-  candidate      Candidate              @relation(fields: [candidateId], references: [id])
-  status         AgencySubmissionStatus @default(DRAFT)
-  notes          String?
-  submittedAt    DateTime?
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
+  id                 String                 @id @default(uuid())
+  agencyTenantId     String
+  clientTenantId     String?
+  clientName         String?
+  jobId              String?
+  candidateId        String
+  candidate          Candidate              @relation(fields: [candidateId], references: [id])
+  status             AgencySubmissionStatus @default(DRAFT)
+  notes              String?
+  jurisdictionCode   String?
+  complianceSnapshot Json?
+  submittedAt        DateTime?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 
   @@index([agencyTenantId, status])
   @@map("agency_client_submissions")
@@ -362,20 +367,216 @@ enum AgencyContactType {
 }
 
 model AgencyContact {
-  id        String            @id @default(uuid())
-  tenantId  String
-  type      AgencyContactType @default(CLIENT)
-  name      String
-  email     String?
-  phone     String?
-  company   String?
-  notes     String?
-  isActive  Boolean           @default(true)
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
+  id                 String            @id @default(uuid())
+  tenantId           String
+  type               AgencyContactType @default(CLIENT)
+  name               String
+  email              String?
+  phone              String?
+  company            String?
+  notes              String?
+  jurisdictionCode   String?
+  registrationNumber String?
+  taxIdentifier      String?
+  requirements       Json?
+  lifecycleStatus    String            @default("PROSPECT")
+  isActive           Boolean           @default(true)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
   @@index([tenantId, type])
   @@map("agency_contacts")
+}
+
+// Country-specific candidate identity/contact/tax fields are kept separate from
+// the universal talent profile so each tenant only collects what its jurisdiction needs.
+model CandidateJurisdictionProfile {
+  id                String    @id @default(uuid())
+  tenantId          String
+  candidateId       String
+  candidate         Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jurisdictionCode  String
+  memberStateCode   String    @default("")
+  nationality       String?
+  residenceCountry  String?
+  personalData      Json?
+  identifiers       Json?
+  emergencyContacts Json?
+  consents          Json?
+  completionStatus  String    @default("DRAFT")
+  completedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([tenantId, candidateId, jurisdictionCode, memberStateCode])
+  @@index([tenantId, jurisdictionCode, completionStatus])
+  @@map("candidate_jurisdiction_profiles")
+}
+
+// Verification lifecycle for citizenship, residence, permits and sponsored visas.
+// Document numbers are deliberately not required; store a file/reference instead.
+model WorkAuthorizationCase {
+  id                    String    @id @default(uuid())
+  tenantId              String
+  candidateId           String
+  candidate             Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  caseNumber            String    @unique
+  jurisdictionCode      String
+  memberStateCode       String?
+  authorizationType     String
+  status                String    @default("DRAFT")
+  sponsorshipRequired   Boolean   @default(false)
+  employerSpecific      Boolean   @default(false)
+  employerName          String?
+  jobId                 String?
+  validFrom             DateTime?
+  expiresAt             DateTime?
+  verificationMethod    String?
+  verificationReference String?
+  verifiedAt            DateTime?
+  verifiedBy            String?
+  restrictions          Json?
+  checklist             Json?
+  notes                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([tenantId, jurisdictionCode, status])
+  @@index([tenantId, candidateId])
+  @@index([tenantId, expiresAt])
+  @@map("work_authorization_cases")
+}
+
+// Shared operational lifecycle used by recruitment, mobility, onboarding,
+// employment, contractor and exit modules. Entity links are deliberately
+// polymorphic so every module can use one audited wizard without duplicating
+// shallow checklist JSON structures.
+model LifecycleCase {
+  id              String    @id @default(uuid())
+  tenantId        String
+  entityType      String
+  entityId        String
+  workflowCode    String
+  title           String
+  status          String    @default("DRAFT")
+  currentStageKey String?
+  ownerId         String?
+  ownerName       String?
+  priority        String    @default("NORMAL")
+  targetDate      DateTime?
+  progress        Int       @default(0)
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  stages     LifecycleStage[]
+  activities LifecycleActivity[]
+
+  @@unique([tenantId, entityType, entityId, workflowCode])
+  @@index([tenantId, workflowCode, status])
+  @@index([tenantId, ownerId])
+  @@map("lifecycle_cases")
+}
+
+model LifecycleStage {
+  id          String        @id @default(uuid())
+  caseId      String
+  case        LifecycleCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  stageKey    String
+  sequence    Int
+  title       String
+  description String?
+  status      String        @default("NOT_STARTED")
+  ownerRole   String?
+  ownerId     String?
+  ownerName   String?
+  dueDate     DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  tasks      LifecycleTask[]
+  documents  LifecycleDocument[]
+  activities LifecycleActivity[]
+
+  @@unique([caseId, stageKey])
+  @@index([caseId, sequence])
+  @@map("lifecycle_stages")
+}
+
+model LifecycleTask {
+  id           String         @id @default(uuid())
+  stageId      String
+  stage        LifecycleStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  taskCode     String
+  title        String
+  description  String?
+  status       String         @default("PENDING")
+  required     Boolean        @default(true)
+  ownerRole    String?
+  ownerId      String?
+  ownerName    String?
+  dueDate      DateTime?
+  completedAt  DateTime?
+  completedBy  String?
+  evidenceNote String?
+  data         Json?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([stageId, taskCode])
+  @@index([stageId, status])
+  @@map("lifecycle_tasks")
+}
+
+model LifecycleDocument {
+  id              String         @id @default(uuid())
+  stageId         String
+  stage           LifecycleStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  documentCode    String
+  title           String
+  category        String?
+  description     String?
+  required        Boolean        @default(true)
+  status          String         @default("ASSIGNED")
+  assignedTo      String?
+  ownerName       String?
+  dueDate         DateTime?
+  fileId          String?
+  fileName        String?
+  referenceNumber String?
+  issuedAt        DateTime?
+  expiresAt       DateTime?
+  uploadedAt      DateTime?
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  rejectionReason String?
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([stageId, documentCode])
+  @@index([stageId, status])
+  @@index([expiresAt])
+  @@map("lifecycle_documents")
+}
+
+model LifecycleActivity {
+  id        String          @id @default(uuid())
+  caseId    String
+  case      LifecycleCase   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  stageId   String?
+  stage     LifecycleStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  action    String
+  actorId   String?
+  actorName String?
+  details   Json?
+  createdAt DateTime        @default(now())
+
+  @@index([caseId, createdAt])
+  @@map("lifecycle_activities")
 }
 
 enum ContractorStatus {
@@ -388,22 +589,22 @@ enum ContractorStatus {
 
 // Staffing company: contractor lifecycle on client contracts.
 model ContractorAssignment {
-  id           String           @id @default(uuid())
-  tenantId     String
-  employeeId   String?
-  candidateId  String?
-  contractId   String?
-  clientRef    String?
-  role         String?
-  rate         Decimal?
-  rateType     String           @default("HOURLY") // HOURLY | DAILY | MONTHLY
-  currency     String           @default("INR")
-  startDate    DateTime
-  endDate      DateTime?
-  status       ContractorStatus @default(DRAFT)
-  notes        String?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  id          String           @id @default(uuid())
+  tenantId    String
+  employeeId  String?
+  candidateId String?
+  contractId  String?
+  clientRef   String?
+  role        String?
+  rate        Decimal?
+  rateType    String           @default("HOURLY") // HOURLY | DAILY | MONTHLY
+  currency    String           @default("INR")
+  startDate   DateTime
+  endDate     DateTime?
+  status      ContractorStatus @default(DRAFT)
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   @@index([tenantId, status])
   @@map("contractor_assignments")
@@ -417,26 +618,26 @@ enum InterviewResult {
 }
 
 model InterviewRound {
-  id            String          @id @default(uuid())
-  tenantId      String
-  applicationId String
-  application   Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  level         Int // 1, 2, 3…
-  name          String // "Technical", "HR"…
-  interviewerId String? // user id of interviewer
-  scheduledAt   DateTime?
-  mode          String? // TEAMS | ZOOM | IN_PERSON…
-  meetingLink   String?
-  feedback      String?
-  rating        Int?
-  result        InterviewResult @default(PENDING)
+  id               String          @id @default(uuid())
+  tenantId         String
+  applicationId    String
+  application      Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  level            Int // 1, 2, 3…
+  name             String // "Technical", "HR"…
+  interviewerId    String? // user id of interviewer
+  scheduledAt      DateTime?
+  mode             String? // TEAMS | ZOOM | IN_PERSON…
+  meetingLink      String?
+  feedback         String?
+  rating           Int?
+  result           InterviewResult @default(PENDING)
   // Recording integrates with any tool (Teams etc.) — uploaded per round.
-  recordingFileId String?
-  recordingUrl    String?
+  recordingFileId  String?
+  recordingUrl     String?
   // Mandatory proof-of-interview screenshot.
   screenshotFileId String?
   conductedAt      DateTime?
-  createdAt        DateTime  @default(now())
+  createdAt        DateTime        @default(now())
 
   @@unique([applicationId, level])
   @@map("interview_rounds")
@@ -493,18 +694,18 @@ enum VerificationStatus {
 }
 
 model EmployeeDocument {
-  id             String             @id @default(uuid())
-  tenantId       String
-  employeeId     String
-  employee       Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  requirementId  String?
-  code           String // AADHAAR, PAN…
-  fileId         String
-  status         VerificationStatus @default(SUBMITTED)
-  verifiedBy     String?
-  verifiedAt     DateTime?
+  id              String             @id @default(uuid())
+  tenantId        String
+  employeeId      String
+  employee        Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  requirementId   String?
+  code            String // AADHAAR, PAN…
+  fileId          String
+  status          VerificationStatus @default(SUBMITTED)
+  verifiedBy      String?
+  verifiedAt      DateTime?
   rejectionReason String?
-  createdAt      DateTime           @default(now())
+  createdAt       DateTime           @default(now())
 
   @@map("employee_documents")
 }
@@ -635,56 +836,56 @@ enum EmployeeStatus {
 }
 
 model Employee {
-  id            String         @id @default(uuid())
-  tenantId      String
-  userId        String         @unique
-  user          Users          @relation(fields: [userId], references: [id])
-  employeeCode  String
-  designation   String
-  departmentId  String?
-  department    Department?    @relation(fields: [departmentId], references: [id])
-  managerId     String? // reporting manager — set on project allocation
-  manager       Employee?      @relation("Reporting", fields: [managerId], references: [id])
-  reports       Employee[]     @relation("Reporting")
-  joinDate      DateTime?
-  location      String?
-  status        EmployeeStatus @default(ONBOARDING)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id           String         @id @default(uuid())
+  tenantId     String
+  userId       String         @unique
+  user         Users          @relation(fields: [userId], references: [id])
+  employeeCode String
+  designation  String
+  departmentId String?
+  department   Department?    @relation(fields: [departmentId], references: [id])
+  managerId    String? // reporting manager — set on project allocation
+  manager      Employee?      @relation("Reporting", fields: [managerId], references: [id])
+  reports      Employee[]     @relation("Reporting")
+  joinDate     DateTime?
+  location     String?
+  status       EmployeeStatus @default(ONBOARDING)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
-  skills           EmployeeSkill[]
-  documents        EmployeeDocument[]
-  backgroundCheck  BackgroundCheck?
-  onboarding       OnboardingCase?
-  policyAcks       PolicyAcknowledgement[]
-  salaryStructures SalaryStructure[]
-  allocations      ProjectAllocation[]
-  timesheets       Timesheet[]
-  appraisals       Appraisal[]         @relation("Appraisee")
-  recognitionsRecv Recognition[]       @relation("RecognitionReceiver")
-  feedbackReceived Feedback[]          @relation("FeedbackReceiver")
-  assetAssignments AssetAssignment[]
-  trainings        TrainingAssignment[]
-  resignation      Resignation?
-  personalData     EmployeePersonalData?
-  onboardingTasks  OnboardingTask[]
-  payslips         Payslip[]
+  skills             EmployeeSkill[]
+  documents          EmployeeDocument[]
+  backgroundCheck    BackgroundCheck?
+  onboarding         OnboardingCase?
+  policyAcks         PolicyAcknowledgement[]
+  salaryStructures   SalaryStructure[]
+  allocations        ProjectAllocation[]
+  timesheets         Timesheet[]
+  appraisals         Appraisal[]             @relation("Appraisee")
+  recognitionsRecv   Recognition[]           @relation("RecognitionReceiver")
+  feedbackReceived   Feedback[]              @relation("FeedbackReceiver")
+  assetAssignments   AssetAssignment[]
+  trainings          TrainingAssignment[]
+  resignation        Resignation?
+  personalData       EmployeePersonalData?
+  onboardingTasks    OnboardingTask[]
+  payslips           Payslip[]
   benefitEnrollments BenefitEnrollment[]
-  expenseClaims    ExpenseClaim[]
-  goals            EmployeeGoal[]
+  expenseClaims      ExpenseClaim[]
+  goals              EmployeeGoal[]
 
   @@unique([tenantId, employeeCode])
   @@map("employees")
 }
 
 model EmployeeSkill {
-  employeeId String
-  skillId    String
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  skill      Skill    @relation(fields: [skillId], references: [id])
-  yearsOfExp Float?
+  employeeId      String
+  skillId         String
+  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  skill           Skill    @relation(fields: [skillId], references: [id])
+  yearsOfExp      Float?
   // true if carried over from application-time tagging
-  fromApplication Boolean @default(false)
+  fromApplication Boolean  @default(false)
 
   @@id([employeeId, skillId])
   @@map("employee_skills")
@@ -890,18 +1091,18 @@ enum RegularizationStatus {
 
 // Missing-punch / correction request, approved by the reporting manager.
 model AttendanceRegularization {
-  id          String               @id @default(uuid())
-  tenantId    String
-  employeeId  String
-  workDate    DateTime
-  requestedIn DateTime?
+  id           String               @id @default(uuid())
+  tenantId     String
+  employeeId   String
+  workDate     DateTime
+  requestedIn  DateTime?
   requestedOut DateTime?
-  reason      String
-  status      RegularizationStatus @default(PENDING)
-  actorId     String?
-  actionNote  String?
-  createdAt   DateTime             @default(now())
-  actedAt     DateTime?
+  reason       String
+  status       RegularizationStatus @default(PENDING)
+  actorId      String?
+  actionNote   String?
+  createdAt    DateTime             @default(now())
+  actedAt      DateTime?
 
   @@index([tenantId, employeeId, status])
   @@map("attendance_regularizations")
@@ -1081,21 +1282,21 @@ enum AppraisalStatus {
 }
 
 model Appraisal {
-  id          String          @id @default(uuid())
-  tenantId    String
-  cycleId     String
-  cycle       AppraisalCycle  @relation(fields: [cycleId], references: [id])
-  employeeId  String
-  employee    Employee        @relation("Appraisee", fields: [employeeId], references: [id])
-  appraiserId String? // reporting/project manager
-  reviewerId  String? // manager's manager
-  selfReview  Json?
+  id            String          @id @default(uuid())
+  tenantId      String
+  cycleId       String
+  cycle         AppraisalCycle  @relation(fields: [cycleId], references: [id])
+  employeeId    String
+  employee      Employee        @relation("Appraisee", fields: [employeeId], references: [id])
+  appraiserId   String? // reporting/project manager
+  reviewerId    String? // manager's manager
+  selfReview    Json?
   managerReview Json?
-  finalRating  String?
-  outcome      Json? // increment %, promotion, benefits granted
-  status       AppraisalStatus @default(SELF_REVIEW)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  finalRating   String?
+  outcome       Json? // increment %, promotion, benefits granted
+  status        AppraisalStatus @default(SELF_REVIEW)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   @@unique([cycleId, employeeId])
   @@map("appraisals")
@@ -1174,13 +1375,13 @@ model AssetAssignment {
 // ─────────────────────────────── Trainings ───────────────────────────────
 
 model TrainingCourse {
-  id          String   @id @default(uuid())
-  tenantId    String
-  title       String
-  description String?
-  mandatory   Boolean  @default(false)
-  forOnboarding Boolean @default(false) // part of guided joiner flow
-  createdAt   DateTime @default(now())
+  id            String   @id @default(uuid())
+  tenantId      String
+  title         String
+  description   String?
+  mandatory     Boolean  @default(false)
+  forOnboarding Boolean  @default(false) // part of guided joiner flow
+  createdAt     DateTime @default(now())
 
   videos      TrainingVideo[]
   quizzes     Quiz[]
@@ -1199,7 +1400,7 @@ model TrainingVideo {
   durationSeconds Int
   sortOrder       Int            @default(0)
   // when true the player hides seek/close; server validates watch progress
-  noSkip Boolean @default(true)
+  noSkip          Boolean        @default(true)
 
   progress VideoProgress[]
 
@@ -1229,7 +1430,7 @@ model Quiz {
   title        String
   passingScore Int            @default(70)
   // [{q:"…",options:["a","b"],answerIndex:0},…]
-  questions Json
+  questions    Json
 
   attempts QuizAttempt[]
 
@@ -1257,14 +1458,14 @@ enum TrainingStatus {
 }
 
 model TrainingAssignment {
-  id         String         @id @default(uuid())
-  tenantId   String
-  courseId   String
-  course     TrainingCourse @relation(fields: [courseId], references: [id])
-  employeeId String
-  employee   Employee       @relation(fields: [employeeId], references: [id])
-  dueDate    DateTime?
-  status     TrainingStatus @default(ASSIGNED)
+  id          String         @id @default(uuid())
+  tenantId    String
+  courseId    String
+  course      TrainingCourse @relation(fields: [courseId], references: [id])
+  employeeId  String
+  employee    Employee       @relation(fields: [employeeId], references: [id])
+  dueDate     DateTime?
+  status      TrainingStatus @default(ASSIGNED)
   completedAt DateTime?
 
   @@unique([courseId, employeeId])
@@ -1285,15 +1486,15 @@ enum ResignationStatus {
 }
 
 model Resignation {
-  id                 String            @id @default(uuid())
-  tenantId           String
-  employeeId         String            @unique
-  employee           Employee          @relation(fields: [employeeId], references: [id])
-  reason             String?
-  submittedAt        DateTime          @default(now())
-  requestedLastDay   DateTime?
-  agreedLastDay      DateTime?
-  status             ResignationStatus @default(SUBMITTED)
+  id                  String            @id @default(uuid())
+  tenantId            String
+  employeeId          String            @unique
+  employee            Employee          @relation(fields: [employeeId], references: [id])
+  reason              String?
+  submittedAt         DateTime          @default(now())
+  requestedLastDay    DateTime?
+  agreedLastDay       DateTime?
+  status              ResignationStatus @default(SUBMITTED)
   releaseLetterFileId String?
 
   clearances ExitClearance[]
@@ -1333,11 +1534,11 @@ model FullFinalSettlement {
   resignationId String      @unique
   resignation   Resignation @relation(fields: [resignationId], references: [id])
   // earnings, deductions, notice recovery, leave encashment…
-  breakup     Json
-  netPayable  Decimal
-  settledAt   DateTime?
-  letterFileId String? // final letters issued on F&F completion
-  createdAt   DateTime    @default(now())
+  breakup       Json
+  netPayable    Decimal
+  settledAt     DateTime?
+  letterFileId  String? // final letters issued on F&F completion
+  createdAt     DateTime    @default(now())
 
   @@map("fnf_settlements")
 }
@@ -1370,10 +1571,10 @@ model ApprovalWorkflow {
 }
 
 model ApprovalStep {
-  id         String           @id @default(uuid())
-  workflowId String
-  workflow   ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  stepOrder  Int
+  id            String           @id @default(uuid())
+  workflowId    String
+  workflow      ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  stepOrder     Int
   // approver resolution: by designation, department head, reporting manager, or named user
   approverType  String // DESIGNATION | DEPARTMENT_HEAD | REPORTING_MANAGER | USER
   approverValue String? // designation name / user id
@@ -1505,16 +1706,16 @@ model IntegrationDefinition {
 }
 
 model TenantIntegration {
-  id            String   @id @default(uuid())
+  id            String                @id @default(uuid())
   tenantId      String
   integrationId String
   integration   IntegrationDefinition @relation(fields: [integrationId], references: [id])
-  enabled       Boolean  @default(false)
+  enabled       Boolean               @default(false)
   config        Json? // provider credentials/settings (never returned in full to UI)
   lastTestedAt  DateTime?
   lastTestOk    Boolean?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
 
   @@unique([tenantId, integrationId])
   @@map("tenant_integrations")
@@ -1523,14 +1724,14 @@ model TenantIntegration {
 // ─────────────────────────────── Sheet 10: Config masters ───────────────────────────────
 
 model ConfigMasterArea {
-  id               String @id // CFG-001
-  area             String
-  examples         String
-  scope            String
-  effectiveDating  Boolean @default(true)
-  versioning       Boolean @default(true)
-  administration   String
-  rule             String
+  id              String  @id // CFG-001
+  area            String
+  examples        String
+  scope           String
+  effectiveDating Boolean @default(true)
+  versioning      Boolean @default(true)
+  administration  String
+  rule            String
 
   items TenantConfigItem[]
 
@@ -1538,16 +1739,16 @@ model ConfigMasterArea {
 }
 
 model TenantConfigItem {
-  id            String    @id @default(uuid())
+  id            String           @id @default(uuid())
   tenantId      String
   areaId        String
   area          ConfigMasterArea @relation(fields: [areaId], references: [id])
   key           String
   value         Json
-  effectiveFrom DateTime  @default(now())
+  effectiveFrom DateTime         @default(now())
   effectiveTo   DateTime?
-  version       Int       @default(1)
-  createdAt     DateTime  @default(now())
+  version       Int              @default(1)
+  createdAt     DateTime         @default(now())
 
   @@unique([tenantId, areaId, key, version])
   @@index([tenantId, areaId])
@@ -1580,15 +1781,15 @@ model Branch {
 }
 
 model Shift {
-  id            String   @id @default(uuid())
-  tenantId      String
-  code          String
-  name          String
-  startTime     String // HH:mm
-  endTime       String
-  graceMinutes  Int      @default(0)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
+  id           String   @id @default(uuid())
+  tenantId     String
+  code         String
+  name         String
+  startTime    String // HH:mm
+  endTime      String
+  graceMinutes Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
 
   @@unique([tenantId, code])
   @@map("shifts")
@@ -1597,13 +1798,13 @@ model Shift {
 // ─────────────────────────────── Sheet 12: Execution evidence ───────────────────────────────
 
 model ExecutionEvidence {
-  id          String   @id @default(uuid())
-  featureId   String? // SE360-xxxxx or sheet row ID
-  sheetRef    String // e.g. 05_NFR, 12_AI_Execution
-  step        String
-  evidence    String
-  status      String   @default("DONE")
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  featureId String? // SE360-xxxxx or sheet row ID
+  sheetRef  String // e.g. 05_NFR, 12_AI_Execution
+  step      String
+  evidence  String
+  status    String   @default("DONE")
+  createdAt DateTime @default(now())
 
   @@index([sheetRef])
   @@map("execution_evidence")
@@ -1796,15 +1997,15 @@ model NotificationTemplate {
 }
 
 model NotificationDelivery {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   tenantId   String
   templateId String?
   channel    String
   recipient  String
   payload    Json?
-  status     String   @default("PENDING") // PENDING | SENT | FAILED
+  status     String    @default("PENDING") // PENDING | SENT | FAILED
   sentAt     DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   @@index([tenantId, status])
   @@map("notification_deliveries")
@@ -1813,16 +2014,16 @@ model NotificationDelivery {
 // ─────────────────────────────── NFR-014: Idempotency ───────────────────────────────
 
 model IdempotencyKey {
-  id        String   @id @default(uuid())
-  tenantId  String?
-  userId    String?
-  key       String
-  method    String
-  path      String
-  response  Json?
+  id         String   @id @default(uuid())
+  tenantId   String?
+  userId     String?
+  key        String
+  method     String
+  path       String
+  response   Json?
   statusCode Int?
-  createdAt DateTime @default(now())
-  expiresAt DateTime
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
 
   @@unique([tenantId, key])
   @@map("idempotency_keys")
@@ -1865,12 +2066,12 @@ model AsyncExportJob {
 // ─────────────────────────────── Sheet 01: Feature catalogue ───────────────────────────────
 
 model FeatureCatalogue {
-  id          String @id // SE360-00001
+  id          String  @id // SE360-00001
   domain      String
   module      String
   capability  String
   featureName String
-  status      String @default("Not Started")
+  status      String  @default("Not Started")
   phase       String?
   priority    String?
   cursorDone  Boolean @default(false)
@@ -1883,14 +2084,14 @@ model FeatureCatalogue {
 // ─────────────────────────────── Sheet 02: Module summary ───────────────────────────────
 
 model ModuleSummary {
-  id           String @id
-  domain       String
-  submodules   Int
-  featureRows  Int
-  mustCount    Int
-  shouldCount  Int
-  storyPoints  Int
-  phase        String
+  id          String @id
+  domain      String
+  submodules  Int
+  featureRows Int
+  mustCount   Int
+  shouldCount Int
+  storyPoints Int
+  phase       String
 
   @@map("module_summary")
 }
@@ -1898,7 +2099,7 @@ model ModuleSummary {
 // ─────────────────────────────── Sheet 03: Roles ───────────────────────────────
 
 model RoleDefinition {
-  id              String @id
+  id              String  @id
   role            String
   persona         String
   scope           String
@@ -1915,13 +2116,13 @@ model RoleDefinition {
 // ─────────────────────────────── Sheet 04: Workflows ───────────────────────────────
 
 model WorkflowDefinition {
-  id        String @id
-  name      String
-  trigger   String
-  stages    String
-  actors    String
-  outcome   String
-  exceptions String?
+  id          String  @id
+  name        String
+  trigger     String
+  stages      String
+  actors      String
+  outcome     String
+  exceptions  String?
   implemented Boolean @default(false)
   systemFlow  String? // maps to existing flow e.g. ATS_HIRE, EXIT
 
@@ -1971,25 +2172,25 @@ model OnboardingTask {
 // ─────────────────────────────── Manpower requisition ───────────────────────────────
 
 model ManpowerRequest {
-  id            String   @id @default(uuid())
-  tenantId      String
-  departmentId  String?
-  title         String
-  description   String
-  headcount     Int
-  budget        Decimal?
-  justification String?
-  location      String
-  employmentType String @default("FULL_TIME")
-  minExperience Float?
-  maxExperience Float?
-  skills        String[] @default([])
-  status        String   @default("DRAFT")
-  requestedBy   String
-  approvedBy    String?
-  jobId         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(uuid())
+  tenantId       String
+  departmentId   String?
+  title          String
+  description    String
+  headcount      Int
+  budget         Decimal?
+  justification  String?
+  location       String
+  employmentType String   @default("FULL_TIME")
+  minExperience  Float?
+  maxExperience  Float?
+  skills         String[] @default([])
+  status         String   @default("DRAFT")
+  requestedBy    String
+  approvedBy     String?
+  jobId          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([tenantId, status])
   @@map("manpower_requests")
@@ -2119,7 +2320,7 @@ model ExpenseLineItem {
 // ─────────────────────────────── Performance libraries & goals ───────────────────────────────
 
 model GoalLibrary {
-  id       String @id @default(uuid())
+  id       String  @id @default(uuid())
   tenantId String
   title    String
   category String?
@@ -2145,7 +2346,7 @@ model EmployeeGoal {
 }
 
 model KpiLibrary {
-  id       String @id @default(uuid())
+  id       String  @id @default(uuid())
   tenantId String
   code     String
   name     String
@@ -2169,16 +2370,16 @@ model CompetencyLibrary {
 // ─────────────────────────────── Project contracts & rate cards ───────────────────────────────
 
 model ProjectContract {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   tenantId  String
   projectId String
-  project   Project  @relation(fields: [projectId], references: [id])
+  project   Project   @relation(fields: [projectId], references: [id])
   clientRef String?
   value     Decimal?
   startDate DateTime
   endDate   DateTime?
   terms     String?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@map("project_contracts")
 }
@@ -2244,14 +2445,14 @@ model GeofenceZone {
 // ─────────────────────────────── Sheet 04: Workflow versions ───────────────────────────────
 
 model WorkflowVersion {
-  id          String   @id @default(uuid())
-  tenantId    String
-  workflowId  String
-  workflow    ApprovalWorkflow @relation(fields: [workflowId], references: [id])
-  version     Int
-  definition  Json
-  isActive    Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id         String           @id @default(uuid())
+  tenantId   String
+  workflowId String
+  workflow   ApprovalWorkflow @relation(fields: [workflowId], references: [id])
+  version    Int
+  definition Json
+  isActive   Boolean          @default(false)
+  createdAt  DateTime         @default(now())
 
   @@unique([workflowId, version])
   @@map("workflow_versions")
@@ -2264,60 +2465,66 @@ model JobFamily {
   tenantId String
   code     String
   name     String
+
   @@unique([tenantId, code])
   @@map("job_families")
 }
 
 model OrgPosition {
-  id       String @id @default(uuid())
+  id       String  @id @default(uuid())
   tenantId String
   code     String
   title    String
   familyId String?
   isActive Boolean @default(true)
+
   @@unique([tenantId, code])
   @@map("org_positions")
 }
 
 model BgvPackage {
-  id          String @id @default(uuid())
-  tenantId    String
-  code        String
-  name        String
-  checks      Json
-  isActive    Boolean @default(true)
+  id       String  @id @default(uuid())
+  tenantId String
+  code     String
+  name     String
+  checks   Json
+  isActive Boolean @default(true)
+
   @@unique([tenantId, code])
   @@map("bgv_packages")
 }
 
 model JobTeamMember {
-  id     String @id @default(uuid())
+  id       String @id @default(uuid())
   tenantId String
-  jobId  String
-  userId String
-  role   String
+  jobId    String
+  userId   String
+  role     String
+
   @@unique([jobId, userId, role])
   @@map("job_team_members")
 }
 
 model ApprovalDelegation {
-  id           String   @id @default(uuid())
-  tenantId     String
-  delegatorId  String
-  delegateId   String
-  startsAt     DateTime
-  endsAt       DateTime?
-  isActive     Boolean  @default(true)
+  id          String    @id @default(uuid())
+  tenantId    String
+  delegatorId String
+  delegateId  String
+  startsAt    DateTime
+  endsAt      DateTime?
+  isActive    Boolean   @default(true)
+
   @@map("approval_delegations")
 }
 
 model WorkflowRule {
-  id       String @id @default(uuid())
-  tenantId String
-  ruleType String
-  name     String
+  id         String  @id @default(uuid())
+  tenantId   String
+  ruleType   String
+  name       String
   definition Json
-  isActive Boolean @default(true)
+  isActive   Boolean @default(true)
+
   @@map("workflow_rules")
 }
 
@@ -2326,6 +2533,7 @@ model RatingScale {
   tenantId String
   name     String
   levels   Json
+
   @@unique([tenantId, name])
   @@map("rating_scales")
 }
@@ -2338,45 +2546,50 @@ model PerformanceCheckIn {
   notes      String
   mood       Int?
   createdAt  DateTime @default(now())
+
   @@map("performance_checkins")
 }
 
 model CalibrationSession {
-  id       String @id @default(uuid())
+  id       String  @id @default(uuid())
   tenantId String
   cycleId  String?
   name     String
-  status   String @default("DRAFT")
+  status   String  @default("DRAFT")
   ratings  Json?
+
   @@map("calibration_sessions")
 }
 
 model CountryConfig {
-  id        String @id @default(uuid())
-  tenantId  String
-  country   String
-  settings  Json
+  id       String @id @default(uuid())
+  tenantId String
+  country  String
+  settings Json
+
   @@unique([tenantId, country])
   @@map("country_configs")
 }
 
 model DocumentRepositoryItem {
-  id       String @id @default(uuid())
+  id       String   @id @default(uuid())
   tenantId String
   title    String
   category String
   fileId   String?
   tags     String[]
+
   @@map("document_repository")
 }
 
 model ScheduledJobDef {
-  id       String @id @default(uuid())
+  id       String  @id @default(uuid())
   tenantId String
   name     String
   cron     String
   jobType  String
   config   Json?
   isActive Boolean @default(true)
+
   @@map("scheduled_job_defs")
 }

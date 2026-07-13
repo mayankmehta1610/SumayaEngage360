@@ -723,6 +723,99 @@ const main = async () => {
   check('verified feature count is evidence-backed', overview.data?.sheets?.['01_Feature_Catalogue']?.done === VERIFIED_FEATURES, JSON.stringify(overview.data?.sheets?.['01_Feature_Catalogue']));
 
   // ─── RBAC enforcement ───────────────────────────────────────────────
+  console.log('\n[22] Global jurisdictions — country profiles and work authorization');
+  const jurisdictionCatalog = await req('GET', '/jurisdictions/catalog', {});
+  check('public jurisdiction catalogue', jurisdictionCatalog.status === 200 && ['US', 'GB', 'CA', 'AU', 'NZ', 'EU', 'AE', 'SA', 'QA', 'BH', 'KW', 'OM'].every((code) => jurisdictionCatalog.data.some((j) => j.code === code)));
+  const tenantJurisdictions = await req('PUT', '/jurisdictions/tenant', { ...t, body: {
+    primaryCountry: 'US', operatingCountries: ['US', 'GB', 'CA', 'AU', 'NZ', 'EU', 'AE', 'SA', 'QA', 'BH', 'KW', 'OM'],
+  } });
+  check('tenant enables multiple operating countries', tenantJurisdictions.status === 200 && tenantJurisdictions.data?.operatingCountries?.length === 12);
+  const configuredFields = await req('GET', '/tenant-field-definitions/entity/CANDIDATE_US', { ...t });
+  check('country profile fields generated', configuredFields.data?.some((field) => field.fieldKey === 'i9Path'));
+
+  const candidateId = applyRes.data.candidateId;
+  const countryProfile = await req('PUT', `/jurisdictions/candidates/${candidateId}/profile`, { ...t, body: {
+    jurisdictionCode: 'US', nationality: 'Canadian', residenceCountry: 'CA',
+    personalData: { legalName: 'Candidate E2E', i9Path: 'List A' }, identifiers: { ssnLast4: '1234' },
+    consents: { immigrationProcessing: true }, completionStatus: 'READY_FOR_REVIEW',
+  } });
+  check('country-specific candidate profile saved', countryProfile.status === 200 && countryProfile.data?.jurisdictionCode === 'US');
+
+  const usCase = await req('POST', '/jurisdictions/work-authorizations', { ...t, body: {
+    candidateId, jurisdictionCode: 'US', authorizationType: 'H1B', employerName: 'E2E Corp', expiresAt: new Date(Date.now() + 60 * 864e5).toISOString(),
+  } });
+  check('US H-1B case defaults sponsorship', usCase.status === 201 && usCase.data?.sponsorshipRequired === true && usCase.data?.employerSpecific === true);
+  await req('PATCH', `/jurisdictions/work-authorizations/${usCase.data.id}`, { ...t, body: { status: 'ASSESSMENT' } });
+  await req('PATCH', `/jurisdictions/work-authorizations/${usCase.data.id}`, { ...t, body: { status: 'SPONSORSHIP' } });
+  await req('PATCH', `/jurisdictions/work-authorizations/${usCase.data.id}`, { ...t, body: { status: 'VERIFICATION_PENDING' } });
+  const verifiedUs = await req('PATCH', `/jurisdictions/work-authorizations/${usCase.data.id}`, { ...t, body: {
+    status: 'VERIFIED', verificationMethod: 'Form I-9 document examination', verificationReference: 'I9-E2E-001',
+  } });
+  check('US authorization reaches verified state', verifiedUs.data?.status === 'VERIFIED' && !!verifiedUs.data?.verifiedAt);
+
+  const aeCase = await req('POST', '/jurisdictions/work-authorizations', { ...t, body: {
+    candidateId, jurisdictionCode: 'AE', authorizationType: 'OUTSIDE_RECRUITMENT', employerName: 'UAE E2E Client',
+  } });
+  check('UAE employer-sponsored lifecycle opens', aeCase.status === 201 && aeCase.data?.sponsorshipRequired === true);
+  const invalidEu = await req('POST', '/jurisdictions/work-authorizations', { ...t, body: {
+    candidateId, jurisdictionCode: 'EU', authorizationType: 'EU_BLUE_CARD',
+  } });
+  check('EU workflow requires member state', invalidEu.status === 400);
+  const expiring = await req('GET', '/jurisdictions/expiry-dashboard?days=90', { ...t });
+  check('authorization expiry dashboard', expiring.status === 200 && expiring.data?.cases?.some((item) => item.id === usCase.data.id));
+  const agencyContact = await req('POST', '/agency/contacts', { ...t, body: {
+    type: 'CLIENT', name: 'Global Client', company: 'Global E2E', jurisdictionCode: 'AE', lifecycleStatus: 'QUALIFIED',
+    registrationNumber: 'LIC-E2E', requirements: { visa: 'OUTSIDE_RECRUITMENT', medical: true },
+  } });
+  check('agency contact stores country requirements and lifecycle', agencyContact.status === 201 && agencyContact.data?.jurisdictionCode === 'AE' && agencyContact.data?.lifecycleStatus === 'QUALIFIED');
+
+  console.log('\n[23] Operational lifecycle wizards — structured data, documents and progress');
+  const lifecycleTemplates = await req('GET', '/lifecycle-cases/templates', { ...t });
+  check('all lifecycle templates are exposed', lifecycleTemplates.status === 200 && lifecycleTemplates.data?.length === 8);
+  const candidateLifecycle = await req('POST', '/lifecycle-cases/ensure', { ...t, body: {
+    entityType: 'CANDIDATE', entityId: candidateId, workflowCode: 'CANDIDATE_INTAKE', title: 'E2E Candidate — readiness', metadata: { source: 'E2E' },
+  } });
+  check('candidate wizard creates complete stage tree', candidateLifecycle.status === 201 && candidateLifecycle.data?.stages?.length === 4 && candidateLifecycle.data.stages.every((stage) => stage.tasks.length));
+  const sameCandidateLifecycle = await req('POST', '/lifecycle-cases/ensure', { ...t, body: {
+    entityType: 'CANDIDATE', entityId: candidateId, workflowCode: 'CANDIDATE_INTAKE', title: 'E2E Candidate — readiness',
+  } });
+  check('wizard ensure is idempotent', sameCandidateLifecycle.data?.id === candidateLifecycle.data?.id);
+  const firstTask = candidateLifecycle.data?.stages?.[0]?.tasks?.[0];
+  const values = Object.fromEntries((firstTask?.data?.fieldDefinitions ?? []).map((field) => [field.key,
+    field.type === 'BOOLEAN' ? true : field.type === 'NUMBER' ? 5 : field.type === 'DATE' ? '2026-07-14' : field.type === 'EMAIL' ? 'candidate@example.com' : field.type === 'PHONE' ? '+1 212 555 0100' : field.type === 'SELECT' ? field.options?.[0] : `E2E ${field.label}`,
+  ]));
+  const completedTask = await req('PATCH', `/lifecycle-cases/tasks/${firstTask.id}`, { ...t, body: {
+    status: 'COMPLETED', ownerName: 'E2E Recruiter', evidenceNote: 'Validated during E2E', data: { ...firstTask.data, values },
+  } });
+  check('structured task values persist and progress recalculates', completedTask.status === 200 && completedTask.data?.progress > 0 && completedTask.data?.stages?.[0]?.tasks?.find((item) => item.id === firstTask.id)?.data?.values?.legalFirstName);
+  const firstDocument = candidateLifecycle.data?.stages?.[0]?.documents?.[0];
+  const invalidRejection = await req('PATCH', `/lifecycle-cases/documents/${firstDocument.id}`, { ...t, body: { status: 'REJECTED' } });
+  check('document rejection requires correction reason', invalidRejection.status === 400);
+  const verifiedDocument = await req('PATCH', `/lifecycle-cases/documents/${firstDocument.id}`, { ...t, body: {
+    status: 'VERIFIED', referenceNumber: 'MASKED-E2E-001', assignedTo: 'Candidate', ownerName: 'E2E HR', notes: 'Official reference verified',
+  } });
+  check('document assignment reaches verified with audit history', verifiedDocument.status === 200 && verifiedDocument.data?.stages?.[0]?.documents?.find((item) => item.id === firstDocument.id)?.status === 'VERIFIED' && verifiedDocument.data?.activities?.some((item) => item.action === 'DOCUMENT_UPDATED'));
+  const customDocument = await req('POST', `/lifecycle-cases/stages/${candidateLifecycle.data.stages[0].id}/documents`, { ...t, body: {
+    title: 'Case-specific declaration', category: 'Declaration', assignedTo: 'Candidate', required: false,
+  } });
+  check('case-specific document can be assigned', customDocument.status === 201 && customDocument.data?.stages?.[0]?.documents?.some((item) => item.title === 'Case-specific declaration'));
+  const mobilityLifecycle = await req('POST', '/lifecycle-cases/ensure', { ...t, body: {
+    entityType: 'WORK_AUTHORIZATION', entityId: usCase.data.id, workflowCode: 'GLOBAL_MOBILITY', title: 'US H-1B — E2E Candidate', metadata: { jurisdictionCode: 'US' },
+  } });
+  check('mobility wizard has eligibility through renewal', mobilityLifecycle.status === 201 && mobilityLifecycle.data?.stages?.length === 6 && mobilityLifecycle.data.stages.at(-1)?.stageKey === 'renewal');
+  const onboardingLifecycle = await req('POST', '/lifecycle-cases/ensure', { ...t, body: {
+    entityType: 'ONBOARDING_CASE', entityId: kase.id, workflowCode: 'ONBOARDING', title: 'E2E employee onboarding',
+  } });
+  check('onboarding wizard covers activation readiness', onboardingLifecycle.status === 201 && onboardingLifecycle.data?.stages?.length === 7 && onboardingLifecycle.data.stages.at(-1)?.stageKey === 'activation');
+  const invalidEntity = await req('POST', '/lifecycle-cases/ensure', { ...t, body: {
+    entityType: 'EMPLOYEE', entityId: 'not-a-real-employee', workflowCode: 'EMPLOYEE_LIFECYCLE', title: 'Invalid',
+  } });
+  check('lifecycle entity is tenant-validated', invalidEntity.status === 404);
+  const interviewerMutation = await req('POST', '/lifecycle-cases/ensure', { ...interviewerSession, body: {
+    entityType: 'CANDIDATE', entityId: candidateId, workflowCode: 'CANDIDATE_INTAKE', title: 'Unauthorized mutation',
+  } });
+  check('interviewer cannot create or mutate lifecycle records', interviewerMutation.status === 403);
+
   console.log('\n[RBAC] Role-based access denial');
   check('employee session available', !!hire.token);
   const denyUsers = await req('GET', '/users', hire);

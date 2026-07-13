@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
+import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent],
+  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent, LifecycleWizardComponent],
   template: `
     <e360-module-shell
       title="Exit management"
@@ -94,6 +95,7 @@ import { ExportBarComponent } from '../core/export-bar.component';
             <span class="muted">({{ r.employee.employeeCode }} · {{ r.employee.designation }})</span></strong>
           <span class="badge" [class.ok]="r.status==='RELEASED'" [class.warn]="r.status!=='RELEASED'">{{ r.status }}</span>
         </div>
+        <button class="secondary" (click)="selectedResignation = selectedResignation?.id === r.id ? null : r">{{ selectedResignation?.id === r.id ? 'Close complete workflow' : 'Open complete exit workflow' }}</button>
         <p class="muted">Submitted {{ r.submittedAt | date }} · reason: {{ r.reason ?? '—' }}</p>
         @if (r.clearances?.length) {
           <p>Clearances: {{ signedCount(r) }}/{{ r.clearances.length }} signed off</p>
@@ -114,6 +116,15 @@ import { ExportBarComponent } from '../core/export-bar.component';
         </div>
       </div>
     } @empty { <div class="card muted">No resignations.</div> }
+    @if (selectedResignation) {
+      <e360-lifecycle-wizard
+        entityType="RESIGNATION"
+        [entityId]="selectedResignation.id"
+        workflowCode="EXIT"
+        [title]="selectedResignation.employee.user.firstName + ' ' + selectedResignation.employee.user.lastName + ' — exit and settlement'"
+        [metadata]="{ employeeId: selectedResignation.employeeId, status: selectedResignation.status }"
+      />
+    }
   
     </e360-module-shell>
   `,
@@ -127,6 +138,7 @@ export class ExitComponent implements OnInit {
   rf: any = {};
   stages = ['SUBMITTED', 'APPROVAL', 'ACCEPTED', 'CLEARANCE', 'FNF', 'RELEASED'];
   error = '';
+  selectedResignation: any = null;
   exportCols = [
     { key: 'employee.employeeCode', label: 'Code' },
     { key: 'employee.user.firstName', label: 'First name' },

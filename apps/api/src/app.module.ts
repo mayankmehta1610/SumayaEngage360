@@ -49,6 +49,8 @@ import { RequirementsModule } from './modules/requirements/requirements.module';
 import { MastersModule } from './modules/masters/masters.module';
 import { AgencyModule } from './modules/agency/agency.module';
 import { StaffingModule } from './modules/staffing/staffing.module';
+import { JurisdictionsModule } from './modules/jurisdictions/jurisdictions.module';
+import { LifecyclesModule } from './modules/lifecycles/lifecycles.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -96,6 +98,8 @@ import { HealthController } from './health.controller';
     ComplianceModule,
     AgencyModule,
     StaffingModule,
+    JurisdictionsModule,
+    LifecyclesModule,
   ],
   controllers: [HealthController],
   providers: [

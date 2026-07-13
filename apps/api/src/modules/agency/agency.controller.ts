@@ -46,6 +46,10 @@ class CreateSubmissionDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  jurisdictionCode?: string;
 }
 
 class UpdateSubmissionDto {
@@ -81,6 +85,12 @@ class UpsertContactDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional() @IsString() jurisdictionCode?: string;
+  @IsOptional() @IsString() registrationNumber?: string;
+  @IsOptional() @IsString() taxIdentifier?: string;
+  @IsOptional() requirements?: unknown;
+  @IsOptional() @IsString() lifecycleStatus?: string;
 }
 
 @Controller('agency')
@@ -192,6 +202,7 @@ export class AgencyController {
         jobId: dto.jobId,
         candidateId: dto.candidateId,
         notes: dto.notes,
+        jurisdictionCode: dto.jurisdictionCode?.toUpperCase(),
         status: AgencySubmissionStatus.DRAFT,
       },
       include: {
@@ -279,6 +290,11 @@ export class AgencyController {
         phone: dto.phone,
         company: dto.company,
         notes: dto.notes,
+        jurisdictionCode: dto.jurisdictionCode?.toUpperCase(),
+        registrationNumber: dto.registrationNumber,
+        taxIdentifier: dto.taxIdentifier,
+        requirements: dto.requirements as any,
+        lifecycleStatus: dto.lifecycleStatus ?? 'PROSPECT',
       },
     });
   }
@@ -291,7 +307,19 @@ export class AgencyController {
   ) {
     return this.prisma.agencyContact.update({
       where: { id, tenantId },
-      data: dto,
+      data: {
+        ...(dto.type !== undefined ? { type: dto.type } : {}),
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.email !== undefined ? { email: dto.email } : {}),
+        ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+        ...(dto.company !== undefined ? { company: dto.company } : {}),
+        ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
+        ...(dto.jurisdictionCode !== undefined ? { jurisdictionCode: dto.jurisdictionCode.toUpperCase() } : {}),
+        ...(dto.registrationNumber !== undefined ? { registrationNumber: dto.registrationNumber } : {}),
+        ...(dto.taxIdentifier !== undefined ? { taxIdentifier: dto.taxIdentifier } : {}),
+        ...(dto.requirements !== undefined ? { requirements: dto.requirements as any } : {}),
+        ...(dto.lifecycleStatus !== undefined ? { lifecycleStatus: dto.lifecycleStatus } : {}),
+      },
     });
   }
 }

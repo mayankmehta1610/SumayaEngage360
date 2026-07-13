@@ -45,7 +45,13 @@ import {
           <div class="row" style="margin-top:.75rem">
             <div><label>Company name</label><input [(ngModel)]="f.name" /></div>
             <div><label>Subdomain</label><input [(ngModel)]="f.subdomain" placeholder="acme" /></div>
-            <div><label>Country</label><input [(ngModel)]="f.country" placeholder="IN" /></div>
+            <div><label>Primary country</label><select [(ngModel)]="f.country" (ngModelChange)="ensurePrimaryCountry()">@for (c of countries; track c.code) { <option [value]="c.code">{{ c.name }}</option> }</select></div>
+          </div>
+          <label style="display:block;margin-top:.75rem">Operating countries</label>
+          <div class="row">
+            @for (c of countries; track c.code) {
+              <label style="display:flex;gap:.35rem;align-items:center"><input type="checkbox" [checked]="f.operatingCountries.includes(c.code)" (change)="toggleCountry(c.code, $event)" /> {{ c.name }}</label>
+            }
           </div>
           <button class="secondary" style="margin-top:.75rem" (click)="wizardStep = 2">Next: portals →</button>
         }
@@ -88,10 +94,19 @@ export class TenantsComponent implements OnInit {
   error = '';
   wizardStep = 1;
   f: any = {
-    country: 'IN',
+    country: 'US',
+    operatingCountries: ['US'],
     tenantType: 'COMPANY' as TenantType,
     enabledPortals: [...TENANT_TYPE_DEFAULT_PORTALS.COMPANY],
   };
+  countries = [
+    { code: 'US', name: 'United States' }, { code: 'GB', name: 'United Kingdom' },
+    { code: 'CA', name: 'Canada' }, { code: 'AU', name: 'Australia' },
+    { code: 'NZ', name: 'New Zealand' }, { code: 'EU', name: 'European Union' },
+    { code: 'AE', name: 'United Arab Emirates' }, { code: 'SA', name: 'Saudi Arabia' },
+    { code: 'QA', name: 'Qatar' }, { code: 'BH', name: 'Bahrain' },
+    { code: 'KW', name: 'Kuwait' }, { code: 'OM', name: 'Oman' },
+  ];
 
   tenantTypes: TenantType[] = [
     'COMPANY',
@@ -154,6 +169,16 @@ export class TenantsComponent implements OnInit {
     else this.f.enabledPortals = list;
   }
 
+  ensurePrimaryCountry() {
+    if (!this.f.operatingCountries.includes(this.f.country)) this.f.operatingCountries = [...this.f.operatingCountries, this.f.country];
+  }
+
+  toggleCountry(code: string, ev: Event) {
+    const checked = (ev.target as HTMLInputElement).checked;
+    this.f.operatingCountries = checked ? [...new Set([...this.f.operatingCountries, code])] : this.f.operatingCountries.filter((item: string) => item !== code);
+    this.ensurePrimaryCountry();
+  }
+
   async load() {
     try {
       this.tenants = await this.api.get<any[]>('/tenants');
@@ -170,7 +195,8 @@ export class TenantsComponent implements OnInit {
         onboardingQuestionnaire: { completedAt: new Date().toISOString(), step: 'wizard' },
       });
       this.f = {
-        country: 'IN',
+        country: 'US',
+        operatingCountries: ['US'],
         tenantType: 'COMPANY',
         enabledPortals: [...TENANT_TYPE_DEFAULT_PORTALS.COMPANY],
       };

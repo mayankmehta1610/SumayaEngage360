@@ -5,10 +5,12 @@ import { tableListParams, TableSort } from '../core/table-query.util';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
+import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent, ModuleShellComponent, DataTableComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent, DataTableComponent, LifecycleWizardComponent],
   template: `
     <e360-module-shell
       title="Onboarding"
@@ -62,6 +64,15 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
       </div>
 
       @if (selectedCase) {
+        @if (auth.hasRole('TENANT_ADMIN', 'HR', 'MANAGER')) {
+          <e360-lifecycle-wizard
+            entityType="ONBOARDING_CASE"
+            [entityId]="selectedCase.id"
+            workflowCode="ONBOARDING"
+            [title]="selectedCase.employee.user.firstName + ' ' + selectedCase.employee.user.lastName + ' — onboarding'"
+            [metadata]="{ employeeId: selectedCase.employee.id, employeeCode: selectedCase.employee.employeeCode }"
+          />
+        }
         <div class="card">
           <div class="toolbar" style="margin-bottom:.25rem">
             <strong>{{ selectedCase.employee.user.firstName }} {{ selectedCase.employee.user.lastName }}
@@ -95,6 +106,7 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 })
 export class OnboardingComponent implements OnInit {
   private api = inject(ApiService);
+  auth = inject(AuthService);
   cases: any[] = [];
   requirements: any[] = [];
   error = '';
