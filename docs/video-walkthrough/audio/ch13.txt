@@ -1,1 +1,0 @@
-﻿From the tenant admin perspective: Jobs lets HR create requisitions, define skills and interview rounds, and publish openings to the careers site when ready. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

@@ -1,1 +1,0 @@
-﻿From the manager perspective: Departments shows the org structure, headcount per unit, and department head assignments used in approvals and exit workflows. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

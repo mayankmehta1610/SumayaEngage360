@@ -21,11 +21,13 @@ export class PreboardingService {
   tasks(tenantId: string, employeeId?: string) {
     return this.prisma.onboardingTask.findMany({
       where: { tenantId, ...(employeeId ? { employeeId } : {}) },
+      include: { employee: { select: { employeeCode: true, user: { select: { firstName: true, lastName: true } } } } },
       orderBy: { createdAt: 'asc' },
     });
   }
 
-  createTask(tenantId: string, dto: { employeeId: string; taskType: string; title: string; assigneeId?: string; dueDate?: string }) {
+  async createTask(tenantId: string, dto: { employeeId: string; taskType: string; title: string; assigneeId?: string; dueDate?: string }) {
+    await this.assertEmployee(tenantId, dto.employeeId);
     return this.prisma.onboardingTask.create({
       data: {
         tenantId,
@@ -48,6 +50,7 @@ export class PreboardingService {
   }
 
   async initDefaultTasks(tenantId: string, employeeId: string) {
+    await this.assertEmployee(tenantId, employeeId);
     const existing = await this.prisma.onboardingTask.count({ where: { tenantId, employeeId } });
     if (existing > 0) return this.tasks(tenantId, employeeId);
     const defaults = [
@@ -59,6 +62,11 @@ export class PreboardingService {
       data: defaults.map((d) => ({ tenantId, employeeId, ...d })),
     });
     return this.tasks(tenantId, employeeId);
+  }
+
+  private async assertEmployee(tenantId: string, employeeId: string) {
+    const employee = await this.prisma.employee.findFirst({ where: { id: employeeId, tenantId }, select: { id: true } });
+    if (!employee) throw new NotFoundException('Employee not found');
   }
 
   private pick(dto: Record<string, unknown>) {

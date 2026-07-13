@@ -1,7 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
-type MasterDto = { code: string; name: string; level?: number };
+type MasterDto = {
+  code: string;
+  name: string;
+  level?: number;
+  country?: string;
+  taxId?: string;
+  city?: string;
+};
 
 @Injectable()
 export class OrgMastersService {
@@ -56,11 +63,34 @@ export class OrgMastersService {
       data: { tenantId, name: dto.name, year: dto.year, holidays: dto.holidays as any },
     });
   }
+  async updateHoliday(tenantId: string, id: string, dto: Partial<{ name: string; year: number; holidays: unknown[] }>) {
+    const result = await this.prisma.holidayCalendar.updateMany({
+      where: { id, tenantId },
+      data: { ...dto, holidays: dto.holidays as any },
+    });
+    if (!result.count) throw new NotFoundException('Holiday calendar not found');
+    return this.prisma.holidayCalendar.findFirst({ where: { id, tenantId } });
+  }
+  async removeHoliday(tenantId: string, id: string) {
+    const result = await this.prisma.holidayCalendar.updateMany({ where: { id, tenantId }, data: { isActive: false } });
+    if (!result.count) throw new NotFoundException('Holiday calendar not found');
+    return { deactivated: true };
+  }
 
   listJd(tenantId: string) {
     return this.prisma.jdLibrary.findMany({ where: { tenantId, isActive: true } });
   }
   createJd(tenantId: string, dto: { title: string; body: string; tags?: string[] }) {
     return this.prisma.jdLibrary.create({ data: { tenantId, ...dto, tags: dto.tags ?? [] } });
+  }
+  async updateJd(tenantId: string, id: string, dto: Partial<{ title: string; body: string; tags: string[] }>) {
+    const result = await this.prisma.jdLibrary.updateMany({ where: { id, tenantId }, data: dto });
+    if (!result.count) throw new NotFoundException('Job description not found');
+    return this.prisma.jdLibrary.findFirst({ where: { id, tenantId } });
+  }
+  async removeJd(tenantId: string, id: string) {
+    const result = await this.prisma.jdLibrary.updateMany({ where: { id, tenantId }, data: { isActive: false } });
+    if (!result.count) throw new NotFoundException('Job description not found');
+    return { deactivated: true };
   }
 }

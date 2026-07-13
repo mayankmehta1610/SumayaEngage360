@@ -44,8 +44,11 @@ import { tableListParams, TableSort } from '../core/table-query.util';
           <div><label>Role</label><input [(ngModel)]="form.role" /></div>
           <div><label>Client ref</label><input [(ngModel)]="form.clientRef" /></div>
           <div><label>Rate</label><input type="number" [(ngModel)]="form.rate" /></div>
+          <div><label>Rate type</label><select [(ngModel)]="form.rateType"><option value="HOURLY">Hourly</option><option value="DAILY">Daily</option><option value="MONTHLY">Monthly</option><option value="FIXED">Fixed</option></select></div>
+          <div><label>Currency</label><input [(ngModel)]="form.currency" placeholder="INR" /></div>
           <div><label>Start</label><input type="date" [(ngModel)]="form.startDate" /></div>
           <div><label>End</label><input type="date" [(ngModel)]="form.endDate" /></div>
+          <div><label>Notes</label><input [(ngModel)]="form.notes" placeholder="Assignment notes" /></div>
           <div style="flex:0"><button (click)="add()">Create</button></div>
         </div>
       </div>
@@ -81,7 +84,7 @@ export class ContractorsComponent implements OnInit {
   total = 0;
   sort: TableSort | null = null;
   columnFilters: Record<string, string> = {};
-  form: any = {};
+  form: any = { rateType: 'HOURLY', currency: 'INR' };
 
   cols: TableColumn[] = [
     { key: 'person', label: 'Person' },
@@ -196,9 +199,14 @@ export class ContractorsComponent implements OnInit {
   }
 
   async add() {
+    this.error = '';
+    if (!!this.form.employeeId === !!this.form.candidateId) { this.error = 'Select either one employee or one candidate.'; return; }
+    if (!this.form.startDate) { this.error = 'Assignment start date is required.'; return; }
+    if (this.form.endDate && this.form.endDate < this.form.startDate) { this.error = 'End date cannot be before start date.'; return; }
     try {
       await this.api.post('/contractors', {
         ...this.form,
+        rate: this.form.rate === '' || this.form.rate == null ? undefined : Number(this.form.rate),
         startDate: this.form.startDate
           ? new Date(this.form.startDate).toISOString()
           : undefined,
@@ -206,7 +214,7 @@ export class ContractorsComponent implements OnInit {
           ? new Date(this.form.endDate).toISOString()
           : undefined,
       });
-      this.form = {};
+      this.form = { rateType: 'HOURLY', currency: 'INR' };
       await this.load();
     } catch (e) {
       this.error = errMsg(e);

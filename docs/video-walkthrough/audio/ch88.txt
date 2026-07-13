@@ -1,1 +1,0 @@
-﻿The employee compliance workspace provides a clear route to report policy, privacy, conduct, or other concerns and optionally mark the case confidential. The My Cases section tracks only that employee's submissions and resolution state. The tenant-wide case board, retention configuration, and purge tools are not rendered for employees and are protected separately at API level.

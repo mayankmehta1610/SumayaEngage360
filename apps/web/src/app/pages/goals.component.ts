@@ -23,10 +23,20 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
     <div class="card">
       <h2>KPI library</h2>
       @if (isHr) {
-      <input [(ngModel)]="kpiCode" placeholder="Code" /> <input [(ngModel)]="kpiName" placeholder="Name" />
+      <input [(ngModel)]="kpiCode" placeholder="Code" /> <input [(ngModel)]="kpiName" placeholder="Name" /> <input [(ngModel)]="kpiUnit" placeholder="Unit (%, USD, count)" />
       <button (click)="addKpi()">Add KPI</button>
       }
-      <ul>@for (k of kpis; track k.id) { <li>{{ k.code }} — {{ k.name }}</li> }</ul>
+      <ul>@for (k of kpis; track k.id) { <li>{{ k.code }} — {{ k.name }}{{ k.unit ? ' (' + k.unit + ')' : '' }}</li> }</ul>
+    </div>
+    <div class="card">
+      <h2>Competency library</h2>
+      @if (isHr) { <input [(ngModel)]="competency.code" placeholder="Code" /> <input [(ngModel)]="competency.name" placeholder="Name" /> <input [(ngModel)]="competency.level" type="number" min="1" placeholder="Level" /> <button (click)="addCompetency()">Add competency</button> }
+      <ul>@for (c of competencies; track c.id) { <li>{{ c.code }} — {{ c.name }} (level {{ c.level }})</li> }</ul>
+    </div>
+    <div class="card">
+      <h2>Goal template library</h2>
+      @if (isHr) { <input [(ngModel)]="template.title" placeholder="Reusable goal title" /> <input [(ngModel)]="template.category" placeholder="Category" /> <button (click)="addTemplate()">Add template</button> }
+      <ul>@for (t of templates; track t.id) { <li>{{ t.title }}{{ t.category ? ' · ' + t.category : '' }}</li> }</ul>
     </div>
     @if (canAssign) {
       <div class="card">
@@ -39,6 +49,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
           />
           <input [(ngModel)]="assignment.title" placeholder="Goal title" />
           <input [(ngModel)]="assignment.target" placeholder="Target" />
+          <input [(ngModel)]="assignment.cycleId" placeholder="Performance cycle" />
           <input type="date" [(ngModel)]="assignment.dueDate" />
           <button (click)="assignGoal()" [disabled]="!assignment.employeeId || !assignment.title">Assign</button>
         </div>
@@ -48,7 +59,8 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
     <div class="card">
       <h2>My goals</h2>
       <ul>@for (g of goals; track g.id) {
-        <li>{{ g.title }} — {{ g.progress }}% <button (click)="bump(g.id, g.progress)">+10%</button></li>
+        <li>{{ g.title }} — {{ g.target || 'No target' }} — due {{ g.dueDate ? g.dueDate.slice(0, 10) : 'not set' }} — {{ g.progress }}%
+          <input type="number" min="0" max="100" [(ngModel)]="g._progress" style="width:80px" /> <button (click)="setProgress(g.id, g._progress ?? g.progress)">Update</button></li>
       }</ul>
     </div>
   
@@ -58,8 +70,8 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
 export class GoalsComponent implements OnInit {
   private api = inject(ApiService);
   private auth = inject(AuthService);
-  kpis: any[] = []; goals: any[] = []; employees: any[] = []; teamGoals: any[] = [];
-  assignment: any = {}; kpiCode = ''; kpiName = ''; error = '';
+  kpis: any[] = []; competencies: any[] = []; templates: any[] = []; goals: any[] = []; employees: any[] = []; teamGoals: any[] = [];
+  assignment: any = {}; competency: any = { level: 1 }; template: any = {}; kpiCode = ''; kpiName = ''; kpiUnit = ''; error = '';
   teamGoalCols: TableColumn[] = [
     { key: 'employee', label: 'Employee' },
     { key: 'goal', label: 'Goal' },
@@ -88,8 +100,10 @@ export class GoalsComponent implements OnInit {
 
   async ngOnInit() {
     try {
-      [this.kpis, this.goals] = await Promise.all([
+      [this.kpis, this.competencies, this.templates, this.goals] = await Promise.all([
         this.api.get<any[]>('/goals/kpis'),
+        this.api.get<any[]>('/goals/competencies'),
+        this.api.get<any[]>('/goals/library'),
         this.api.get<any[]>('/goals/mine'),
       ]);
       if (this.canAssign) {
@@ -101,13 +115,28 @@ export class GoalsComponent implements OnInit {
     } catch (e) { this.error = errMsg(e); }
   }
   async addKpi() {
-    await this.api.post('/goals/kpis', { code: this.kpiCode, name: this.kpiName });
-    this.kpis = await this.api.get<any[]>('/goals/kpis');
-    this.kpiCode = ''; this.kpiName = '';
+    try {
+      if (!this.kpiCode.trim() || !this.kpiName.trim()) { this.error = 'KPI code and name are required.'; return; }
+      await this.api.post('/goals/kpis', { code: this.kpiCode.trim(), name: this.kpiName.trim(), unit: this.kpiUnit.trim() || undefined });
+      this.kpis = await this.api.get<any[]>('/goals/kpis'); this.kpiCode = ''; this.kpiName = ''; this.kpiUnit = '';
+    } catch (e) { this.error = errMsg(e); }
   }
-  async bump(id: string, p: number) {
-    await this.api.patch(`/goals/${id}/progress`, { progress: p + 10 });
-    this.goals = await this.api.get<any[]>('/goals/mine');
+  async addCompetency() {
+    try {
+      if (!this.competency.code?.trim() || !this.competency.name?.trim()) { this.error = 'Competency code and name are required.'; return; }
+      await this.api.post('/goals/competencies', { ...this.competency, level: Number(this.competency.level || 1) });
+      this.competencies = await this.api.get<any[]>('/goals/competencies'); this.competency = { level: 1 };
+    } catch (e) { this.error = errMsg(e); }
+  }
+  async addTemplate() {
+    try {
+      if (!this.template.title?.trim()) { this.error = 'Template title is required.'; return; }
+      await this.api.post('/goals/library', this.template); this.templates = await this.api.get<any[]>('/goals/library'); this.template = {};
+    } catch (e) { this.error = errMsg(e); }
+  }
+  async setProgress(id: string, progress: number) {
+    try { await this.api.patch(`/goals/${id}/progress`, { progress: Number(progress) }); this.goals = await this.api.get<any[]>('/goals/mine'); }
+    catch (e) { this.error = errMsg(e); }
   }
   async assignGoal() {
     try {

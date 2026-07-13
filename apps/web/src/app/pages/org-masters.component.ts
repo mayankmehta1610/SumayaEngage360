@@ -57,8 +57,16 @@ export class OrgMastersComponent implements OnInit {
   ];
 
   sections: OrgSection[] = [
-    { key: 'legal', title: 'Legal entities', icon: 'building-2', path: '/org-masters/legal-entities', fields: this.codeName },
-    { key: 'locations', title: 'Locations', icon: 'building', path: '/org-masters/locations', fields: this.codeName },
+    { key: 'legal', title: 'Legal entities', icon: 'building-2', path: '/org-masters/legal-entities', fields: [
+      ...this.codeName,
+      { key: 'country', label: 'Country', placeholder: 'IN', required: true, default: 'IN' },
+      { key: 'taxId', label: 'Tax ID', placeholder: 'Federal or local tax ID' },
+    ] },
+    { key: 'locations', title: 'Locations', icon: 'building', path: '/org-masters/locations', fields: [
+      ...this.codeName,
+      { key: 'city', label: 'City', placeholder: 'City' },
+      { key: 'country', label: 'Country', placeholder: 'IN', required: true, default: 'IN' },
+    ] },
     { key: 'grades', title: 'Grades', icon: 'star', path: '/org-masters/grades', fields: [
       { key: 'code', label: 'Code', placeholder: 'G1', required: true },
       { key: 'name', label: 'Name', placeholder: 'Grade 1', required: true },
@@ -67,6 +75,16 @@ export class OrgMastersComponent implements OnInit {
     { key: 'bu', title: 'Business units', icon: 'network', path: '/org-masters/business-units', fields: this.codeName },
     { key: 'cc', title: 'Cost centers', icon: 'banknote', path: '/org-masters/cost-centers', fields: this.codeName },
     { key: 'et', title: 'Employment types', icon: 'briefcase', path: '/org-masters/employment-types', fields: this.codeName },
+    { key: 'holidays', title: 'Holiday calendars', icon: 'calendar', path: '/org-masters/holiday-calendars', fields: [
+      { key: 'name', label: 'Name', placeholder: 'Corporate Holidays', required: true },
+      { key: 'year', label: 'Year', type: 'number', placeholder: String(new Date().getFullYear()), required: true, default: new Date().getFullYear() },
+      { key: 'holidays', label: 'Holidays (JSON)', type: 'textarea', placeholder: '[{"date":"2026-01-01","name":"New Year’s Day"}]', required: true, default: '[]' },
+    ] },
+    { key: 'jd', title: 'Job description library', icon: 'file-text', path: '/org-masters/jd-library', fields: [
+      { key: 'title', label: 'Title', placeholder: 'Senior Software Engineer', required: true },
+      { key: 'body', label: 'Description', type: 'textarea', placeholder: 'Responsibilities, qualifications, and outcomes', required: true },
+      { key: 'tags', label: 'Tags', placeholder: 'engineering,backend' },
+    ] },
   ];
 
   data: Record<string, any[]> = {};
@@ -97,6 +115,15 @@ export class OrgMastersComponent implements OnInit {
       out.level = Number(out.level);
     } else {
       delete out.level;
+    }
+    if (out.year !== undefined && out.year !== null && out.year !== '') out.year = Number(out.year);
+    if (typeof out.holidays === 'string') {
+      try { out.holidays = JSON.parse(out.holidays); }
+      catch { throw new Error('Holidays must be a valid JSON array.'); }
+      if (!Array.isArray(out.holidays)) throw new Error('Holidays must be a JSON array.');
+    }
+    if (typeof out.tags === 'string') {
+      out.tags = out.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean);
     }
     return out;
   }

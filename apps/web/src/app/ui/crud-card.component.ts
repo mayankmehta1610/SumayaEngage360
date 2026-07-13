@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { errMsg } from '../core/api.service';
 import { IconComponent } from './icon.component';
@@ -8,7 +8,7 @@ export interface CrudField {
   key: string;
   label: string;
   placeholder?: string;
-  type?: 'text' | 'number' | 'select';
+  type?: 'text' | 'number' | 'select' | 'textarea';
   options?: SelectOption[];
   required?: boolean;
   /** default value for the add form */
@@ -50,6 +50,12 @@ export interface CrudColumn {
               [placeholder]="f.placeholder ?? f.label"
               [(ngModel)]="form[f.key]"
             />
+          } @else if (f.type === 'textarea') {
+            <textarea
+              class="e360-crud-input"
+              [placeholder]="f.placeholder ?? f.label"
+              [(ngModel)]="form[f.key]"
+            ></textarea>
           } @else {
             <input
               class="e360-crud-input"
@@ -83,6 +89,8 @@ export interface CrudColumn {
                       <td>
                         @if (f.type === 'select') {
                           <e360-select-field [options]="f.options ?? []" [(ngModel)]="editForm[f.key]" />
+                        } @else if (f.type === 'textarea') {
+                          <textarea [(ngModel)]="editForm[f.key]"></textarea>
                         } @else {
                           <input [type]="f.type === 'number' ? 'number' : 'text'" [(ngModel)]="editForm[f.key]" (keyup.enter)="saveEdit(row)" />
                         }
@@ -150,7 +158,7 @@ export interface CrudColumn {
     }
   `],
 })
-export class CrudCardComponent {
+export class CrudCardComponent implements OnChanges {
   @Input() title = '';
   @Input() icon?: string;
   @Input() fields: CrudField[] = [];
@@ -171,6 +179,10 @@ export class CrudCardComponent {
   busy = false;
   error = '';
   success = '';
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['fields']) this.applyDefaults();
+  }
 
   get displayColumns(): CrudColumn[] {
     return this.columns ?? this.fields.map((f) => ({ key: f.key, label: f.label }));
@@ -213,7 +225,7 @@ export class CrudCardComponent {
     try {
       await this.onCreate({ ...this.form });
       this.form = {};
-      this.fields.forEach((f) => { if (f.default !== undefined) this.form[f.key] = f.default; });
+      this.applyDefaults();
       this.flash('Added.');
       this.changed.emit();
     } catch (e) { this.error = errMsg(e); } finally { this.busy = false; }
@@ -253,5 +265,11 @@ export class CrudCardComponent {
       this.flash('Removed.');
       this.changed.emit();
     } catch (e) { this.error = errMsg(e); } finally { this.busy = false; }
+  }
+
+  private applyDefaults() {
+    this.fields.forEach((field) => {
+      if (field.default !== undefined && this.form[field.key] === undefined) this.form[field.key] = field.default;
+    });
   }
 }

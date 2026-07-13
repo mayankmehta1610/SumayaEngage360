@@ -1,1 +1,0 @@
-﻿From the manager perspective: Privacy and consent handles data-subject requests, policy acknowledgements, and GDPR-style rights for employees. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

@@ -21,9 +21,10 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
 @if (error) { <div class="e360-error">{{ error }}</div> }
     <div class="card">
       <h2>Register asset</h2>
-      <input [(ngModel)]="f.assetTag" placeholder="Tag" />
-      <input [(ngModel)]="f.category" placeholder="Category" />
-      <input [(ngModel)]="f.model" placeholder="Model" />
+      <input [(ngModel)]="f.assetTag" placeholder="Asset tag" />
+      <select [(ngModel)]="f.category"><option value="">Select category</option><option value="LAPTOP">Laptop</option><option value="DESKTOP">Desktop</option><option value="MONITOR">Monitor</option><option value="MOBILE">Mobile phone</option><option value="ACCESS_CARD">Access card</option><option value="SOFTWARE_LICENSE">Software license</option><option value="OTHER">Other</option></select>
+      <input [(ngModel)]="f.model" placeholder="Manufacturer and model" />
+      <input [(ngModel)]="f.serialNo" placeholder="Serial number" />
       <button (click)="create()">Add</button>
     </div>
     <div class="card">
@@ -31,6 +32,8 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
         <ng-template #rowTemplate let-row>
           <td>{{ row.tag }}</td>
           <td>{{ row.category }}</td>
+          <td>{{ row.model }}</td>
+          <td>{{ row.serial }}</td>
           <td>{{ row.assigned }}</td>
           <td>
             @if (row._raw.assignments?.[0]) {
@@ -59,6 +62,8 @@ export class AssetsComponent implements OnInit {
   tableCols: TableColumn[] = [
     { key: 'tag', label: 'Tag' },
     { key: 'category', label: 'Category' },
+    { key: 'model', label: 'Model' },
+    { key: 'serial', label: 'Serial number' },
     { key: 'assigned', label: 'Assigned to' },
     { key: 'actions', label: 'Action', sortable: false, filterable: false },
   ];
@@ -68,6 +73,8 @@ export class AssetsComponent implements OnInit {
       id: a.id,
       tag: a.assetTag,
       category: a.category,
+      model: a.model || '—',
+      serial: a.serialNo || '—',
       assigned: a.assignments?.[0]
         ? `${a.assignments[0].employee.user.firstName} ${a.assignments[0].employee.user.lastName}`
         : 'Available',
@@ -94,6 +101,7 @@ export class AssetsComponent implements OnInit {
   }
   async create() {
     try {
+      if (!this.f.assetTag?.trim() || !this.f.category) { this.error = 'Asset tag and category are required.'; return; }
       await this.api.post('/assets', this.f);
       this.f = {}; await this.load();
     } catch (e) { this.error = errMsg(e); }

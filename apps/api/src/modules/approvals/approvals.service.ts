@@ -19,14 +19,30 @@ export class ApprovalsService {
 
   // ── workflow configuration ─────────────────────────────────────────────
 
-  createWorkflow(tenantId: string, dto: CreateWorkflowDto) {
+  async createWorkflow(tenantId: string, dto: CreateWorkflowDto) {
+    const ordered = [...dto.steps].sort((a, b) => a.stepOrder - b.stepOrder);
+    if (ordered.some((step, index) => step.stepOrder !== index + 1)) {
+      throw new BadRequestException('Workflow steps must be numbered consecutively from 1');
+    }
+    for (const step of ordered) {
+      if (step.approverType === 'USER') {
+        if (!step.approverValue) throw new BadRequestException(`Step ${step.stepOrder} requires a user`);
+        const user = await this.prisma.users.findFirst({ where: { id: step.approverValue, tenantId, isActive: true }, select: { id: true } });
+        if (!user) throw new BadRequestException(`Step ${step.stepOrder} approver user is invalid`);
+      }
+      if (step.approverType === 'DESIGNATION') {
+        if (!step.approverValue) throw new BadRequestException(`Step ${step.stepOrder} requires a designation`);
+        const designation = await this.prisma.designation.findFirst({ where: { tenantId, name: step.approverValue }, select: { id: true } });
+        if (!designation) throw new BadRequestException(`Step ${step.stepOrder} designation is invalid`);
+      }
+    }
     return this.prisma.approvalWorkflow.create({
       data: {
         tenantId,
         entityType: dto.entityType,
         name: dto.name,
         steps: {
-          create: dto.steps.map((s) => ({
+          create: ordered.map((s) => ({
             stepOrder: s.stepOrder,
             approverType: s.approverType,
             approverValue: s.approverValue,

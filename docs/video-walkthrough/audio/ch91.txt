@@ -1,1 +1,0 @@
-﻿The interviewer talent pool is derived from assigned applications rather than the full tenant candidate database. Candidate identity and relevant interview context remain available for evaluation, while unassigned candidates are excluded by the backend query. The reduced navigation reinforces that the interviewer is a participant in selected rounds, not a general recruiter.

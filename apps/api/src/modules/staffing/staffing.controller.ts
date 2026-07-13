@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -6,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  NotFoundException,
 } from '@nestjs/common';
 import { ContractorStatus, Role } from '@prisma/client';
 import {
@@ -153,7 +155,12 @@ export class StaffingController {
   }
 
   @Post('contracts')
-  createContract(@TenantId() tenantId: string, @Body() dto: CreateContractDto) {
+  async createContract(@TenantId() tenantId: string, @Body() dto: CreateContractDto) {
+    const project = await this.prisma.project.findFirst({ where: { id: dto.projectId, tenantId }, select: { id: true } });
+    if (!project) throw new NotFoundException('Project not found');
+    if (dto.endDate && new Date(dto.endDate) < new Date(dto.startDate)) {
+      throw new BadRequestException('Contract end date cannot be before start date');
+    }
     return this.prisma.projectContract.create({
       data: {
         tenantId,
@@ -198,7 +205,25 @@ export class StaffingController {
   }
 
   @Post('contractors')
-  createContractor(@TenantId() tenantId: string, @Body() dto: CreateContractorDto) {
+  async createContractor(@TenantId() tenantId: string, @Body() dto: CreateContractorDto) {
+    if (!!dto.employeeId === !!dto.candidateId) {
+      throw new BadRequestException('Select either one employee or one candidate');
+    }
+    if (dto.endDate && new Date(dto.endDate) < new Date(dto.startDate)) {
+      throw new BadRequestException('Assignment end date cannot be before start date');
+    }
+    if (dto.employeeId) {
+      const employee = await this.prisma.employee.findFirst({ where: { id: dto.employeeId, tenantId }, select: { id: true } });
+      if (!employee) throw new NotFoundException('Employee not found');
+    }
+    if (dto.candidateId) {
+      const candidate = await this.prisma.candidate.findFirst({ where: { id: dto.candidateId, tenantId }, select: { id: true } });
+      if (!candidate) throw new NotFoundException('Candidate not found');
+    }
+    if (dto.contractId) {
+      const contract = await this.prisma.projectContract.findFirst({ where: { id: dto.contractId, tenantId }, select: { id: true } });
+      if (!contract) throw new NotFoundException('Contract not found');
+    }
     return this.prisma.contractorAssignment.create({
       data: {
         tenantId,

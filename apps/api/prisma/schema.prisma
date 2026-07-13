@@ -1975,9 +1975,15 @@ model ManpowerRequest {
   tenantId      String
   departmentId  String?
   title         String
+  description   String
   headcount     Int
   budget        Decimal?
   justification String?
+  location      String
+  employmentType String @default("FULL_TIME")
+  minExperience Float?
+  maxExperience Float?
+  skills        String[] @default([])
   status        String   @default("DRAFT")
   requestedBy   String
   approvedBy    String?

@@ -42,7 +42,11 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
           <div><label>First name</label><input [(ngModel)]="f.firstName" /></div>
           <div><label>Last name</label><input [(ngModel)]="f.lastName" /></div>
           <div><label>Email</label><input type="email" [(ngModel)]="f.email" /></div>
-          <div><label>Designation</label><input [(ngModel)]="f.designation" /></div>
+          <div><label>Initial password (optional)</label><input type="password" [(ngModel)]="f.password" autocomplete="new-password" /></div>
+          <e360-select-field label="Designation" placeholder="Select designation" [options]="designationOptions" [(ngModel)]="f.designation" />
+          <e360-select-field label="Department" placeholder="Select department" [options]="departmentOptions" [(ngModel)]="f.departmentId" />
+          <e360-select-field label="Reporting manager" placeholder="Select manager" [options]="managerOptions" [(ngModel)]="f.managerId" />
+          <div><label>Work location</label><input [(ngModel)]="f.location" placeholder="New York, NY or Remote" /></div>
           <div><label>Join date</label><input type="date" [(ngModel)]="f.joinDate" /></div>
           <e360-select-field
             label="Status filter"
@@ -97,6 +101,9 @@ export class EmployeesComponent implements OnInit, OnChanges {
   private api = inject(ApiService);
   @Input() status?: string;
   employees: any[] = [];
+  departments: any[] = [];
+  designations: any[] = [];
+  managers: any[] = [];
   error = '';
   statusFilter: string[] = [];
   statusOptions: SelectOption[] = [
@@ -144,9 +151,13 @@ export class EmployeesComponent implements OnInit, OnChanges {
     }));
   }
 
+  get departmentOptions(): SelectOption[] { return this.departments.map((department) => ({ value: department.id, label: department.name })); }
+  get designationOptions(): SelectOption[] { return this.designations.map((designation) => ({ value: designation.name, label: designation.name })); }
+  get managerOptions(): SelectOption[] { return this.managers.map((manager) => ({ value: manager.id, label: `${manager.user.firstName} ${manager.user.lastName} (${manager.employeeCode})` })); }
+
   async ngOnInit() {
     this.statusFilter = this.status ? [this.status] : [];
-    await this.load();
+    await Promise.all([this.load(), this.loadReferences()]);
   }
   ngOnChanges() {
     this.statusFilter = this.status ? [this.status] : [];
@@ -192,14 +203,26 @@ export class EmployeesComponent implements OnInit, OnChanges {
     } catch (e) { this.error = errMsg(e); }
     finally { this.loading = false; }
   }
+  async loadReferences() {
+    try {
+      [this.departments, this.designations, this.managers] = await Promise.all([
+        this.api.get<any[]>('/departments'),
+        this.api.get<any[]>('/designations'),
+        this.api.get<any[]>('/employees/directory'),
+      ]);
+    } catch (e) { this.error = errMsg(e); }
+  }
   async create() {
     try {
+      if (!this.f.firstName?.trim() || !this.f.lastName?.trim() || !this.f.email?.trim() || !this.f.designation) {
+        this.error = 'First name, last name, email, and designation are required.'; return;
+      }
       await this.api.post('/employees', {
         ...this.f,
         joinDate: this.f.joinDate ? new Date(this.f.joinDate).toISOString() : undefined,
       });
       this.f = {};
-      await this.load();
+      await Promise.all([this.load(), this.loadReferences()]);
     } catch (e) { this.error = errMsg(e); }
   }
   async updateStatus(id: string, status: string) {

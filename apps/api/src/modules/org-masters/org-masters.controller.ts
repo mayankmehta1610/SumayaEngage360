@@ -10,10 +10,23 @@ class CodeNameDto {
   @IsString() name: string;
 }
 
+class LegalEntityDto extends CodeNameDto {
+  @IsOptional() @IsString() country?: string;
+  @IsOptional() @IsString() taxId?: string;
+}
+
+class LocationDto extends CodeNameDto {
+  @IsOptional() @IsString() city?: string;
+  @IsOptional() @IsString() country?: string;
+}
+
 class UpdateCodeNameDto {
   @IsOptional() @IsString() code?: string;
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsInt() level?: number;
+  @IsOptional() @IsString() country?: string;
+  @IsOptional() @IsString() taxId?: string;
+  @IsOptional() @IsString() city?: string;
 }
 
 class GradeDto extends CodeNameDto {
@@ -32,13 +45,25 @@ class JdDto {
   @IsOptional() @IsArray() tags?: string[];
 }
 
+class UpdateHolidayDto {
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsInt() year?: number;
+  @IsOptional() @IsArray() holidays?: unknown[];
+}
+
+class UpdateJdDto {
+  @IsOptional() @IsString() title?: string;
+  @IsOptional() @IsString() body?: string;
+  @IsOptional() @IsArray() tags?: string[];
+}
+
 @Controller('org-masters')
 @Roles(Role.TENANT_ADMIN, Role.HR)
 export class OrgMastersController {
   constructor(private readonly org: OrgMastersService) {}
 
   @Get('legal-entities') listLe(@TenantId() t: string) { return this.org.legalEntities(t).list(); }
-  @Post('legal-entities') createLe(@TenantId() t: string, @Body() dto: CodeNameDto) {
+  @Post('legal-entities') createLe(@TenantId() t: string, @Body() dto: LegalEntityDto) {
     return this.org.legalEntities(t).create(dto);
   }
   @Patch('legal-entities/:id') updateLe(@TenantId() t: string, @Param('id') id: string, @Body() dto: UpdateCodeNameDto) {
@@ -49,7 +74,7 @@ export class OrgMastersController {
   }
 
   @Get('locations') listLoc(@TenantId() t: string) { return this.org.locations(t).list(); }
-  @Post('locations') createLoc(@TenantId() t: string, @Body() dto: CodeNameDto) {
+  @Post('locations') createLoc(@TenantId() t: string, @Body() dto: LocationDto) {
     return this.org.locations(t).create(dto);
   }
   @Patch('locations/:id') updateLoc(@TenantId() t: string, @Param('id') id: string, @Body() dto: UpdateCodeNameDto) {
@@ -110,9 +135,21 @@ export class OrgMastersController {
   @Post('holiday-calendars') createHol(@TenantId() t: string, @Body() dto: HolidayDto) {
     return this.org.createHoliday(t, dto);
   }
+  @Patch('holiday-calendars/:id') updateHol(@TenantId() t: string, @Param('id') id: string, @Body() dto: UpdateHolidayDto) {
+    return this.org.updateHoliday(t, id, dto);
+  }
+  @Delete('holiday-calendars/:id') removeHol(@TenantId() t: string, @Param('id') id: string) {
+    return this.org.removeHoliday(t, id);
+  }
 
   @Get('jd-library') listJd(@TenantId() t: string) { return this.org.listJd(t); }
   @Post('jd-library') createJd(@TenantId() t: string, @Body() dto: JdDto) {
     return this.org.createJd(t, dto);
+  }
+  @Patch('jd-library/:id') updateJd(@TenantId() t: string, @Param('id') id: string, @Body() dto: UpdateJdDto) {
+    return this.org.updateJd(t, id, dto);
+  }
+  @Delete('jd-library/:id') removeJd(@TenantId() t: string, @Param('id') id: string) {
+    return this.org.removeJd(t, id);
   }
 }

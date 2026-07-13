@@ -1,1 +1,0 @@
-﻿From the BGC vendor perspective: This screen covers the portal module. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

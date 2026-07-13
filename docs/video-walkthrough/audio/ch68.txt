@@ -1,1 +1,0 @@
-﻿From the employee perspective: Payroll runs salary processing and payslip distribution. HR initiates runs; employees view their own payslips securely. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

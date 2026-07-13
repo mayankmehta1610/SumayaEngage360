@@ -53,16 +53,28 @@ export class PayrollService {
     tenantId: string,
     dto: { calendarId: string; periodStart: string; periodEnd: string },
   ) {
+    const periodStart = new Date(dto.periodStart);
+    const periodEnd = new Date(dto.periodEnd);
+    if (periodStart > periodEnd) throw new BadRequestException('Period start must be before period end');
     const cal = await this.prisma.payrollCalendar.findFirst({
       where: { id: dto.calendarId, tenantId },
     });
     if (!cal) throw new NotFoundException('Payroll calendar not found');
+    const overlap = await this.prisma.payrollRun.findFirst({
+      where: {
+        tenantId,
+        calendarId: dto.calendarId,
+        periodStart: { lte: periodEnd },
+        periodEnd: { gte: periodStart },
+      },
+    });
+    if (overlap) throw new BadRequestException('A payroll run already overlaps this calendar period');
     return this.prisma.payrollRun.create({
       data: {
         tenantId,
         calendarId: dto.calendarId,
-        periodStart: new Date(dto.periodStart),
-        periodEnd: new Date(dto.periodEnd),
+        periodStart,
+        periodEnd,
       },
     });
   }
@@ -77,6 +89,16 @@ export class PayrollService {
     const employees = await this.prisma.employee.findMany({
       where: { tenantId, status: { in: ['ACTIVE', 'ON_NOTICE', 'ONBOARDING'] } },
     });
+    const adjustmentPeriod = run.periodStart.toISOString().slice(0, 7);
+    const adjustments = await this.prisma.payrollAdjustment.findMany({
+      where: { tenantId, period: adjustmentPeriod, employeeId: { in: employees.map((employee) => employee.id) } },
+    });
+    const adjustmentsByEmployee = new Map<string, typeof adjustments>();
+    for (const adjustment of adjustments) {
+      const list = adjustmentsByEmployee.get(adjustment.employeeId) ?? [];
+      list.push(adjustment);
+      adjustmentsByEmployee.set(adjustment.employeeId, list);
+    }
 
     const payslips = [];
     for (const emp of employees) {
@@ -94,6 +116,16 @@ export class PayrollService {
         else deductions += amt;
         return { ...c, amount: amt };
       });
+      for (const adjustment of adjustmentsByEmployee.get(emp.id) ?? []) {
+        const rawAmount = Number(adjustment.amount);
+        const amount = ['LOAN', 'ADVANCE'].includes(adjustment.type)
+          ? Math.min(Number(adjustment.balance ?? rawAmount), Number(adjustment.monthlyRecover ?? rawAmount))
+          : rawAmount;
+        const earning = ['BONUS', 'INCENTIVE', 'OVERTIME', 'ARREAR'].includes(adjustment.type);
+        if (earning) gross += amount;
+        else deductions += amount;
+        lines.push({ code: adjustment.type, name: adjustment.note || adjustment.type, monthly: amount, type: earning ? 'EARNING' : 'DEDUCTION', amount });
+      }
       const net = gross - deductions;
       const slip = await this.prisma.payslip.upsert({
         where: { payrollRunId_employeeId: { payrollRunId: runId, employeeId: emp.id } },
@@ -112,6 +144,11 @@ export class PayrollService {
         },
       });
       payslips.push(slip);
+    }
+
+    for (const adjustment of adjustments.filter((item) => ['LOAN', 'ADVANCE'].includes(item.type) && item.balance != null)) {
+      const recovery = Math.min(Number(adjustment.balance), Number(adjustment.monthlyRecover ?? adjustment.amount));
+      await this.prisma.payrollAdjustment.update({ where: { id: adjustment.id }, data: { balance: Math.max(0, Number(adjustment.balance) - recovery) } });
     }
 
     await this.prisma.payrollRun.update({

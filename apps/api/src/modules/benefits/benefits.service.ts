@@ -16,6 +16,19 @@ export class BenefitsService {
     return this.prisma.benefitPlan.create({ data: { tenantId, ...dto } });
   }
 
+  async updatePlan(tenantId: string, id: string, dto: Partial<{ name: string; category: string; description: string }>) {
+    const result = await this.prisma.benefitPlan.updateMany({ where: { id, tenantId }, data: dto });
+    if (!result.count) throw new NotFoundException('Benefit plan not found');
+    return this.prisma.benefitPlan.findFirst({ where: { id, tenantId } });
+  }
+
+  async deactivatePlan(tenantId: string, id: string) {
+    const result = await this.prisma.benefitPlan.updateMany({ where: { id, tenantId }, data: { isActive: false } });
+    if (!result.count) throw new NotFoundException('Benefit plan not found');
+    await this.prisma.benefitEnrollment.updateMany({ where: { tenantId, planId: id, status: 'ACTIVE' }, data: { status: 'ENDED' } });
+    return { deactivated: true };
+  }
+
   enrollments(tenantId: string, planId?: string) {
     return this.prisma.benefitEnrollment.findMany({
       where: { tenantId, ...(planId ? { planId } : {}) },
@@ -46,5 +59,11 @@ export class BenefitsService {
       where: { tenantId, employeeId, status: 'ACTIVE' },
       include: { plan: true },
     });
+  }
+
+  async endEnrollment(tenantId: string, id: string) {
+    const result = await this.prisma.benefitEnrollment.updateMany({ where: { id, tenantId }, data: { status: 'ENDED' } });
+    if (!result.count) throw new NotFoundException('Benefit enrollment not found');
+    return { ended: true };
   }
 }

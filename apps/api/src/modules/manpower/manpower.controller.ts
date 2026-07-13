@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import { IsInt, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { Roles } from '../../common/auth/roles.decorator';
@@ -9,10 +9,16 @@ import { ManpowerService } from './manpower.service';
 
 class CreateDto {
   @IsString() title: string;
-  @IsInt() headcount: number;
+  @IsOptional() @IsString() description?: string;
+  @IsInt() @Min(1) @Max(10000) headcount: number;
   @IsOptional() @IsString() departmentId?: string;
-  @IsOptional() @IsNumber() budget?: number;
+  @IsOptional() @IsNumber() @Min(0) budget?: number;
   @IsOptional() @IsString() justification?: string;
+  @IsOptional() @IsString() location?: string;
+  @IsOptional() @IsString() employmentType?: string;
+  @IsOptional() @IsNumber() @Min(0) minExperience?: number;
+  @IsOptional() @IsNumber() @Min(0) maxExperience?: number;
+  @IsOptional() @IsArray() @IsString({ each: true }) skills?: string[];
 }
 
 @Controller('manpower')

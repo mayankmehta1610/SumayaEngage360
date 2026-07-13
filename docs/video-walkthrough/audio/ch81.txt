@@ -1,1 +1,0 @@
-﻿The Platform Admin works outside tenant business operations. This screen creates isolated companies with a unique subdomain, country, and first tenant administrator. The navigation deliberately exposes only platform requirements and tenant provisioning; employee, payroll, recruitment, and other tenant modules are hidden and also rejected by the API guard.

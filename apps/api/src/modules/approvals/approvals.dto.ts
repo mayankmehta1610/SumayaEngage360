@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  ArrayMinSize,
   IsEnum,
   IsIn,
   IsInt,
@@ -33,6 +34,7 @@ export class CreateWorkflowDto {
   name: string;
 
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => ApprovalStepDto)
   steps: ApprovalStepDto[];

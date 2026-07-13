@@ -17,3 +17,6 @@ apps/web/test-results/
 apps/web/playwright-report/
 .artifacts/
 *.inspect.ndjson
+
+# Generated professional walkthrough assets are local deliverables, not source.
+docs/video-walkthrough/

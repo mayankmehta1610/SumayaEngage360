@@ -1,12 +1,32 @@
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsObject, IsOptional, IsString, Length } from 'class-validator';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { Roles } from '../../common/auth/roles.decorator';
 import { TenantId } from '../../common/tenant/tenant.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PreboardingService } from './preboarding.service';
+
+class CreateTaskDto {
+  @IsString() employeeId: string;
+  @IsString() taskType: string;
+  @IsString() title: string;
+  @IsOptional() @IsString() assigneeId?: string;
+  @IsOptional() @IsDateString() dueDate?: string;
+}
+
+class PersonalDataDto {
+  @IsOptional() @IsString() emergencyName?: string;
+  @IsOptional() @IsString() emergencyPhone?: string;
+  @IsOptional() @IsString() emergencyRelation?: string;
+  @IsOptional() @IsString() bankName?: string;
+  @IsOptional() @IsString() bankAccountNo?: string;
+  @IsOptional() @IsString() bankIfsc?: string;
+  @IsOptional() @IsString() pan?: string;
+  @IsOptional() @IsString() @Length(4, 4) aadhaarLast4?: string;
+  @IsOptional() @IsObject() address?: Record<string, unknown>;
+}
 
 @Controller('preboarding')
 export class PreboardingController {
@@ -22,9 +42,9 @@ export class PreboardingController {
   }
 
   @Post('personal-data/mine')
-  async saveMyData(@TenantId() t: string, @CurrentUser() u: JwtPayload, @Body() dto: Record<string, unknown>) {
+  async saveMyData(@TenantId() t: string, @CurrentUser() u: JwtPayload, @Body() dto: PersonalDataDto) {
     const e = await this.prisma.employee.findFirstOrThrow({ where: { tenantId: t, userId: u.sub } });
-    return this.preboarding.upsertPersonalData(t, e.id, dto);
+    return this.preboarding.upsertPersonalData(t, e.id, { ...dto });
   }
 
   @Get('personal-data/:employeeId')
@@ -47,7 +67,7 @@ export class PreboardingController {
 
   @Post('tasks')
   @Roles(Role.TENANT_ADMIN, Role.HR)
-  createTask(@TenantId() t: string, @Body() dto: { employeeId: string; taskType: string; title: string; assigneeId?: string; dueDate?: string }) {
+  createTask(@TenantId() t: string, @Body() dto: CreateTaskDto) {
     return this.preboarding.createTask(t, dto);
   }
 

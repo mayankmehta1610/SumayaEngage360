@@ -20,9 +20,25 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
     >
 @if (error) { <div class="e360-error">{{ error }}</div> }
     <div class="card">
-      <input [(ngModel)]="f.title" placeholder="Role title" />
-      <input [(ngModel)]="f.headcount" type="number" placeholder="Headcount" />
-      <button (click)="create()">Create</button>
+      <h2>New headcount requisition</h2>
+      <div class="row">
+        <div><label>Role title</label><input [(ngModel)]="f.title" placeholder="Senior Software Engineer" /></div>
+        <div><label>Department</label><select [(ngModel)]="f.departmentId"><option value="">Select department</option>@for (d of departments; track d.id) { <option [value]="d.id">{{ d.name }}</option> }</select></div>
+        <div><label>Headcount</label><input [(ngModel)]="f.headcount" type="number" min="1" /></div>
+      </div>
+      <div class="row">
+        <div><label>Work location</label><input [(ngModel)]="f.location" placeholder="New York, NY or Remote" /></div>
+        <div><label>Employment type</label><select [(ngModel)]="f.employmentType"><option value="FULL_TIME">Full time</option><option value="PART_TIME">Part time</option><option value="CONTRACT">Contract</option></select></div>
+        <div><label>Approved budget</label><input [(ngModel)]="f.budget" type="number" min="0" placeholder="Annual budget" /></div>
+      </div>
+      <div class="row">
+        <div><label>Minimum experience (years)</label><input [(ngModel)]="f.minExperience" type="number" min="0" step="0.5" /></div>
+        <div><label>Maximum experience (years)</label><input [(ngModel)]="f.maxExperience" type="number" min="0" step="0.5" /></div>
+        <div><label>Required skills</label><input [(ngModel)]="f.skillsText" placeholder="TypeScript, NestJS, PostgreSQL" /></div>
+      </div>
+      <label>Full job description</label><textarea [(ngModel)]="f.description" placeholder="Responsibilities, outcomes, and qualifications"></textarea>
+      <label>Business justification</label><textarea [(ngModel)]="f.justification" placeholder="Why this role is required and the impact of leaving it unfilled"></textarea>
+      <button (click)="create()" [disabled]="busy">Save draft</button>
     </div>
     <div class="card">
       <h2>Bench capacity</h2>
@@ -57,6 +73,9 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
         <ng-template #rowTemplate let-row>
           <td>{{ row.title }}</td>
           <td>{{ row.count }}</td>
+          <td>{{ row.department }}</td>
+          <td>{{ row.location }}</td>
+          <td>{{ row.budget }}</td>
           <td>{{ row.status }}</td>
           <td>
             @if (row._raw.status === 'DRAFT') { <button (click)="submit(row.id)">Submit</button> }
@@ -73,11 +92,14 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 export class ManpowerComponent implements OnInit {
   private api = inject(ApiService);
   auth = inject(AuthService);
-  requests: any[] = []; bench: any[] = []; projects: any[] = []; matches: any = null;
-  selectedProjectId = ''; f: any = { headcount: 1 }; error = '';
+  requests: any[] = []; bench: any[] = []; projects: any[] = []; departments: any[] = []; matches: any = null;
+  selectedProjectId = ''; f: any = this.emptyForm(); error = ''; busy = false;
   tableCols: TableColumn[] = [
     { key: 'title', label: 'Title' },
     { key: 'count', label: 'Count' },
+    { key: 'department', label: 'Department' },
+    { key: 'location', label: 'Location' },
+    { key: 'budget', label: 'Budget' },
     { key: 'status', label: 'Status' },
     { key: 'actions', label: 'Actions', sortable: false, filterable: false },
   ];
@@ -87,6 +109,9 @@ export class ManpowerComponent implements OnInit {
       id: r.id,
       title: r.title,
       count: r.headcount,
+      department: r.departmentName || '—',
+      location: r.location,
+      budget: r.budget == null ? '—' : Number(r.budget).toLocaleString('en-US'),
       status: r.status,
       _raw: r,
     }));
@@ -94,21 +119,42 @@ export class ManpowerComponent implements OnInit {
 
   async ngOnInit() {
     try {
-      [this.requests, this.bench, this.projects] = await Promise.all([
+      [this.requests, this.bench, this.projects, this.departments] = await Promise.all([
         this.api.get<any[]>('/manpower'),
         this.api.get<any[]>('/resourcing/bench'),
         this.api.get<any[]>('/projects'),
+        this.api.get<any[]>('/departments'),
       ]);
     }
     catch (e) { this.error = errMsg(e); }
   }
   async create() {
-    await this.api.post('/manpower', this.f);
-    this.requests = await this.api.get<any[]>('/manpower');
-    this.f = { headcount: 1 };
+    this.error = '';
+    if (!this.f.title?.trim() || !this.f.description?.trim() || !this.f.location?.trim() || !this.f.departmentId) {
+      this.error = 'Role title, department, location, and full job description are required.';
+      return;
+    }
+    if (this.f.maxExperience !== '' && this.f.minExperience !== '' && Number(this.f.maxExperience) < Number(this.f.minExperience)) {
+      this.error = 'Maximum experience cannot be less than minimum experience.';
+      return;
+    }
+    this.busy = true;
+    try {
+      const { skillsText, ...value } = this.f;
+      await this.api.post('/manpower', {
+        ...value,
+        headcount: Number(value.headcount),
+        budget: value.budget === '' ? undefined : Number(value.budget),
+        minExperience: value.minExperience === '' ? undefined : Number(value.minExperience),
+        maxExperience: value.maxExperience === '' ? undefined : Number(value.maxExperience),
+        skills: String(skillsText ?? '').split(',').map((skill) => skill.trim()).filter(Boolean),
+      });
+      this.requests = await this.api.get<any[]>('/manpower');
+      this.f = this.emptyForm();
+    } catch (e) { this.error = errMsg(e); } finally { this.busy = false; }
   }
-  async submit(id: string) { await this.api.patch(`/manpower/${id}/submit`); this.requests = await this.api.get<any[]>('/manpower'); }
-  async approve(id: string) { await this.api.patch(`/manpower/${id}/approve`); this.requests = await this.api.get<any[]>('/manpower'); }
+  async submit(id: string) { try { await this.api.patch(`/manpower/${id}/submit`); this.requests = await this.api.get<any[]>('/manpower'); } catch (e) { this.error = errMsg(e); } }
+  async approve(id: string) { try { await this.api.patch(`/manpower/${id}/approve`); this.requests = await this.api.get<any[]>('/manpower'); } catch (e) { this.error = errMsg(e); } }
   async match() {
     try { this.matches = await this.api.get<any>(`/resourcing/projects/${this.selectedProjectId}/match`); }
     catch (e) { this.error = errMsg(e); }
@@ -123,5 +169,9 @@ export class ManpowerComponent implements OnInit {
       this.bench = await this.api.get<any[]>('/resourcing/bench');
       await this.match();
     } catch (e) { this.error = errMsg(e); }
+  }
+
+  private emptyForm() {
+    return { title: '', description: '', departmentId: '', headcount: 1, location: '', employmentType: 'FULL_TIME', budget: '', justification: '', minExperience: '', maxExperience: '', skillsText: '' };
   }
 }

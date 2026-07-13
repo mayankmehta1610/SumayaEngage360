@@ -4,10 +4,11 @@ import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { tableListParams, TableSort } from '../core/table-query.util';
+import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ModuleShellComponent, DataTableComponent],
+  imports: [FormsModule, ModuleShellComponent, DataTableComponent, SelectFieldComponent],
   template: `
     <e360-module-shell
       title="Client contracts"
@@ -18,6 +19,19 @@ import { tableListParams, TableSort } from '../core/table-query.util';
       [breadcrumbs]="[{ label: 'Staffing' }, { label: 'Contracts' }]"
     >
       @if (error) { <div class="e360-error">{{ error }}</div> }
+
+      <div class="card">
+        <h2>Create client contract</h2>
+        <div class="row">
+          <e360-select-field label="Project" placeholder="Select project" [options]="projectOptions" [(ngModel)]="form.projectId" />
+          <div><label>Client reference</label><input [(ngModel)]="form.clientRef" placeholder="PO or contract number" /></div>
+          <div><label>Contract value</label><input type="number" min="0" [(ngModel)]="form.value" /></div>
+          <div><label>Start date</label><input type="date" [(ngModel)]="form.startDate" /></div>
+          <div><label>End date</label><input type="date" [(ngModel)]="form.endDate" /></div>
+        </div>
+        <label>Commercial terms</label><textarea [(ngModel)]="form.terms" placeholder="Billing, payment, renewal, and termination terms"></textarea>
+        <button (click)="create()" [disabled]="busy">Create contract</button>
+      </div>
 
       <div class="card">
         <e360-data-table
@@ -40,6 +54,9 @@ import { tableListParams, TableSort } from '../core/table-query.util';
 export class ContractsComponent implements OnInit {
   private api = inject(ApiService);
   contracts: any[] = [];
+  projects: any[] = [];
+  form: any = {};
+  busy = false;
   error = '';
   loading = false;
   page = 1;
@@ -66,8 +83,31 @@ export class ContractsComponent implements OnInit {
     }));
   }
 
+  get projectOptions(): SelectOption[] { return this.projects.map((project) => ({ value: project.id, label: `${project.code} — ${project.name}` })); }
+
   async ngOnInit() {
-    await this.load();
+    await Promise.all([this.load(), this.loadProjects()]);
+  }
+
+  async loadProjects() {
+    try { this.projects = await this.api.get<any[]>('/projects'); }
+    catch (e) { this.error = errMsg(e); }
+  }
+
+  async create() {
+    this.error = '';
+    if (!this.form.projectId || !this.form.startDate) { this.error = 'Project and start date are required.'; return; }
+    if (this.form.endDate && this.form.endDate < this.form.startDate) { this.error = 'End date cannot be before start date.'; return; }
+    this.busy = true;
+    try {
+      await this.api.post('/contracts', {
+        ...this.form,
+        value: this.form.value === '' || this.form.value == null ? undefined : Number(this.form.value),
+        startDate: new Date(this.form.startDate).toISOString(),
+        endDate: this.form.endDate ? new Date(this.form.endDate).toISOString() : undefined,
+      });
+      this.form = {}; await this.load();
+    } catch (e) { this.error = errMsg(e); } finally { this.busy = false; }
   }
 
   onPageChange(p: number) {

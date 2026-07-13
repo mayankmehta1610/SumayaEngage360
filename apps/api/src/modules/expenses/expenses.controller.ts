@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsArray, IsDateString, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { ArrayMinSize, IsArray, IsDateString, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { Roles } from '../../common/auth/roles.decorator';
@@ -12,13 +12,14 @@ import { ExpensesService } from './expenses.service';
 class LineDto {
   @IsDateString() date: string;
   @IsString() category: string;
-  @IsNumber() amount: number;
+  @IsNumber() @Min(0.01) amount: number;
   @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsString() receiptFileId?: string;
 }
 
 class ClaimDto {
   @IsString() title: string;
-  @IsArray() @ValidateNested({ each: true }) @Type(() => LineDto) lines: LineDto[];
+  @IsArray() @ArrayMinSize(1) @ValidateNested({ each: true }) @Type(() => LineDto) lines: LineDto[];
 }
 
 @Controller('expenses')

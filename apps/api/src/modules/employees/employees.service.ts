@@ -34,6 +34,14 @@ export class EmployeesService {
     if (existing) {
       throw new ConflictException('A user with this email already exists');
     }
+    if (dto.departmentId) {
+      const department = await this.prisma.department.findFirst({ where: { id: dto.departmentId, tenantId } });
+      if (!department) throw new BadRequestException('Department does not belong to this organization');
+    }
+    if (dto.managerId) {
+      const manager = await this.prisma.employee.findFirst({ where: { id: dto.managerId, tenantId } });
+      if (!manager) throw new BadRequestException('Manager does not belong to this organization');
+    }
     const employeeCode = await this.nextEmployeeCode(tenantId);
     return this.prisma.employee.create({
       data: {
@@ -170,6 +178,15 @@ export class EmployeesService {
           `Employee status cannot move from ${employee.status} to ${dto.status}; use the exit workflow for release`,
         );
       }
+    }
+    if (dto.departmentId) {
+      const department = await this.prisma.department.findFirst({ where: { id: dto.departmentId, tenantId } });
+      if (!department) throw new BadRequestException('Department does not belong to this organization');
+    }
+    if (dto.managerId) {
+      if (dto.managerId === id) throw new BadRequestException('An employee cannot report to themselves');
+      const manager = await this.prisma.employee.findFirst({ where: { id: dto.managerId, tenantId } });
+      if (!manager) throw new BadRequestException('Manager does not belong to this organization');
     }
     return this.prisma.employee.update({ where: { id }, data: dto });
   }

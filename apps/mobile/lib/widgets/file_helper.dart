@@ -4,7 +4,7 @@ import '../core/api_client.dart';
 /// Pick a file and upload to POST /files. Returns { id, fileName, ... }.
 Future<Map<String, dynamic>?> pickAndUpload(
     {List<String>? allowedExtensions}) async {
-  final result = await FilePicker.platform.pickFiles(
+  final result = await FilePicker.pickFiles(
     type: allowedExtensions != null ? FileType.custom : FileType.any,
     allowedExtensions: allowedExtensions,
     withData: true,

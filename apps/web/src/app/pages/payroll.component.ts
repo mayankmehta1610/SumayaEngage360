@@ -26,9 +26,11 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
         <h2>Payroll calendar</h2>
         <div class="row">
           <input [(ngModel)]="calName" placeholder="Calendar name" />
+          <select [(ngModel)]="calFrequency"><option value="MONTHLY">Monthly</option><option value="BIWEEKLY">Biweekly</option><option value="WEEKLY">Weekly</option></select>
+          <input [(ngModel)]="calPayDay" type="number" min="1" max="31" placeholder="Pay day" />
           <button (click)="createCal()">Create</button>
         </div>
-        <ul>@for (c of calendars; track c.id) { <li>{{ c.name }} (pay day {{ c.payDay }})</li> }</ul>
+        <ul>@for (c of calendars; track c.id) { <li>{{ c.name }} · {{ c.frequency }} · pay day {{ c.payDay }}</li> }</ul>
       </div>
       <div class="card">
         <h2>Run payroll</h2>
@@ -132,7 +134,7 @@ export class PayrollComponent implements OnInit {
   adjustment: any = { type: 'BONUS', period: new Date().toISOString().slice(0, 7) };
   tax: any = { regime: 'NEW' };
   taxItems: any[] = [{ section: '', description: '', amount: 0 }];
-  calName = ''; runCalId = ''; periodStart = ''; periodEnd = ''; error = '';
+  calName = ''; calFrequency = 'MONTHLY'; calPayDay = 28; runCalId = ''; periodStart = ''; periodEnd = ''; error = '';
   payslipCols: TableColumn[] = [
     { key: 'employee', label: 'Employee' },
     { key: 'gross', label: 'Gross' },
@@ -183,19 +185,27 @@ export class PayrollComponent implements OnInit {
   }
 
   async createCal() {
-    await this.api.post('/payroll/calendars', { name: this.calName });
-    this.calendars = await this.api.get<any[]>('/payroll/calendars');
-    this.calName = '';
+    this.error = '';
+    if (!this.calName.trim() || this.calPayDay < 1 || this.calPayDay > 31) { this.error = 'Calendar name and a pay day from 1 through 31 are required.'; return; }
+    try {
+      await this.api.post('/payroll/calendars', { name: this.calName.trim(), frequency: this.calFrequency, payDay: Number(this.calPayDay) });
+      this.calendars = await this.api.get<any[]>('/payroll/calendars');
+      this.calName = '';
+    } catch (e) { this.error = errMsg(e); }
   }
 
   async createRun() {
-    await this.api.post('/payroll/runs', { calendarId: this.runCalId, periodStart: this.periodStart, periodEnd: this.periodEnd });
-    this.runs = await this.api.get<any[]>('/payroll/runs');
+    this.error = '';
+    if (!this.runCalId || !this.periodStart || !this.periodEnd) { this.error = 'Calendar, period start, and period end are required.'; return; }
+    try {
+      await this.api.post('/payroll/runs', { calendarId: this.runCalId, periodStart: this.periodStart, periodEnd: this.periodEnd });
+      this.runs = await this.api.get<any[]>('/payroll/runs');
+    } catch (e) { this.error = errMsg(e); }
   }
 
   async process(id: string) {
-    await this.api.post(`/payroll/runs/${id}/process`, {});
-    this.runs = await this.api.get<any[]>('/payroll/runs');
+    try { await this.api.post(`/payroll/runs/${id}/process`, {}); this.runs = await this.api.get<any[]>('/payroll/runs'); }
+    catch (e) { this.error = errMsg(e); }
   }
 
   async viewPayslips(id: string) {

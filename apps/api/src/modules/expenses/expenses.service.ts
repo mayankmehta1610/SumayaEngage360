@@ -14,8 +14,10 @@ export class ExpensesService {
     });
   }
 
-  async create(tenantId: string, employeeId: string, dto: { title: string; lines: { date: string; category: string; amount: number; description?: string }[] }) {
+  async create(tenantId: string, employeeId: string, dto: { title: string; lines: { date: string; category: string; amount: number; description?: string; receiptFileId?: string }[] }) {
+    if (!dto.lines.length) throw new BadRequestException('At least one expense line is required');
     const total = dto.lines.reduce((s, l) => s + l.amount, 0);
+    if (total <= 0) throw new BadRequestException('Claim total must be greater than zero');
     return this.prisma.expenseClaim.create({
       data: {
         tenantId,
@@ -28,6 +30,7 @@ export class ExpensesService {
             category: l.category,
             amount: l.amount,
             description: l.description,
+            receiptFileId: l.receiptFileId,
           })),
         },
       },
@@ -60,6 +63,7 @@ export class ExpensesService {
   async reject(tenantId: string, claimId: string) {
     const claim = await this.prisma.expenseClaim.findFirst({ where: { id: claimId, tenantId } });
     if (!claim) throw new NotFoundException('Claim not found');
+    if (claim.status !== 'SUBMITTED') throw new BadRequestException('Claim not in submitted state');
     return this.prisma.expenseClaim.update({
       where: { id: claimId },
       data: { status: 'REJECTED' },

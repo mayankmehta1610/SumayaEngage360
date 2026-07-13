@@ -1,1 +1,0 @@
-﻿From the HR perspective: Preboarding configures the new-hire portal checklist—required documents and policies candidates complete before day one. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

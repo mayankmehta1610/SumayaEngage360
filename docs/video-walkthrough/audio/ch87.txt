@@ -1,1 +1,0 @@
-﻿Employees receive only surveys that are open for their tenant and can submit one validated response per survey. eNPS uses the standard zero-to-ten score with an optional comment, and the server links eligibility to the authenticated employee rather than trusting a supplied employee identifier. Administrative create, close, and analytics controls are absent from this role.

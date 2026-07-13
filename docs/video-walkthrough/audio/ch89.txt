@@ -1,1 +1,0 @@
-﻿Employees can review only their own payroll adjustments and submit structured tax declarations for a selected financial year and tax regime. Investment, insurance, housing, and other declared amounts are entered as data and retained with a submission and verification status. Employees cannot create adjustments, list other workers' declarations, or verify their own submission.

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import { IsDateString, IsInt, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { Roles } from '../../common/auth/roles.decorator';
@@ -12,13 +12,13 @@ class ComponentDto {
   @IsString() code: string;
   @IsString() name: string;
   @IsString() type: string;
-  @IsOptional() isStatutory?: boolean;
+  @IsOptional() @IsBoolean() isStatutory?: boolean;
 }
 
 class CalendarDto {
   @IsString() name: string;
   @IsOptional() @IsString() frequency?: string;
-  @IsOptional() @IsInt() payDay?: number;
+  @IsOptional() @IsInt() @Min(1) @Max(31) payDay?: number;
 }
 
 class RunDto {

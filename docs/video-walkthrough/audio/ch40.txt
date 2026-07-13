@@ -1,1 +1,0 @@
-﻿From the tenant admin perspective: Running a report executes the query against live data and displays generated results with timestamps for auditability. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

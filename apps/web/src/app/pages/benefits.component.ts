@@ -26,7 +26,8 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
       <div class="row">
         <input [(ngModel)]="f.code" placeholder="Code" />
         <input [(ngModel)]="f.name" placeholder="Name" />
-        <input [(ngModel)]="f.category" placeholder="Category" />
+        <select [(ngModel)]="f.category"><option value="">Select category</option><option>Health</option><option>Dental</option><option>Vision</option><option>Insurance</option><option>Retirement</option><option>Wellness</option><option>Allowance</option><option>Other</option></select>
+        <input [(ngModel)]="f.description" placeholder="Coverage, eligibility, and plan details" />
         <button (click)="create()">Add plan</button>
       </div>
       }
@@ -35,6 +36,7 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
           <td>{{ row.code }}</td>
           <td>{{ row.name }}</td>
           <td>{{ row.category }}</td>
+          <td>{{ row.description }}</td>
           <td>{{ row.enrolled }}</td>
           <td>@if (isAdmin) {
             <e360-select-field
@@ -44,13 +46,16 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
               [(ngModel)]="row._raw._employeeId"
             />
             <button (click)="enroll(row._raw)" [disabled]="!row._raw._employeeId">Enroll</button>
+            <button class="danger" (click)="deactivate(row.id)">Deactivate</button>
           }</td>
         </ng-template>
       </e360-data-table>
     </div>
     @if (isAdmin) {
       <div class="card"><h2>All enrollments</h2>
-        <e360-data-table [columns]="enrollCols" [rows]="enrollRows" [paginated]="false" [stickyHeader]="true" />
+        <e360-data-table [columns]="enrollCols" [rows]="enrollRows" [paginated]="false" [stickyHeader]="true">
+          <ng-template #rowTemplate let-row><td>{{ row.employee }}</td><td>{{ row.plan }}</td><td>{{ row.status }}</td><td>@if (row.status === 'ACTIVE') { <button class="danger" (click)="endEnrollment(row.id)">End</button> }</td></ng-template>
+        </e360-data-table>
       </div>
     }
     <div class="card"><h2>My enrollments</h2>
@@ -69,6 +74,7 @@ export class BenefitsComponent implements OnInit {
     { key: 'code', label: 'Code' },
     { key: 'name', label: 'Name' },
     { key: 'category', label: 'Category' },
+    { key: 'description', label: 'Description' },
     { key: 'enrolled', label: 'Enrolled' },
     { key: 'actions', label: '', sortable: false, filterable: false },
   ];
@@ -76,6 +82,7 @@ export class BenefitsComponent implements OnInit {
     { key: 'employee', label: 'Employee' },
     { key: 'plan', label: 'Plan' },
     { key: 'status', label: 'Status' },
+    { key: 'actions', label: 'Action', sortable: false, filterable: false },
   ];
 
   get isAdmin() { return this.auth.hasRole('TENANT_ADMIN', 'HR'); }
@@ -93,6 +100,7 @@ export class BenefitsComponent implements OnInit {
       code: p.code,
       name: p.name,
       category: p.category,
+      description: p.description || '—',
       enrolled: p._count?.enrollments ?? 0,
       _raw: p,
     }));
@@ -100,6 +108,7 @@ export class BenefitsComponent implements OnInit {
 
   get enrollRows() {
     return this.enrollments.map((e) => ({
+      id: e.id,
       employee: `${e.employee.user.firstName} ${e.employee.user.lastName}`,
       plan: e.plan.name,
       status: e.status,
@@ -123,6 +132,7 @@ export class BenefitsComponent implements OnInit {
 
   async create() {
     try {
+      if (!this.f.code?.trim() || !this.f.name?.trim() || !this.f.category) { this.error = 'Code, name, and category are required.'; return; }
       await this.api.post('/benefits/plans', this.f);
       this.plans = await this.api.get<any[]>('/benefits/plans');
       this.f = {};
@@ -138,5 +148,16 @@ export class BenefitsComponent implements OnInit {
         this.api.get<any[]>('/benefits/enrollments/mine'),
       ]);
     } catch (e) { this.error = errMsg(e); }
+  }
+
+
+  async deactivate(id: string) {
+    try { await this.api.delete(`/benefits/plans/${id}`); this.plans = await this.api.get<any[]>('/benefits/plans'); }
+    catch (e) { this.error = errMsg(e); }
+  }
+
+  async endEnrollment(id: string) {
+    try { await this.api.delete(`/benefits/enrollments/${id}`); this.enrollments = await this.api.get<any[]>('/benefits/enrollments'); }
+    catch (e) { this.error = errMsg(e); }
   }
 }

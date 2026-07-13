@@ -1,1 +1,0 @@
-﻿From the tenant admin perspective: Requirements tracks implementation coverage against the product specification, useful during rollout and compliance reviews. Notice the application shell: grouped navigation on the left, module header with breadcrumbs and tabs, and the signed-in user with role badges at the bottom.

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { IsOptional, IsString } from 'class-validator';
 import { CurrentUser } from '../../common/auth/current-user.decorator';
@@ -17,6 +17,12 @@ class PlanDto {
 
 class EnrollDto {
   @IsString() employeeId: string;
+}
+
+class UpdatePlanDto {
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsString() category?: string;
+  @IsOptional() @IsString() description?: string;
 }
 
 @Controller('benefits')
@@ -38,6 +44,18 @@ export class BenefitsController {
     return this.benefits.createPlan(t, dto);
   }
 
+  @Patch('plans/:id')
+  @Roles(Role.TENANT_ADMIN, Role.HR)
+  updatePlan(@TenantId() t: string, @Param('id') id: string, @Body() dto: UpdatePlanDto) {
+    return this.benefits.updatePlan(t, id, dto);
+  }
+
+  @Delete('plans/:id')
+  @Roles(Role.TENANT_ADMIN, Role.HR)
+  deactivatePlan(@TenantId() t: string, @Param('id') id: string) {
+    return this.benefits.deactivatePlan(t, id);
+  }
+
   @Get('enrollments')
   @Roles(Role.TENANT_ADMIN, Role.HR)
   enrollments(@TenantId() t: string) {
@@ -48,6 +66,12 @@ export class BenefitsController {
   @Roles(Role.TENANT_ADMIN, Role.HR)
   enroll(@TenantId() t: string, @Param('id') id: string, @Body() dto: EnrollDto) {
     return this.benefits.enroll(t, id, dto.employeeId);
+  }
+
+  @Delete('enrollments/:id')
+  @Roles(Role.TENANT_ADMIN, Role.HR)
+  endEnrollment(@TenantId() t: string, @Param('id') id: string) {
+    return this.benefits.endEnrollment(t, id);
   }
 
   @Get('enrollments/mine')
