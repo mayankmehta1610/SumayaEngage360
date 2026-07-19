@@ -89,6 +89,40 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
           } @empty { <tr><td colspan="6" class="muted">No tax declarations submitted.</td></tr> }
         </table>
       </div>
+
+      <div class="card">
+        <h2>🇮🇳 India statutory calculator (PF · ESI · PT · TDS)</h2>
+        <p class="e360-muted" style="margin-top:0">
+          Statutory deductions are auto-added to payslips for India tenants when a payroll run is processed.
+          Preview the calculation here{{ statConfig ? ' · rates as of ' + statConfig.asOf : '' }}.
+        </p>
+        <div class="row" style="align-items:flex-end">
+          <div><label>Monthly gross (₹)</label><input type="number" min="0" [(ngModel)]="stat.monthlyGross" /></div>
+          <div><label>Monthly basic + DA (₹)</label><input type="number" min="0" [(ngModel)]="stat.monthlyBasic" /></div>
+          <e360-select-field label="State (professional tax)" [options]="statStateOptions" [(ngModel)]="stat.state" placeholder="No PT / other state" />
+          <div><label>Tax regime</label><select [(ngModel)]="stat.regime"><option>NEW</option><option>OLD</option></select></div>
+          @if (stat.regime === 'OLD') {
+            <div><label>Declared deductions (annual ₹)</label><input type="number" min="0" [(ngModel)]="stat.annualDeclaredDeductions" /></div>
+          }
+          <div style="flex:0"><button (click)="computeStatutory()" [disabled]="!stat.monthlyGross">Calculate</button></div>
+        </div>
+        @if (statResult) {
+          <table style="margin-top:.6rem">
+            <tr><th>Component</th><th>Employee / month</th><th>Employer / month</th></tr>
+            <tr><td>Provident fund (EPF on ₹{{ statResult.pf.wages }})</td><td>₹{{ statResult.pf.employee }}</td>
+              <td>₹{{ statResult.pf.employerEpf + statResult.pf.employerEps }} (EPS ₹{{ statResult.pf.employerEps }} + EPF ₹{{ statResult.pf.employerEpf }}) + EDLI/admin ₹{{ statResult.pf.edli + statResult.pf.admin }}</td></tr>
+            <tr><td>ESI {{ statResult.esi.applicable ? '' : '(not applicable — gross above ceiling)' }}</td>
+              <td>₹{{ statResult.esi.employee }}</td><td>₹{{ statResult.esi.employer }}</td></tr>
+            <tr><td>Professional tax {{ statResult.state ? '(' + statResult.state + ')' : '(no PT state selected)' }}</td>
+              <td>₹{{ statResult.pt.monthly }}</td><td>—</td></tr>
+            <tr><td>TDS ({{ statResult.regime }} regime · taxable ₹{{ statResult.tds.taxableIncome }})</td>
+              <td>₹{{ statResult.tds.monthly }}</td><td>—</td></tr>
+            <tr><th>Total</th><th>₹{{ statResult.monthlyEmployeeDeductions }}</th><th>₹{{ statResult.monthlyEmployerCost }}</th></tr>
+            <tr><th>Net take-home</th><th colspan="2">₹{{ statResult.netMonthly }}</th></tr>
+          </table>
+          <p class="e360-muted" style="font-size:.78rem">{{ statResult.notice }}</p>
+        }
+      </div>
     } @else {
       <div class="card"><h2>My payslips</h2>
         <e360-data-table [columns]="mySlipCols" [rows]="mySlipRows" [pageSize]="15" [stickyHeader]="true" />
@@ -134,6 +168,31 @@ export class PayrollComponent implements OnInit {
   adjustment: any = { type: 'BONUS', period: new Date().toISOString().slice(0, 7) };
   tax: any = { regime: 'NEW' };
   taxItems: any[] = [{ section: '', description: '', amount: 0 }];
+  statConfig: any = null;
+  stat: any = { regime: 'NEW', state: '' };
+  statResult: any = null;
+
+  get statStateOptions(): SelectOption[] {
+    return (this.statConfig?.ptStates ?? []).map((s: string) => ({
+      value: s,
+      label: s.replace(/_/g, ' '),
+    }));
+  }
+
+  async computeStatutory() {
+    this.error = '';
+    try {
+      this.statResult = await this.api.post('/payroll/india/statutory', {
+        monthlyGross: Number(this.stat.monthlyGross),
+        monthlyBasic: Number(this.stat.monthlyBasic || this.stat.monthlyGross * 0.5),
+        state: this.stat.state || undefined,
+        regime: this.stat.regime,
+        annualDeclaredDeductions: this.stat.annualDeclaredDeductions
+          ? Number(this.stat.annualDeclaredDeductions)
+          : undefined,
+      });
+    } catch (e) { this.error = errMsg(e); }
+  }
   calName = ''; calFrequency = 'MONTHLY'; calPayDay = 28; runCalId = ''; periodStart = ''; periodEnd = ''; error = '';
   payslipCols: TableColumn[] = [
     { key: 'employee', label: 'Employee' },
@@ -174,6 +233,9 @@ export class PayrollComponent implements OnInit {
           this.api.get<any[]>('/payroll/adjustments'),
           this.api.get<any[]>('/payroll/tax-declarations'),
         ]);
+        this.statConfig = await this.api
+          .get<any>('/payroll/india/statutory-config')
+          .catch(() => null);
       } else {
         [this.mySlips, this.myAdjustments, this.myDeclarations] = await Promise.all([
           this.api.get<any[]>('/payroll/payslips/mine'),

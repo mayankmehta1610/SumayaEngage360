@@ -51,7 +51,7 @@ import { ApiService, errMsg } from '../core/api.service';
 export class WorkflowsComponent implements OnInit {
   private api = inject(ApiService);
   workflows: any[] = []; users: any[] = []; designations: any[] = []; error = ''; busy = false;
-  entities = ['ONBOARDING', 'RESIGNATION', 'TIMESHEET', 'OFFER', 'ALLOCATION', 'EXIT_CLEARANCE', 'OTHER'];
+  entities = ['ONBOARDING', 'RESIGNATION', 'TIMESHEET', 'OFFER', 'ALLOCATION', 'EXIT_CLEARANCE', 'INTRANET_CONTENT', 'OTHER'];
   form: any = { name: '', entityType: 'TIMESHEET', steps: [{ approverType: 'REPORTING_MANAGER', approverValue: '' }] };
 
   async ngOnInit() {

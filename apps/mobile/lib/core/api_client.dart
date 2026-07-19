@@ -34,6 +34,7 @@ class ApiClient {
   static String? get tenant => _tenant;
   static Map<String, dynamic>? get currentUser => user;
   static bool get signedIn => _token != null;
+  static String? get rawToken => _token; // for authenticated media fetches
 
   static Future<void> restore() async {
     final p = await SharedPreferences.getInstance();

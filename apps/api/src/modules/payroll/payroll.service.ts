@@ -1,12 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { IndiaStatutoryService } from './india-statutory.service';
 
 type Comp = { code: string; name: string; monthly: number; type: string };
 
 @Injectable()
 export class PayrollService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly indiaStatutory: IndiaStatutoryService,
+  ) {}
 
   async ensureDefaultComponents(tenantId: string) {
     const count = await this.prisma.salaryComponentMaster.count({ where: { tenantId } });
@@ -89,6 +93,29 @@ export class PayrollService {
     const employees = await this.prisma.employee.findMany({
       where: { tenantId, status: { in: ['ACTIVE', 'ON_NOTICE', 'ONBOARDING'] } },
     });
+
+    // India statutory pack: auto-add PF/ESI/PT/TDS lines for IN tenants unless
+    // the salary structure already carries those codes explicitly.
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { country: true },
+    });
+    const indiaMode = tenant?.country === 'IN';
+    const declByEmployee = new Map<string, { regime: string; total: Prisma.Decimal }>();
+    if (indiaMode) {
+      // Indian fiscal year (Apr–Mar) covering the run period, e.g. "2026-27".
+      const y = run.periodStart.getUTCFullYear();
+      const fiscalYear =
+        run.periodStart.getUTCMonth() >= 3
+          ? `${y}-${String((y + 1) % 100).padStart(2, '0')}`
+          : `${y - 1}-${String(y % 100).padStart(2, '0')}`;
+      const declarations = await this.prisma.taxDeclaration.findMany({
+        where: { tenantId, fiscalYear, employeeId: { in: employees.map((e) => e.id) } },
+        select: { employeeId: true, regime: true, total: true },
+      });
+      for (const d of declarations) declByEmployee.set(d.employeeId, d);
+    }
+
     const adjustmentPeriod = run.periodStart.toISOString().slice(0, 7);
     const adjustments = await this.prisma.payrollAdjustment.findMany({
       where: { tenantId, period: adjustmentPeriod, employeeId: { in: employees.map((employee) => employee.id) } },
@@ -126,6 +153,31 @@ export class PayrollService {
         else deductions += amount;
         lines.push({ code: adjustment.type, name: adjustment.note || adjustment.type, monthly: amount, type: earning ? 'EARNING' : 'DEDUCTION', amount });
       }
+      if (indiaMode) {
+        const existingCodes = new Set(comps.map((c) => c.code));
+        const basicAmt =
+          Number(comps.find((c) => c.code === 'BASIC')?.monthly ?? 0) || gross * 0.5;
+        const decl = declByEmployee.get(emp.id);
+        const stat = this.indiaStatutory.compute({
+          monthlyGross: gross,
+          monthlyBasic: basicAmt,
+          state: emp.location ?? undefined,
+          regime: decl?.regime === 'OLD' ? 'OLD' : 'NEW',
+          annualDeclaredDeductions: Number(decl?.total ?? 0),
+        });
+        const statutoryLines = [
+          { code: 'PF', name: 'Provident Fund (employee)', amount: stat.pf.employee, type: 'DEDUCTION' },
+          { code: 'ESI', name: 'ESI (employee)', amount: stat.esi.employee, type: 'DEDUCTION' },
+          { code: 'PT', name: `Professional tax${stat.state ? ` (${stat.state})` : ''}`, amount: stat.pt.monthly, type: 'TAX' },
+          { code: 'TDS', name: `Income tax (${stat.regime} regime)`, amount: stat.tds.monthly, type: 'TAX' },
+        ];
+        for (const s of statutoryLines) {
+          if (s.amount <= 0 || existingCodes.has(s.code)) continue;
+          deductions += s.amount;
+          lines.push({ code: s.code, name: s.name, monthly: s.amount, type: s.type, amount: s.amount });
+        }
+      }
+
       const net = gross - deductions;
       const slip = await this.prisma.payslip.upsert({
         where: { payrollRunId_employeeId: { payrollRunId: runId, employeeId: emp.id } },

@@ -91,10 +91,26 @@ filterable. India (IN) remains the default jurisdiction (tenant default country
 `IN`, currency `INR`, `Asia/Kolkata`) with the full India entry in the
 jurisdiction catalog (CIN/LLPIN, GSTIN, EPFO/ESIC, FRRO checks…).
 
-## 4. Known gaps / next steps
+## 4. Later additions (2026-07-20)
 
-- Mobile (Flutter) parity for the intranet module is **not yet built** — web only.
-- Publishing review flow is single-step (`PENDING_REVIEW` → publisher approves);
-  no multi-stage approval chain yet.
+- **Mobile parity**: `apps/mobile/lib/screens/modules/intranet_screen.dart` —
+  home (banners, hubs, featured/latest), category tree, content sheet with
+  authenticated poster preview and the view-only flag surfaced.
+- **Markdown articles**: article bodies are Markdown; the manage studio has a
+  formatting toolbar + live preview, and the viewer renders sanitized HTML
+  (`apps/web/src/app/core/markdown.ts` — dependency-free).
+- **Approval-workflow publishing**: configure a workflow for entity
+  `INTRANET_CONTENT` (Workflows page). Submit-for-review then opens an approval
+  request; final approval auto-publishes, rejection returns the item to draft.
+  Without a configured workflow, review→publish stays manual (unchanged).
+- **Publish notifications**: on publish (manual or via approval), in-app
+  deliveries fan out to the content's audience (department members, allowed
+  roles, or company-wide; capped at 500) — payload kind `INTRANET_PUBLISHED`.
+
+## 5. Known gaps / next steps
+
 - View-only enforcement is server-side download blocking; it does not prevent
   screenshots or browser save of inline-rendered media (DRM out of scope).
+- Publish notifications are in-app only; no email/digest channel yet.
+- Mobile intranet is read-only (publishing/manage stays on web) and points to
+  the web portal for video playback (no video_player dependency).

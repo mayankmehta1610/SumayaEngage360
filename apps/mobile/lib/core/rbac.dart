@@ -52,6 +52,19 @@ const routeAccess = <RouteAccess>[
       icon: Icons.dashboard_outlined,
       group: 'platform'),
   RouteAccess(
+      path: '/intranet',
+      label: 'Intranet',
+      roles: [
+        'TENANT_ADMIN',
+        'HR',
+        'MANAGER',
+        'EMPLOYEE',
+        'INTERVIEWER',
+        'DEPARTMENT_HEAD'
+      ],
+      icon: Icons.newspaper_outlined,
+      group: 'platform'),
+  RouteAccess(
       path: '/reports',
       label: 'Reports',
       roles: ['TENANT_ADMIN', 'HR', 'MANAGER'],

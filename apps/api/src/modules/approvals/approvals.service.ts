@@ -11,11 +11,15 @@ import {
   ResignationStatus,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { ApprovalActionDto, CreateWorkflowDto } from './approvals.dto';
 
 @Injectable()
 export class ApprovalsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   // ── workflow configuration ─────────────────────────────────────────────
 
@@ -173,7 +177,7 @@ export class ApprovalsService {
         where: { id: requestId },
         data: { status: RequestStatus.REJECTED },
       });
-      await this.applyOutcome(request.entityType, request.entityId, false);
+      await this.applyOutcome(request.entityType, request.entityId, false, userId);
       return { status: RequestStatus.REJECTED };
     }
 
@@ -184,7 +188,7 @@ export class ApprovalsService {
         where: { id: requestId },
         data: { status: RequestStatus.APPROVED },
       });
-      await this.applyOutcome(request.entityType, request.entityId, true);
+      await this.applyOutcome(request.entityType, request.entityId, true, userId);
       return { status: RequestStatus.APPROVED };
     }
     await this.prisma.approvalRequest.update({
@@ -312,8 +316,23 @@ export class ApprovalsService {
     entityType: ApprovalEntity,
     entityId: string,
     approved: boolean,
+    actorId?: string,
   ) {
     switch (entityType) {
+      case ApprovalEntity.INTRANET_CONTENT: {
+        const content = await this.prisma.intranetContent.update({
+          where: { id: entityId },
+          data: approved
+            ? { status: 'PUBLISHED', publishedAt: new Date(), publishedBy: actorId }
+            : { status: 'DRAFT' },
+        });
+        if (approved) {
+          void this.notifications
+            .notifyIntranetPublished(content.tenantId, content)
+            .catch(() => undefined);
+        }
+        break;
+      }
       case ApprovalEntity.RESIGNATION:
         await this.prisma.resignation.update({
           where: { id: entityId },

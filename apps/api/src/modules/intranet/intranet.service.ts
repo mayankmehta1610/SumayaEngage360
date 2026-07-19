@@ -11,6 +11,8 @@ import {
 } from '@prisma/client';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ApprovalsService } from '../approvals/approvals.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   CreateBannerDto,
   CreateCategoryDto,
@@ -33,7 +35,11 @@ interface Secured {
 
 @Injectable()
 export class IntranetService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly approvals: ApprovalsService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   // ── access model ────────────────────────────────────────────────
 
@@ -296,7 +302,7 @@ export class IntranetService {
     if (!t.from.includes(item.status)) {
       throw new BadRequestException(`Cannot ${action} content that is ${item.status}`);
     }
-    return this.prisma.intranetContent.update({
+    const updated = await this.prisma.intranetContent.update({
       where: { id },
       data: {
         status: t.to,
@@ -304,6 +310,18 @@ export class IntranetService {
         updatedBy: user.sub,
       },
     });
+    if (action === 'submit') {
+      // If the tenant configured an approval chain for intranet content, open
+      // a request; approval auto-publishes, rejection returns it to draft.
+      // Without a workflow the item stays in review for manual publishing.
+      await this.approvals.startRequest(tenantId, 'INTRANET_CONTENT', id);
+    }
+    if (action === 'publish') {
+      void this.notifications
+        .notifyIntranetPublished(tenantId, updated)
+        .catch(() => undefined);
+    }
+    return updated;
   }
 
   async deleteContent(tenantId: string, user: JwtPayload, id: string) {

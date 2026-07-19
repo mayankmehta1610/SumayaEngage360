@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
+import { renderMarkdown } from '../core/markdown';
 import { TENANT_ROLES } from '../core/rbac';
 import { IconComponent } from '../ui/icon.component';
 import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
@@ -104,7 +105,28 @@ const STATUS_LABEL: Record<string, string> = {
                 <div><label>Title</label><input [(ngModel)]="cForm.title" placeholder="Quarterly townhall recording" /></div>
                 <div><label>Summary</label><input [(ngModel)]="cForm.summary" placeholder="One-line teaser shown on cards" /></div>
                 @if (cForm.type === 'ARTICLE') {
-                  <div><label>Body</label><textarea rows="5" [(ngModel)]="cForm.body" placeholder="Write the article / announcement…"></textarea></div>
+                  <div>
+                    <label>Body (Markdown)</label>
+                    <div class="in-md-toolbar">
+                      <button type="button" class="in-md-btn" title="Bold" (click)="mdWrap('**')"><strong>B</strong></button>
+                      <button type="button" class="in-md-btn" title="Italic" (click)="mdWrap('*')"><em>I</em></button>
+                      <button type="button" class="in-md-btn" title="Heading" (click)="mdPrefix('## ')">H</button>
+                      <button type="button" class="in-md-btn" title="Bullet list" (click)="mdPrefix('- ')">•</button>
+                      <button type="button" class="in-md-btn" title="Numbered list" (click)="mdPrefix('1. ')">1.</button>
+                      <button type="button" class="in-md-btn" title="Quote" (click)="mdPrefix('> ')">"</button>
+                      <button type="button" class="in-md-btn" title="Code" (click)="mdWrap('\`')">&lt;/&gt;</button>
+                      <button type="button" class="in-md-btn" title="Link" (click)="mdLink()"><e360-icon name="link" [size]="12" /></button>
+                      <span style="flex:1"></span>
+                      <button type="button" class="in-md-btn" [class.active]="mdPreview" (click)="mdPreview = !mdPreview">
+                        <e360-icon name="eye" [size]="12" /> Preview
+                      </button>
+                    </div>
+                    <textarea #bodyArea rows="7" [(ngModel)]="cForm.body"
+                      placeholder="Write the article… Markdown supported: # heading, **bold**, *italic*, - lists, [link](https://…), \`code\`"></textarea>
+                    @if (mdPreview && cForm.body) {
+                      <div class="in-article in-md-preview" [innerHTML]="renderMd(cForm.body)"></div>
+                    }
+                  </div>
                 }
                 @if (cForm.type === 'LINK') {
                   <div><label>External URL</label><input [(ngModel)]="cForm.externalUrl" placeholder="https://…" /></div>
@@ -457,7 +479,7 @@ const STATUS_LABEL: Record<string, string> = {
             </div>
             <div class="in-viewer-body">
               @if (viewer.summary) { <p class="in-viewer-summary">{{ viewer.summary }}</p> }
-              @if (viewer.type === 'ARTICLE' && viewer.body) { <div class="in-article">{{ viewer.body }}</div> }
+              @if (viewer.type === 'ARTICLE' && viewer.body) { <div class="in-article" [innerHTML]="renderMd(viewer.body)"></div> }
               @if (viewer.type === 'LINK') {
                 <a class="in-btn primary" [href]="viewer.externalUrl" target="_blank" rel="noopener">
                   <e360-icon name="link" [size]="14" /> Open link
@@ -599,7 +621,20 @@ const STATUS_LABEL: Record<string, string> = {
       .in-viewer-actions { display: flex; gap: .4rem; flex-shrink: 0; }
       .in-viewer-body { padding: 1rem 1.3rem 1.4rem; }
       .in-viewer-summary { color: var(--e360-muted, #4b5563); font-size: .95rem; }
-      .in-article { white-space: pre-wrap; line-height: 1.6; font-size: .93rem; }
+      .in-article { line-height: 1.65; font-size: .93rem; }
+      .in-article h2, .in-article h3, .in-article h4 { margin: 1rem 0 .35rem; line-height: 1.3; }
+      .in-article p { margin: .45rem 0; }
+      .in-article ul, .in-article ol { margin: .45rem 0; padding-left: 1.4rem; }
+      .in-article blockquote { margin: .6rem 0; padding: .35rem .8rem; border-left: 3px solid var(--e360-primary, #6d5cff); background: var(--e360-surface-2, rgba(125,125,125,.06)); border-radius: 0 6px 6px 0; }
+      .in-article pre { background: var(--e360-surface-2, rgba(125,125,125,.08)); border-radius: 8px; padding: .6rem .8rem; overflow-x: auto; }
+      .in-article code { font-size: .85em; }
+      .in-article a { color: var(--e360-primary, #6d5cff); }
+      .in-article hr { border: 0; border-top: 1px solid var(--e360-border); margin: .8rem 0; }
+      .in-md-toolbar { display: flex; gap: .25rem; align-items: center; margin-bottom: .3rem; flex-wrap: wrap; }
+      .in-md-btn { display: inline-flex; align-items: center; gap: .25rem; padding: .22rem .5rem; font-size: .78rem; border: 1px solid var(--e360-border); background: var(--e360-surface, transparent); border-radius: 6px; cursor: pointer; }
+      .in-md-btn:hover { border-color: var(--e360-primary, #6d5cff); }
+      .in-md-btn.active { background: var(--e360-primary, #6d5cff); color: #fff; border-color: transparent; }
+      .in-md-preview { margin-top: .5rem; border: 1px dashed var(--e360-border); border-radius: 8px; padding: .6rem .9rem; }
       .in-media { width: 100%; border-radius: 10px; max-height: 520px; object-fit: contain; background: #000; }
       img.in-media { background: transparent; }
       .in-doc { width: 100%; height: 560px; border: 1px solid var(--e360-border, #e5e7eb); border-radius: 10px; }
@@ -656,6 +691,44 @@ export class IntranetComponent implements OnInit, OnDestroy {
   editingContentId: string | null = null;
 
   roleChoices: string[] = TENANT_ROLES;
+
+  // markdown editor state
+  @ViewChild('bodyArea') bodyArea?: ElementRef<HTMLTextAreaElement>;
+  mdPreview = false;
+
+  renderMd(md: string): string {
+    return renderMarkdown(md);
+  }
+
+  /** Wrap the textarea selection with a markdown marker (e.g. ** for bold). */
+  mdWrap(marker: string) {
+    const ta = this.bodyArea?.nativeElement;
+    const body: string = this.cForm.body ?? '';
+    if (!ta) { this.cForm.body = `${body}${marker}text${marker}`; return; }
+    const [s, e] = [ta.selectionStart, ta.selectionEnd];
+    const selected = body.slice(s, e) || 'text';
+    this.cForm.body = body.slice(0, s) + marker + selected + marker + body.slice(e);
+    setTimeout(() => { ta.focus(); ta.setSelectionRange(s + marker.length, s + marker.length + selected.length); });
+  }
+
+  /** Prefix the current line (heading, list, quote). */
+  mdPrefix(prefix: string) {
+    const ta = this.bodyArea?.nativeElement;
+    const body: string = this.cForm.body ?? '';
+    const pos = ta?.selectionStart ?? body.length;
+    const lineStart = body.lastIndexOf('\n', pos - 1) + 1;
+    this.cForm.body = body.slice(0, lineStart) + prefix + body.slice(lineStart);
+    setTimeout(() => { ta?.focus(); ta?.setSelectionRange(pos + prefix.length, pos + prefix.length); });
+  }
+
+  mdLink() {
+    const ta = this.bodyArea?.nativeElement;
+    const body: string = this.cForm.body ?? '';
+    const [s, e] = [ta?.selectionStart ?? body.length, ta?.selectionEnd ?? body.length];
+    const selected = body.slice(s, e) || 'link text';
+    this.cForm.body = `${body.slice(0, s)}[${selected}](https://)${body.slice(e)}`;
+    setTimeout(() => ta?.focus());
+  }
   typeOptions: SelectOption[] = ['ARTICLE', 'DOCUMENT', 'VIDEO', 'POSTER', 'LINK'].map((v) => ({ value: v, label: v }));
   accessOptions: SelectOption[] = [
     { value: 'COMPANY', label: 'Everyone in the company' },

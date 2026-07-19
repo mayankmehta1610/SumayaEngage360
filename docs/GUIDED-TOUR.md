@@ -244,17 +244,22 @@ all of them.
 
 ## 5. Recommendations (suggested roadmap)
 
-1. **Mobile intranet parity** — Flutter screens for hubs/categories/viewer
-   (server APIs are ready; view-only flag must be respected in the app).
-2. **Rich-text editor for intranet articles** — body is plain text today;
-   add markdown or a WYSIWYG with sanitization.
-3. **Multi-step publishing approval** — today review→publish is one approver;
-   route through the existing ApprovalWorkflow engine for regulated tenants.
-4. **India payroll depth** — statutory calculation packs (PF/ESI/PT/LWF/TDS
-   by state) on top of the component model; Form 16 generation.
-5. **Notifications for intranet** — notify department members on publish;
-   digest email of featured content.
-6. **Search** — server-side full-text (Postgres tsvector) across intranet +
+Delivered 2026-07-20: ✔ mobile intranet screen (browse hubs/categories/content,
+poster preview, view-only guard — `intranet_screen.dart`); ✔ markdown rich text
+for articles (toolbar + live preview, sanitized rendering — `core/markdown.ts`);
+✔ India statutory pack (EPF/ESI/state-wise PT/TDS old+new regime — calculator at
+Payroll → India statutory, auto-injected into payroll runs for IN tenants);
+✔ intranet publishing through the ApprovalWorkflow engine (INTRANET_CONTENT
+entity: submit → chain → auto-publish/reject) with in-app publish notifications
+to the content's audience.
+
+Still open:
+
+1. **Form 16 / statutory filings** — generate Form 16, PF ECR and ESI return
+   files from the statutory lines now present on payslips.
+2. **Email channel for publish notifications** — deliveries are in-app today;
+   add an EMAIL template for INTRANET_PUBLISHED plus a weekly digest.
+3. **Search** — server-side full-text (Postgres tsvector) across intranet +
    documents instead of title/summary contains.
 7. **Object storage in production** — set `S3_BUCKET`/`S3_ENDPOINT` on Render
    (uploads on local disk are ephemeral across deploys there).

@@ -153,6 +153,9 @@ flutter build web
 Parity is evidence-based. A module is complete only when its actions and role
 restrictions have executable coverage; uncovered workflows remain listed as gaps.
 
-- **Intranet (2026-07-19):** the company intranet (`/intranet` on web — department
-  hubs, 3-level categories, publishing, banners, secured downloads) has no mobile
-  screen yet. See `docs/INTRANET-AND-BRANDING.md`.
+- **Intranet (closed 2026-07-19):** `/intranet` now has a mobile screen
+  (`lib/screens/modules/intranet_screen.dart`) — home with banners, department
+  hubs, featured/latest content, the 3-level category tree, and a content sheet
+  that renders articles, previews posters (authenticated fetch) and surfaces the
+  view-only/downloadable flag. Publishing/manage remains web-only by design;
+  video playback points to the web portal (no video_player dependency).

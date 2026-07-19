@@ -50,6 +50,72 @@ export class NotificationsService {
     return { deliveryId: delivery.id, status };
   }
 
+  /**
+   * Fan-out an in-app notification to everyone who can see a newly published
+   * intranet item (scoped by its access level). Used by both the manual
+   * publish action and the approval-workflow auto-publish.
+   */
+  async notifyIntranetPublished(
+    tenantId: string,
+    content: {
+      id: string;
+      title: string;
+      departmentId: string;
+      accessLevel: string;
+      allowedRoles?: unknown;
+    },
+  ) {
+    if (content.accessLevel === 'PRIVATE') return { notified: 0 };
+
+    let userIds: string[] = [];
+    if (content.accessLevel === 'DEPARTMENT') {
+      const emps = await this.prisma.employee.findMany({
+        where: { tenantId, departmentId: content.departmentId },
+        select: { userId: true },
+      });
+      userIds = emps.map((e) => e.userId);
+    } else if (content.accessLevel === 'ROLES') {
+      const allowed = Array.isArray(content.allowedRoles)
+        ? (content.allowedRoles as string[])
+        : [];
+      const users = await this.prisma.users.findMany({
+        where: { tenantId, isActive: true, roles: { hasSome: allowed as any } },
+        select: { id: true },
+        take: 500,
+      });
+      userIds = users.map((u) => u.id);
+    } else {
+      const users = await this.prisma.users.findMany({
+        where: { tenantId, isActive: true },
+        select: { id: true },
+        take: 500,
+      });
+      userIds = users.map((u) => u.id);
+    }
+    if (!userIds.length) return { notified: 0 };
+
+    const tpl = await this.prisma.notificationTemplate.findFirst({
+      where: {
+        code: 'INTRANET_PUBLISHED',
+        channel: 'IN_APP',
+        OR: [{ tenantId }, { tenantId: null }],
+        isActive: true,
+      },
+    });
+    await this.prisma.notificationDelivery.createMany({
+      data: userIds.map((userId) => ({
+        tenantId,
+        templateId: tpl?.id,
+        channel: 'IN_APP',
+        recipient: userId,
+        payload: { contentId: content.id, title: content.title, kind: 'INTRANET_PUBLISHED' },
+        status: 'SENT',
+        sentAt: new Date(),
+      })),
+    });
+    return { notified: userIds.length };
+  }
+
   listDeliveries(tenantId: string) {
     return this.prisma.notificationDelivery.findMany({
       where: { tenantId },

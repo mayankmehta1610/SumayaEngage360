@@ -61,7 +61,7 @@ async function payrollRejectsOverlappingPeriods() {
       create: async () => { throw new Error('create must not run'); },
     },
   };
-  const service = new PayrollService(prisma as any);
+  const service = new PayrollService(prisma as any, {} as any);
   await assert.rejects(
     () => service.createRun('tenant-a', {
       calendarId: 'calendar-1',
@@ -77,7 +77,7 @@ async function workflowRejectsApproverOutsideTenant() {
     users: { findFirst: async () => null },
     approvalWorkflow: { create: async () => { throw new Error('create must not run'); } },
   };
-  const service = new ApprovalsService(prisma as any);
+  const service = new ApprovalsService(prisma as any, {} as any);
   await assert.rejects(
     () => service.createWorkflow('tenant-a', {
       name: 'Named approval',
