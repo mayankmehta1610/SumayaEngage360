@@ -1,16 +1,17 @@
-import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
+import { DataTableComponent, TableColumn } from '../ui/data-table.component';
+import { ExportBarComponent } from '../core/export-bar.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ModuleShellComponent, LifecycleWizardComponent],
+  imports: [FormsModule, ModuleShellComponent, LifecycleWizardComponent, DataTableComponent, ExportBarComponent],
   template: `
-    <e360-module-shell title="Global mobility" description="Country-aware candidate profiles, work authorization, sponsorship and expiry control." icon="globe-2" rolesHint="TENANT_ADMIN, HR, MANAGER" [breadcrumbs]="[{label:'Recruitment'}, {label:'Global mobility'}]">
+    <e360-module-shell title="Global mobility" description="Country-aware candidate profiles, work authorization, sponsorship and expiry control." icon="globe-2" moduleKey="global-mobility" rolesHint="TENANT_ADMIN, HR, MANAGER" [breadcrumbs]="[{label:'Recruitment'}, {label:'Global mobility'}]">
       @if (error) { <div class="e360-error">{{ error }}</div> }
       @if (info) { <div class="card" style="border-color:#22c55e">{{ info }}</div> }
 
@@ -48,7 +49,34 @@ import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
 
       @if (auth.hasRole('TENANT_ADMIN', 'HR')) {
         <div class="card">
-          <h2 style="margin-top:0">3. Candidate country profile</h2>
+          <h2 style="margin-top:0">3. Employer country profile</h2>
+          <p class="e360-muted">Complete the legal entity, worksite, payroll, insurance, sponsorship and retention controls for this country. Sensitive identifiers are stored separately.</p>
+          <div class="row">
+            <div><label>Profile / entity name *</label><input [(ngModel)]="employerProfile.profileName" placeholder="India head office" /></div>
+            <div><label>Jurisdiction *</label><select [(ngModel)]="employerProfile.jurisdictionCode" (ngModelChange)="employerData = {}; employerIdentifiers = {}">@for (j of enabledCatalog; track j.code) { <option [value]="j.code">{{ j.name }}</option> }</select></div>
+            @if (employerProfile.jurisdictionCode === 'EU') { <div><label>EU member state *</label><input [(ngModel)]="employerProfile.memberStateCode" placeholder="DE, FR, NL…" /></div> }
+            <div><label>Next review date</label><input type="date" [(ngModel)]="employerProfile.reviewDueAt" /></div>
+          </div>
+          <div class="row" style="margin-top:.75rem">
+            @for (field of employerFields; track field.key) {
+              <div><label>{{ field.label }} @if (field.required) { * }</label>
+                @if (field.type === 'BOOLEAN') { <select [ngModel]="employerFieldValue(field)" (ngModelChange)="setEmployerField(field, $event)"><option [ngValue]="undefined">Select</option><option [ngValue]="true">Yes</option><option [ngValue]="false">No</option></select> }
+                @else if (field.type === 'SELECT') { <select [ngModel]="employerFieldValue(field)" (ngModelChange)="setEmployerField(field, $event)"><option value="">Select</option>@for (option of field.options ?? []; track option) { <option [value]="option">{{ option }}</option> }</select> }
+                @else if (field.type === 'TEXTAREA') { <textarea [ngModel]="employerFieldValue(field)" (ngModelChange)="setEmployerField(field, $event)"></textarea> }
+                @else { <input [type]="field.type === 'DATE' ? 'date' : 'text'" [ngModel]="employerFieldValue(field)" (ngModelChange)="setEmployerField(field, $event)" /> }
+              </div>
+            }
+          </div>
+          <button style="margin-top:.75rem" (click)="saveEmployerProfile()">Save employer profile as ready for review</button>
+        </div>
+
+        <div class="card">
+          <div class="e360-toolbar"><h2 style="margin:0">4. Employer profiles</h2><export-bar [rows]="employerProfiles" [cols]="employerExportColumns" name="employer-country-profiles" /></div>
+          <e360-data-table [columns]="employerColumns" [rows]="employerProfiles" [searchable]="true" [filterable]="true" [pageSize]="15" emptyTitle="No employer country profiles" emptyMessage="Complete an employer profile above to activate the country workflow." />
+        </div>
+
+        <div class="card">
+          <h2 style="margin-top:0">5. Candidate country profile</h2>
           <div class="row">
             <div><label>Candidate</label><select [(ngModel)]="profile.candidateId"><option value="">Select candidate</option>@for (c of candidates; track c.id) { <option [value]="c.id">{{ c.firstName }} {{ c.lastName }} — {{ c.email }}</option> }</select></div>
             <div><label>Jurisdiction</label><select [(ngModel)]="profile.jurisdictionCode" (ngModelChange)="profileData = {}; profileIdentifiers = {}">@for (j of enabledCatalog; track j.code) { <option [value]="j.code">{{ j.name }}</option> }</select></div>
@@ -76,7 +104,7 @@ import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
         </div>
 
         <div class="card">
-          <h2 style="margin-top:0">4. Open work-authorization case</h2>
+          <h2 style="margin-top:0">6. Open work-authorization case</h2>
           <div class="row">
             <div><label>Candidate</label><select [(ngModel)]="caseForm.candidateId"><option value="">Select candidate</option>@for (c of candidates; track c.id) { <option [value]="c.id">{{ c.firstName }} {{ c.lastName }}</option> }</select></div>
             <div><label>Jurisdiction</label><select [(ngModel)]="caseForm.jurisdictionCode" (ngModelChange)="onCaseCountryChange()">@for (j of enabledCatalog; track j.code) { <option [value]="j.code">{{ j.name }}</option> }</select></div>
@@ -90,12 +118,8 @@ import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
       }
 
       <div class="card">
-        <div class="e360-toolbar"><h2 style="margin:0">5. Authorization lifecycle</h2><button class="secondary" (click)="loadCases()">Refresh</button></div>
-        <div style="overflow:auto"><table><thead><tr><th>Case</th><th>Candidate</th><th>Country</th><th>Authorization</th><th>Status</th><th>Sponsorship</th><th>Expiry</th><th>Action</th></tr></thead><tbody>
-          @for (c of cases; track c.id) {
-            <tr><td>{{ c.caseNumber }}</td><td>{{ c.candidate.firstName }} {{ c.candidate.lastName }}</td><td>{{ c.jurisdictionCode }}{{ c.memberStateCode ? '/' + c.memberStateCode : '' }}</td><td>{{ c.authorizationType }}</td><td>{{ c.status }}</td><td>{{ c.sponsorshipRequired ? 'Required' : 'No' }}</td><td>{{ c.expiresAt ? (c.expiresAt | date:'mediumDate') : '—' }}</td><td><button class="secondary" (click)="selectedCase = c">Review</button></td></tr>
-          } @empty { <tr><td colspan="8" class="e360-muted">No authorization cases yet.</td></tr> }
-        </tbody></table></div>
+        <div class="e360-toolbar"><h2 style="margin:0">7. Authorization lifecycle</h2><span><button class="secondary" (click)="loadCases()">Refresh</button> <export-bar [rows]="caseRows" [cols]="caseExportColumns" name="work-authorization-cases" /></span></div>
+        <e360-data-table [columns]="caseColumns" [rows]="caseRows" [searchable]="true" [filterable]="true" [pageSize]="15" [rowClickable]="auth.hasRole('TENANT_ADMIN', 'HR')" (rowClick)="reviewCase($event)" emptyTitle="No authorization cases" emptyMessage="Open a work-authorization assessment to begin the lifecycle." />
       </div>
 
       @if (selectedCase && auth.hasRole('TENANT_ADMIN', 'HR')) {
@@ -126,6 +150,7 @@ export class GlobalMobilityComponent implements OnInit {
   catalog: any[] = [];
   candidates: any[] = [];
   cases: any[] = [];
+  employerProfiles: any[] = [];
   operatingCountries: string[] = [];
   primaryCountry = '';
   selectedCode = '';
@@ -134,15 +159,24 @@ export class GlobalMobilityComponent implements OnInit {
   profile: any = { candidateId: '', jurisdictionCode: '', memberStateCode: '', nationality: '', residenceCountry: '' };
   profileData: Record<string, any> = {};
   profileIdentifiers: Record<string, any> = {};
+  employerProfile: any = { profileName: '', jurisdictionCode: '', memberStateCode: '', reviewDueAt: '' };
+  employerData: Record<string, any> = {};
+  employerIdentifiers: Record<string, any> = {};
   caseForm: any = { candidateId: '', jurisdictionCode: '', memberStateCode: '', authorizationType: '', employerName: '', expiresAt: '' };
   selectedCase: any = null;
   review: any = { status: 'ASSESSMENT', verificationMethod: '', verificationReference: '', notes: '' };
   statuses = ['ASSESSMENT', 'DOCUMENTS_PENDING', 'SPONSORSHIP', 'VERIFICATION_PENDING', 'VERIFIED', 'REJECTED', 'CLOSED'];
+  employerColumns: TableColumn[] = [{ key: 'profileName', label: 'Profile', sortable: true, filterable: true }, { key: 'jurisdictionCode', label: 'Country', sortable: true, filterable: true }, { key: 'memberStateCode', label: 'Member state', sortable: true, filterable: true }, { key: 'completionStatus', label: 'Status', sortable: true, filterable: true }, { key: 'reviewDueAt', label: 'Review due', sortable: true, filterable: true }];
+  caseColumns: TableColumn[] = [{ key: 'caseNumber', label: 'Case', sortable: true, filterable: true }, { key: 'candidateName', label: 'Candidate', sortable: true, filterable: true }, { key: 'country', label: 'Country', sortable: true, filterable: true }, { key: 'authorizationType', label: 'Authorization', sortable: true, filterable: true }, { key: 'status', label: 'Status', sortable: true, filterable: true }, { key: 'sponsorship', label: 'Sponsorship', sortable: true, filterable: true }, { key: 'expiresAt', label: 'Expiry', sortable: true, filterable: true }];
+  employerExportColumns = this.employerColumns.map(({ key, label }) => ({ key, label }));
+  caseExportColumns = this.caseColumns.map(({ key, label }) => ({ key, label }));
 
   get canEdit() { return this.auth.hasRole('TENANT_ADMIN'); }
   get enabledCatalog() { return this.catalog.filter((j) => this.operatingCountries.includes(j.code)); }
   get selectedJurisdiction() { return this.catalog.find((j) => j.code === this.selectedCode); }
-  get profileFields() { return this.catalog.find((j) => j.code === this.profile.jurisdictionCode)?.candidateFields ?? []; }
+  get profileFields() { return (this.catalog.find((j) => j.code === this.profile.jurisdictionCode)?.candidateFields ?? []).filter((field: any) => field.key !== 'nationality'); }
+  get employerFields() { return this.catalog.find((j) => j.code === this.employerProfile.jurisdictionCode)?.employerFields ?? []; }
+  get caseRows() { return this.cases.map((c) => ({ ...c, candidateName: `${c.candidate?.firstName ?? ''} ${c.candidate?.lastName ?? ''}`.trim(), country: `${c.jurisdictionCode}${c.memberStateCode ? '/' + c.memberStateCode : ''}`, sponsorship: c.sponsorshipRequired ? 'Required' : 'No' })); }
   get caseAuthorizationTypes() { return this.catalog.find((j) => j.code === this.caseForm.jurisdictionCode)?.authorizationTypes ?? []; }
 
   async ngOnInit() {
@@ -157,10 +191,11 @@ export class GlobalMobilityComponent implements OnInit {
       this.primaryCountry = config.primaryCountry ?? this.operatingCountries[0] ?? '';
       this.selectedCode = this.operatingCountries[0] ?? '';
       this.profile.jurisdictionCode = this.selectedCode;
+      this.employerProfile.jurisdictionCode = this.selectedCode;
       this.caseForm.jurisdictionCode = this.selectedCode;
       this.onCaseCountryChange();
       this.candidates = unwrapPaginated(candidateResult).items;
-      await this.loadCases();
+      await Promise.all([this.loadCases(), this.loadEmployerProfiles()]);
     } catch (e) { this.error = errMsg(e); }
   }
 
@@ -168,6 +203,8 @@ export class GlobalMobilityComponent implements OnInit {
   methodsFor(code: string) { return this.catalog.find((j) => j.code === code)?.verificationMethods ?? []; }
   fieldValue(field: any) { return field.sensitive ? this.profileIdentifiers[field.key] : this.profileData[field.key]; }
   setField(field: any, value: any) { (field.sensitive ? this.profileIdentifiers : this.profileData)[field.key] = value; }
+  employerFieldValue(field: any) { return field.sensitive ? this.employerIdentifiers[field.key] : this.employerData[field.key]; }
+  setEmployerField(field: any, value: any) { (field.sensitive ? this.employerIdentifiers : this.employerData)[field.key] = value; }
   onJurisdictionChange() { this.profile.jurisdictionCode = this.selectedCode; }
   onCaseCountryChange() { this.caseForm.authorizationType = this.caseAuthorizationTypes[0]?.code ?? ''; }
   toggleCountry(code: string, event: Event) {
@@ -192,6 +229,21 @@ export class GlobalMobilityComponent implements OnInit {
       this.info = 'Country-specific candidate profile saved for review.'; this.error = '';
     } catch (e) { this.error = errMsg(e); }
   }
+
+  async saveEmployerProfile() {
+    if (!this.employerProfile.profileName || !this.employerProfile.jurisdictionCode) { this.error = 'Profile name and jurisdiction are required.'; return; }
+    try {
+      await this.api.put('/jurisdictions/employer-profiles', { ...this.employerProfile, data: this.employerData, identifiers: this.employerIdentifiers, reviewDueAt: this.employerProfile.reviewDueAt ? new Date(this.employerProfile.reviewDueAt).toISOString() : undefined, completionStatus: 'READY_FOR_REVIEW' });
+      this.info = 'Employer country profile saved for review.'; this.error = ''; await this.loadEmployerProfiles();
+    } catch (e) { this.error = errMsg(e); }
+  }
+
+  async loadEmployerProfiles() {
+    try { this.employerProfiles = await this.api.get<any[]>('/jurisdictions/employer-profiles'); }
+    catch (e) { this.error = errMsg(e); }
+  }
+
+  reviewCase(row: Record<string, unknown>) { if (this.auth.hasRole('TENANT_ADMIN', 'HR')) this.selectedCase = this.cases.find((item) => item.id === row['id']) ?? null; }
 
   async openCase() {
     if (!this.caseForm.candidateId || !this.caseForm.authorizationType) { this.error = 'Candidate and authorization type are required.'; return; }

@@ -24,7 +24,7 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
         <h2 style="margin:0">Data entities ({{ entityMeta.total }} total, {{ entityImpl }} implemented)</h2>
         <export-bar [rows]="entities" [cols]="entCols" name="data-entities" />
       </div>
-      <e360-data-table [columns]="entityCols" [rows]="entityRows" [paginated]="false" [stickyHeader]="true" />
+      <e360-data-table [columns]="entityCols" [rows]="entityRows" [pageSize]="15" [stickyHeader]="true" />
     </div>
 
     <div class="card">
@@ -32,7 +32,7 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
         <h2 style="margin:0">API catalogue ({{ apiMeta.total }} total, {{ apiImpl }} implemented)</h2>
         <export-bar [rows]="apis" [cols]="apiCols" name="api-catalogue" />
       </div>
-      <e360-data-table [columns]="apiTableCols" [rows]="apiRows" [paginated]="false" [stickyHeader]="true" />
+      <e360-data-table [columns]="apiTableCols" [rows]="apiRows" [pageSize]="15" [stickyHeader]="true" />
     </div>
   
     </e360-module-shell>

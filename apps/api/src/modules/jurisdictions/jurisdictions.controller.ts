@@ -5,7 +5,7 @@ import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { Public } from '../../common/auth/public.decorator';
 import { Roles } from '../../common/auth/roles.decorator';
 import { TenantId } from '../../common/tenant/tenant.decorator';
-import { ConfigureJurisdictionsDto, CreateWorkAuthorizationDto, UpdateWorkAuthorizationDto, UpsertJurisdictionProfileDto } from './jurisdictions.dto';
+import { ConfigureJurisdictionsDto, CreateWorkAuthorizationDto, UpdateWorkAuthorizationDto, UpsertEmployerProfileDto, UpsertJurisdictionProfileDto } from './jurisdictions.dto';
 import { JurisdictionsService } from './jurisdictions.service';
 
 @Controller('jurisdictions')
@@ -19,6 +19,12 @@ export class JurisdictionsController {
 
   @Put('tenant') @Roles(Role.TENANT_ADMIN)
   configure(@TenantId() tenantId: string, @Body() dto: ConfigureJurisdictionsDto) { return this.jurisdictions.configureTenant(tenantId, dto); }
+
+  @Get('employer-profiles') @Roles(Role.TENANT_ADMIN, Role.HR, Role.MANAGER)
+  employerProfiles(@TenantId() tenantId: string, @Query('jurisdictionCode') jurisdictionCode?: string) { return this.jurisdictions.listEmployerProfiles(tenantId, jurisdictionCode); }
+
+  @Put('employer-profiles') @Roles(Role.TENANT_ADMIN, Role.HR)
+  employerProfile(@TenantId() tenantId: string, @CurrentUser() actor: JwtPayload, @Body() dto: UpsertEmployerProfileDto) { return this.jurisdictions.upsertEmployerProfile(tenantId, actor.sub, dto); }
 
   @Get('candidates/:candidateId') @Roles(Role.TENANT_ADMIN, Role.HR)
   candidate(@TenantId() tenantId: string, @Param('candidateId') candidateId: string) { return this.jurisdictions.candidateOverview(tenantId, candidateId); }

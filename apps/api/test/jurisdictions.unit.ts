@@ -4,12 +4,15 @@ import { JURISDICTIONS, SUPPORTED_JURISDICTION_CODES } from '../src/modules/juri
 import { JurisdictionsService } from '../src/modules/jurisdictions/jurisdictions.service';
 
 async function catalogueHasRequestedMarkets() {
-  for (const code of ['US', 'GB', 'CA', 'AU', 'NZ', 'EU', 'AE', 'SA', 'QA', 'BH', 'KW', 'OM']) {
+  for (const code of ['IN', 'US', 'GB', 'CA', 'AU', 'NZ', 'EU', 'AE', 'SA', 'QA', 'BH', 'KW', 'OM']) {
     assert.ok(SUPPORTED_JURISDICTION_CODES.includes(code), `${code} missing`);
+    assert.ok(JURISDICTIONS[code].employerFields.length >= 18, `${code} employer workflow is too short`);
     assert.ok(JURISDICTIONS[code].candidateFields.length >= 8);
     assert.ok(JURISDICTIONS[code].lifecycle.length >= 7);
     assert.ok(JURISDICTIONS[code].officialSources.length >= 1);
   }
+  assert.equal(SUPPORTED_JURISDICTION_CODES[0], 'IN', 'India must be the primary catalogue market');
+  assert.ok(JURISDICTIONS.IN.authorizationTypes.some((item) => item.code === 'EMPLOYMENT_VISA'));
   assert.ok(JURISDICTIONS.US.authorizationTypes.some((item) => item.code === 'H1B'));
   assert.ok(JURISDICTIONS.AE.authorizationTypes.some((item) => item.code === 'OUTSIDE_RECRUITMENT'));
 }

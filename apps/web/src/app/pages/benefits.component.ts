@@ -31,7 +31,7 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
         <button (click)="create()">Add plan</button>
       </div>
       }
-      <e360-data-table [columns]="planCols" [rows]="planRows" [paginated]="false" [stickyHeader]="true">
+      <e360-data-table [columns]="planCols" [rows]="planRows" [pageSize]="15" [stickyHeader]="true">
         <ng-template #rowTemplate let-row>
           <td>{{ row.code }}</td>
           <td>{{ row.name }}</td>
@@ -53,7 +53,7 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
     </div>
     @if (isAdmin) {
       <div class="card"><h2>All enrollments</h2>
-        <e360-data-table [columns]="enrollCols" [rows]="enrollRows" [paginated]="false" [stickyHeader]="true">
+        <e360-data-table [columns]="enrollCols" [rows]="enrollRows" [pageSize]="15" [stickyHeader]="true">
           <ng-template #rowTemplate let-row><td>{{ row.employee }}</td><td>{{ row.plan }}</td><td>{{ row.status }}</td><td>@if (row.status === 'ACTIVE') { <button class="danger" (click)="endEnrollment(row.id)">End</button> }</td></ng-template>
         </e360-data-table>
       </div>

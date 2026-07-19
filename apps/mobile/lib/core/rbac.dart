@@ -106,6 +106,12 @@ const routeAccess = <RouteAccess>[
       icon: Icons.work_outline,
       group: 'ats'),
   RouteAccess(
+      path: '/global-mobility',
+      label: 'Global mobility',
+      roles: ['TENANT_ADMIN', 'HR', 'MANAGER'],
+      icon: Icons.public,
+      group: 'ats'),
+  RouteAccess(
       path: '/jobs',
       label: 'Jobs',
       roles: ['TENANT_ADMIN', 'HR'],

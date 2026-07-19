@@ -215,7 +215,7 @@ import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
                   <div style="flex:0"><button (click)="createSubmission()">Create draft</button></div>
                 </div>
               }
-              <e360-data-table [columns]="submissionCols" [rows]="submissionRows" [paginated]="false" [stickyHeader]="true" />
+              <e360-data-table [columns]="submissionCols" [rows]="submissionRows" [pageSize]="15" [stickyHeader]="true" />
             </div>
           }
 
@@ -260,7 +260,7 @@ import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
           <e360-data-table
             [columns]="interviewCols"
             [rows]="interviewRows"
-            [paginated]="false"
+            [pageSize]="15"
             [stickyHeader]="true"
           >
             <ng-template #rowTemplate let-row>

@@ -109,6 +109,29 @@ export class UpdateTenantDto {
   isActive?: boolean;
 }
 
+export class UpdateBrandingDto {
+  @IsOptional()
+  @IsString()
+  logoFileId?: string;
+
+  @IsOptional()
+  @IsString()
+  logoUrl?: string;
+
+  // Empty string clears the value back to the platform default.
+  @IsOptional()
+  @Matches(/^$|^#[0-9a-fA-F]{6}$/, { message: 'brandPrimaryColor must be a hex color like #0f6cbd' })
+  brandPrimaryColor?: string;
+
+  @IsOptional()
+  @Matches(/^$|^#[0-9a-fA-F]{6}$/, { message: 'brandAccentColor must be a hex color like #6d28d9' })
+  brandAccentColor?: string;
+
+  @IsOptional()
+  @IsString()
+  brandTagline?: string;
+}
+
 export class OnboardingWizardDto {
   @IsEnum(TenantType)
   tenantType: TenantType;

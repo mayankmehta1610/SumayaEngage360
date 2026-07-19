@@ -37,7 +37,7 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
       <button style="margin-left:.5rem" (click)="create()" [disabled]="busy">Save draft</button>
     </div>
     <div class="card">
-      <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true">
+      <e360-data-table [columns]="tableCols" [rows]="tableRows" [pageSize]="15" [stickyHeader]="true">
         <ng-template #rowTemplate let-row>
           <td>{{ row.title }}</td>
           <td>{{ row.amount }}</td>

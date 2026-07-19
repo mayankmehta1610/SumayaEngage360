@@ -87,9 +87,9 @@ import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
             @if (detail.parsedResume.summary) { <p class="e360-muted">{{ detail.parsedResume.summary }}</p> }
           }
           <h2>Application history</h2>
-          <e360-data-table [columns]="appHistCols" [rows]="appHistRows" [paginated]="false" [stickyHeader]="true" />
+          <e360-data-table [columns]="appHistCols" [rows]="appHistRows" [pageSize]="15" [stickyHeader]="true" />
           <h2>Job match scores</h2>
-          <e360-data-table [columns]="matchCols" [rows]="matchRows" [paginated]="false" [stickyHeader]="true" />
+          <e360-data-table [columns]="matchCols" [rows]="matchRows" [pageSize]="15" [stickyHeader]="true" />
           <h2>Global mobility</h2>
           <p class="e360-muted">Country profiles: {{ detail.jurisdictionProfiles?.length ?? 0 }} · Work authorization cases: {{ detail.workAuthorizations?.length ?? 0 }}</p>
           @for (wa of detail.workAuthorizations ?? []; track wa.id) {

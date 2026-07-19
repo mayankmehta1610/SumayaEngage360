@@ -19,7 +19,7 @@ import { AuthService } from '../core/auth.service';
 @if (error) { <div class="e360-error">{{ error }}</div> }
 
     <div class="card">
-      <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true" />
+      <e360-data-table [columns]="tableCols" [rows]="tableRows" [pageSize]="15" [stickyHeader]="true" />
     </div>
   
     </e360-module-shell>

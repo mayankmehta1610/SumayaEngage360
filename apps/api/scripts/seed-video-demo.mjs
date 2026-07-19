@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import PDFDocument from 'pdfkit';
 /**
  * Seed stable, realistic records used by the professional product walkthrough.
  *
@@ -60,6 +61,34 @@ function rows(payload) {
   return Array.isArray(payload) ? payload : (payload?.data ?? []);
 }
 
+function demoResumePdf(name) {
+  return new Promise((resolve, reject) => {
+    const document = new PDFDocument({ size: 'A4', margin: 54, info: { Title: `${name} resume` } });
+    const chunks = [];
+    document.on('data', (chunk) => chunks.push(chunk));
+    document.on('end', () => resolve(Buffer.concat(chunks)));
+    document.on('error', reject);
+    document.fontSize(20).text(name);
+    document.moveDown().fontSize(12).text('Professional summary');
+    document.moveDown(0.4).fontSize(10).text('Experienced professional focused on enterprise technology, measurable delivery outcomes, stakeholder communication, and cross-functional leadership.');
+    document.moveDown().fontSize(12).text('Core skills');
+    document.moveDown(0.4).fontSize(10).list(['Enterprise technology', 'Digital transformation', 'Client delivery', 'Team leadership']);
+    document.moveDown().fontSize(12).text('Experience');
+    document.moveDown(0.4).fontSize(10).text('Senior Consultant, BluePeak Solutions - led multi-disciplinary programmes and delivery improvements.');
+    document.end();
+  });
+}
+
+async function uploadDemoResume(session, cfg, firstName) {
+  const resume = new FormData();
+  resume.append(
+    'file',
+    new Blob([await demoResumePdf(`${firstName} Sharma`)], { type: 'application/pdf' }),
+    `${cfg.tenant}-candidate-resume-valid-v2.pdf`,
+  );
+  return (await call('POST', '/files', { tenant: cfg.tenant, form: resume })).data;
+}
+
 async function ensureClient(session, cfg) {
   const list = rows((await call('GET', '/hiring-clients', session)).data);
   let client = list.find((x) => x.slug === cfg.clientSlug || x.name === cfg.client);
@@ -113,17 +142,11 @@ async function ensureJob(session, cfg, client) {
 async function ensureCandidate(session, cfg, job) {
   const list = rows((await call('GET', '/candidates', session)).data);
   let candidate = list.find((x) => x.email === cfg.candidate);
+  const firstName = cfg.tenant === 'talentbridge' ? 'Arjun'
+    : cfg.tenant === 'staffpro' ? 'Sana'
+      : cfg.tenant === 'jane-recruits' ? 'Rohan' : 'Priya';
   if (!candidate) {
-    const resume = new FormData();
-    resume.append(
-      'file',
-      new Blob(['Professional walkthrough resume'], { type: 'application/pdf' }),
-      `${cfg.tenant}-candidate-resume.pdf`,
-    );
-    const resumeFile = (await call('POST', '/files', { tenant: cfg.tenant, form: resume })).data;
-    const firstName = cfg.tenant === 'talentbridge' ? 'Arjun'
-      : cfg.tenant === 'staffpro' ? 'Sana'
-        : cfg.tenant === 'jane-recruits' ? 'Rohan' : 'Priya';
+    const resumeFile = await uploadDemoResume(session, cfg, firstName);
     const application = await call('POST', `/public/careers/jobs/${job.id}/apply`, {
       tenant: cfg.tenant,
       body: {
@@ -157,6 +180,16 @@ async function ensureCandidate(session, cfg, job) {
       const app = (await call('GET', `/applications/${application.data.id}`, session)).data;
       candidate = app.candidate;
     }
+  }
+  const currentMeta = candidate.resumeFileId
+    ? (await call('GET', `/files/${candidate.resumeFileId}`, session)).data
+    : null;
+  if (!currentMeta?.fileName?.endsWith('-candidate-resume-valid-v2.pdf')) {
+    const replacement = await uploadDemoResume(session, cfg, firstName);
+    candidate = (await call('PATCH', `/candidates/${candidate.id}`, {
+      ...session,
+      body: { resumeFileId: replacement.id },
+    })).data;
   }
   return candidate;
 }
@@ -353,6 +386,110 @@ async function ensureCompanyData(session, job, candidate) {
   }
 }
 
+function demoFieldValue(field, country) {
+  const key = field.key.toLowerCase();
+  if (field.type === 'BOOLEAN') return true;
+  if (field.type === 'DATE') return key.includes('birth') ? '1992-08-14' : '2027-12-31';
+  if (field.type === 'SELECT') return field.options?.[0] ?? 'Configured';
+  if (key.includes('email')) return 'mobility.compliance@acme.demo';
+  if (key.includes('phone')) return '+91 98765 01234';
+  if (key.includes('address') || key.includes('worksite') || key.includes('worklocation')) return 'Acme Technology Campus, Outer Ring Road, Bengaluru, Karnataka 560103';
+  if (key.includes('name')) return key.includes('contact') ? 'Ananya Rao' : `Acme ${country} Legal Entity`;
+  if (key.includes('country') || key.includes('nationality') || key.includes('taxresidence')) return country === 'IN' ? 'India' : country;
+  if (key.includes('state') || key.includes('province') || key.includes('region')) return country === 'IN' ? 'Karnataka' : 'Primary operating region';
+  if (key.includes('city')) return country === 'IN' ? 'Bengaluru' : 'Primary work city';
+  if (key.includes('expiry') || key.includes('due')) return '2027-12-31';
+  if (field.type === 'TEXTAREA') return `Reviewed ${country} workflow control with evidence owner, renewal calendar, retention period and escalation procedure documented.`;
+  if (key.includes('hours') || key.includes('workweek')) return 'Monday to Friday, 40 hours';
+  if (key.includes('frequency')) return 'Monthly';
+  if (key.includes('relationship')) return 'Parent';
+  if (key.includes('language')) return 'English';
+  if (key.includes('evidence') || key.includes('reference') || key.includes('registration') || key.includes('number') || key.includes('code') || key.includes('id') || key.includes('pan') || key.includes('tan') || key.includes('gst') || key.includes('uan')) return `${country}-DEMO-2026-001`;
+  return `Configured for ${country}`;
+}
+
+async function ensureMobilityData(session, candidate) {
+  const enabled = ['IN', 'US', 'GB', 'CA', 'AU', 'NZ', 'EU', 'AE', 'SA', 'QA', 'BH', 'KW', 'OM'];
+  await call('PUT', '/jurisdictions/tenant', {
+    ...session,
+    body: { primaryCountry: 'IN', operatingCountries: enabled },
+  });
+  const catalog = rows((await call('GET', '/jurisdictions/catalog', session)).data);
+  const definitions = new Map(catalog.map((entry) => [entry.code, entry]));
+
+  for (const code of enabled) {
+    const definition = definitions.get(code);
+    const data = {}, identifiers = {};
+    for (const field of definition.employerFields) {
+      (field.sensitive ? identifiers : data)[field.key] = demoFieldValue(field, code);
+    }
+    if (code === 'EU') data.memberState = 'DE';
+    await call('PUT', '/jurisdictions/employer-profiles', {
+      ...session,
+      body: {
+        profileName: code === 'IN' ? 'Acme India Headquarters' : `Acme ${definition.name} Operations`,
+        jurisdictionCode: code,
+        ...(code === 'EU' ? { memberStateCode: 'DE' } : {}),
+        data,
+        identifiers,
+        contacts: { mobilityOwner: 'Ananya Rao', escalationEmail: 'mobility.compliance@acme.demo' },
+        registrations: { reviewedAt: '2026-07-15', evidenceSet: `${code}-EMPLOYER-EVIDENCE` },
+        reviewDueAt: '2027-06-30T00:00:00.000Z',
+        completionStatus: 'VERIFIED',
+      },
+    });
+  }
+
+  const india = definitions.get('IN');
+  const personalData = {}, identifiers = {};
+  for (const field of india.candidateFields) {
+    (field.sensitive ? identifiers : personalData)[field.key] = demoFieldValue(field, 'IN');
+  }
+  personalData.legalName = 'Priya Sharma';
+  personalData.stateOfEmployment = 'Karnataka';
+  identifiers.nationality = 'India';
+  await call('PUT', `/jurisdictions/candidates/${candidate.id}/profile`, {
+    ...session,
+    body: {
+      jurisdictionCode: 'IN', nationality: 'India', residenceCountry: 'IN',
+      personalData, identifiers,
+      emergencyContacts: [{ name: 'Kavita Sharma', relationship: 'Parent', phone: '+91 98765 09876' }],
+      consents: { privacy: true, retention: true, capturedAt: '2026-07-15T09:30:00.000Z' },
+      completionStatus: 'COMPLETE',
+    },
+  });
+
+  const desiredCases = [
+    { jurisdictionCode: 'IN', authorizationType: 'INDIAN_CITIZEN', employerName: 'Acme India Headquarters', expiresAt: '2035-12-31T00:00:00.000Z' },
+    { jurisdictionCode: 'US', authorizationType: 'H1B', employerName: 'Acme United States Operations', expiresAt: '2026-09-30T00:00:00.000Z' },
+    { jurisdictionCode: 'GB', authorizationType: 'SKILLED_WORKER', employerName: 'Acme United Kingdom Operations', expiresAt: '2027-01-31T00:00:00.000Z' },
+  ];
+  let cases = rows((await call('GET', '/jurisdictions/work-authorizations', session)).data);
+  for (const desired of desiredCases) {
+    let item = cases.find((entry) => entry.candidateId === candidate.id && entry.jurisdictionCode === desired.jurisdictionCode && entry.authorizationType === desired.authorizationType);
+    if (!item) {
+      item = (await call('POST', '/jurisdictions/work-authorizations', {
+        ...session,
+        body: { candidateId: candidate.id, ...desired, notes: 'Demo case with documented assessment, evidence and renewal ownership.' },
+      })).data;
+      cases.push(item);
+    }
+    const method = definitions.get(desired.jurisdictionCode).verificationMethods[0];
+    const path = desired.jurisdictionCode === 'US'
+      ? ['ASSESSMENT', 'SPONSORSHIP', 'VERIFICATION_PENDING', 'VERIFIED']
+      : ['ASSESSMENT', 'VERIFICATION_PENDING', 'VERIFIED'];
+    let status = item.status;
+    for (const next of path) {
+      if (status === next || status === 'VERIFIED') continue;
+      const updated = (await call('PATCH', `/jurisdictions/work-authorizations/${item.id}`, {
+        ...session,
+        body: { status: next, ...(next === 'VERIFIED' ? { verificationMethod: method, verificationReference: `${desired.jurisdictionCode}-CHECK-2026-001` } : {}) },
+      })).data;
+      status = updated.status;
+    }
+  }
+}
+
 for (const cfg of WORKSPACES) {
   const login = await call('POST', '/auth/login', {
     tenant: cfg.tenant,
@@ -364,7 +501,10 @@ for (const cfg of WORKSPACES) {
   const candidate = await ensureCandidate(session, cfg, job);
   if (cfg.agency) await ensureAgencyData(session, cfg, candidate, job);
   if (cfg.staffing) await ensureStaffingData(session, cfg, candidate);
-  if (cfg.tenant === 'acme') await ensureCompanyData(session, job, candidate);
+  if (cfg.tenant === 'acme') {
+    await ensureCompanyData(session, job, candidate);
+    await ensureMobilityData(session, candidate);
+  }
   console.log(`Seeded ${cfg.tenant}: client, job, candidate${cfg.agency ? ', agency CRM' : ''}${cfg.staffing ? ', staffing contract' : ''}`);
 }
 

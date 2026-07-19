@@ -2,6 +2,7 @@ import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { AuthService } from '../core/auth.service';
+import { BrandingService } from '../core/branding.service';
 import { NAV_GROUPS, ROUTE_ACCESS, routeVisibleForTenant } from '../core/rbac';
 import { TenantContextService } from '../core/tenant-context.service';
 import { IconComponent } from '../ui/icon.component';
@@ -29,8 +30,14 @@ const SECTION_STORAGE_KEY = 'e360-nav-sections';
 
       <aside class="e360-sidebar" [attr.aria-hidden]="isMobile && !sidebarOpen ? true : null">
         <div class="e360-sidebar-brand">
-          <span class="e360-brand-mark" aria-hidden="true"><e360-icon name="layout-dashboard" [size]="17" /></span>
-          <div class="e360-sidebar-brand-text">Engage360</div>
+          @if (brand.logoSrc()) {
+            <img class="e360-brand-logo" [src]="brand.logoSrc()" alt="Company logo" />
+          } @else {
+            <span class="e360-brand-mark" aria-hidden="true"><e360-icon name="layout-dashboard" [size]="17" /></span>
+          }
+          <div class="e360-sidebar-brand-text" [title]="brand.branding()?.brandTagline ?? ''">
+            {{ brand.branding()?.name || 'Engage360' }}
+          </div>
           @if (isCompact) {
             <e360-theme-toggle [iconSize]="16" />
           }
@@ -206,7 +213,7 @@ const SECTION_STORAGE_KEY = 'e360-nav-sections';
           >
             <e360-icon [name]="sidebarOpen ? 'x' : 'menu'" [size]="22" />
           </button>
-          <span class="e360-mobile-title">Engage360</span>
+          <span class="e360-mobile-title">{{ brand.branding()?.name || 'Engage360' }}</span>
           <div class="e360-mobile-header-actions">
             <e360-theme-toggle [iconSize]="20" />
             @if (auth.tenant) {
@@ -222,6 +229,7 @@ const SECTION_STORAGE_KEY = 'e360-nav-sections';
 export class ShellComponent implements OnInit {
   auth = inject(AuthService);
   tenantCtx = inject(TenantContextService);
+  brand = inject(BrandingService);
   theme = inject(ThemeService);
   private router = inject(Router);
 
@@ -233,6 +241,7 @@ export class ShellComponent implements OnInit {
 
   ngOnInit() {
     void this.tenantCtx.load();
+    void this.brand.load();
     this.loadSectionState();
     this.updateViewport();
     this.expandActiveSection();

@@ -242,6 +242,7 @@ export class LandingComponent implements OnInit {
   // Business segments (exclude platform ops from the main grid — linked in footer)
   segments = SEGMENTS.filter((s) => s.tenantType !== null);
   jurisdictions: any[] = [
+    { code: 'IN', name: 'India' },
     { code: 'US', name: 'United States' }, { code: 'GB', name: 'United Kingdom' },
     { code: 'CA', name: 'Canada' }, { code: 'AU', name: 'Australia' },
     { code: 'NZ', name: 'New Zealand' }, { code: 'EU', name: 'European Union' },
@@ -249,7 +250,7 @@ export class LandingComponent implements OnInit {
     { code: 'QA', name: 'Qatar' }, { code: 'BH', name: 'Bahrain' },
     { code: 'KW', name: 'Kuwait' }, { code: 'OM', name: 'Oman' },
   ];
-  selectedCountry = localStorage.getItem('e360_country') || 'US';
+  selectedCountry = localStorage.getItem('e360_country') || 'IN';
   get selectedJurisdiction() { return this.jurisdictions.find((j) => j.code === this.selectedCountry); }
 
   async ngOnInit() {

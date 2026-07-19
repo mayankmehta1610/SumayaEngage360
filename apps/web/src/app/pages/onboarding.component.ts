@@ -35,7 +35,7 @@ import { AuthService } from '../core/auth.service';
         <e360-data-table
           [columns]="reqCols"
           [rows]="reqRows"
-          [paginated]="false"
+          [pageSize]="15"
           [stickyHeader]="true"
         />
       </div>
@@ -82,7 +82,7 @@ import { AuthService } from '../core/auth.service';
           <e360-data-table
             [columns]="docCols"
             [rows]="docRows"
-            [paginated]="false"
+            [pageSize]="15"
             [stickyHeader]="true"
           >
             <ng-template #rowTemplate let-row>

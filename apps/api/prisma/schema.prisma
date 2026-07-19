@@ -31,6 +31,10 @@ model Tenant {
   currency                String     @default("INR")
   timezone                String     @default("Asia/Kolkata")
   logoUrl                 String?
+  logoFileId              String? // uploaded logo (FileObject id) — wins over logoUrl
+  brandPrimaryColor       String? // hex, drives tenant-branded shell theme
+  brandAccentColor        String?
+  brandTagline            String?
   isActive                Boolean    @default(true)
   createdAt               DateTime   @default(now())
   updatedAt               DateTime   @updatedAt
@@ -411,6 +415,31 @@ model CandidateJurisdictionProfile {
   @@unique([tenantId, candidateId, jurisdictionCode, memberStateCode])
   @@index([tenantId, jurisdictionCode, completionStatus])
   @@map("candidate_jurisdiction_profiles")
+}
+
+model JurisdictionEmployerProfile {
+  id               String    @id @default(uuid())
+  tenantId         String
+  jurisdictionCode String
+  memberStateCode  String    @default("")
+  profileName      String
+  legalEntityId    String?
+  locationId       String?
+  data             Json?
+  identifiers      Json?
+  registrations    Json?
+  contacts         Json?
+  completionStatus String    @default("DRAFT")
+  verifiedBy       String?
+  verifiedAt       DateTime?
+  reviewDueAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([tenantId, jurisdictionCode, memberStateCode, profileName])
+  @@index([tenantId, jurisdictionCode, completionStatus])
+  @@index([tenantId, reviewDueAt])
+  @@map("jurisdiction_employer_profiles")
 }
 
 // Verification lifecycle for citizenship, residence, permits and sponsored visas.
@@ -1646,6 +1675,8 @@ model AuditLog {
   entityId   String?
   metadata   Json?
   ipAddress  String?
+  userAgent  String? // raw client user-agent string
+  deviceType String? // MOBILE | TABLET | DESKTOP | API — parsed from user-agent
   createdAt  DateTime @default(now())
 
   @@index([tenantId, createdAt])
@@ -2592,4 +2623,114 @@ model ScheduledJobDef {
   isActive Boolean @default(true)
 
   @@map("scheduled_job_defs")
+}
+
+// ─────────────────────────────── Intranet (company portal / publishing) ───────────────────────────────
+// Per-tenant intranet: department hubs → up to three category levels → content
+// (articles, documents, videos, posters, links) with publishing workflow,
+// audience security levels and download control. Assets go through FileObject,
+// so storage stays configurable (local disk today, S3 via env without code change).
+
+enum IntranetContentType {
+  ARTICLE
+  DOCUMENT
+  VIDEO
+  POSTER
+  LINK
+}
+
+enum IntranetContentStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+// Who can see a piece of content / a category.
+enum IntranetAccessLevel {
+  COMPANY // everyone in the tenant
+  DEPARTMENT // members of the owning department only
+  ROLES // restricted to roles listed in allowedRoles
+  PRIVATE // author, HR and tenant admins only
+}
+
+model IntranetCategory {
+  id           String              @id @default(uuid())
+  tenantId     String
+  departmentId String // owning department hub
+  parentId     String? // null = level 1; depth capped at 3 in service
+  parent       IntranetCategory?   @relation("IntranetCategoryTree", fields: [parentId], references: [id])
+  children     IntranetCategory[]  @relation("IntranetCategoryTree")
+  name         String
+  slug         String
+  description  String?
+  icon         String? // lucide icon name for tiles
+  bannerFileId String? // category banner image (FileObject id)
+  accessLevel  IntranetAccessLevel @default(COMPANY)
+  allowedRoles Json? // when accessLevel = ROLES
+  sortOrder    Int                 @default(0)
+  isActive     Boolean             @default(true)
+  createdBy    String? // user id
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  contents IntranetContent[]
+
+  @@index([tenantId, departmentId, parentId])
+  @@map("intranet_categories")
+}
+
+model IntranetContent {
+  id           String                @id @default(uuid())
+  tenantId     String
+  departmentId String
+  categoryId   String?
+  category     IntranetCategory?     @relation(fields: [categoryId], references: [id])
+  type         IntranetContentType   @default(ARTICLE)
+  title        String
+  summary      String?
+  body         String? // rich text / markdown for articles & announcements
+  fileId       String? // main asset (document / video / poster) — FileObject id
+  coverFileId  String? // card thumbnail / cover image
+  externalUrl  String? // LINK type
+  status       IntranetContentStatus @default(DRAFT)
+  accessLevel  IntranetAccessLevel   @default(COMPANY)
+  allowedRoles Json? // when accessLevel = ROLES
+  downloadable Boolean               @default(true) // false = view online only
+  pinned       Boolean               @default(false) // featured on home page
+  tags         String[]
+  publishedAt  DateTime?
+  publishedBy  String?
+  expiresAt    DateTime? // auto-hide after this date
+  viewCount    Int                   @default(0)
+  createdBy    String?
+  updatedBy    String?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  @@index([tenantId, status, pinned])
+  @@index([tenantId, departmentId, categoryId])
+  @@map("intranet_contents")
+}
+
+// Rotating hero banners: tenant-wide (departmentId null), per department, or per category.
+model IntranetBanner {
+  id           String    @id @default(uuid())
+  tenantId     String
+  departmentId String?
+  categoryId   String?
+  title        String
+  subtitle     String?
+  imageFileId  String? // FileObject id
+  linkUrl      String? // internal route or external link
+  sortOrder    Int       @default(0)
+  isActive     Boolean   @default(true)
+  startsAt     DateTime?
+  endsAt       DateTime?
+  createdBy    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([tenantId, departmentId, categoryId, isActive])
+  @@map("intranet_banners")
 }

@@ -4,7 +4,6 @@ import { ApiService, errMsg } from '../core/api.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
-import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 import {
   TENANT_TYPE_DEFAULT_PORTALS,
   TENANT_TYPE_LABELS,
@@ -13,7 +12,7 @@ import {
 
 @Component({
   standalone: true,
-  imports: [FormsModule, ExportBarComponent, ModuleShellComponent, DataTableComponent, SelectFieldComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="Tenants"
@@ -83,7 +82,7 @@ import {
       </div>
 
       <div class="card">
-        <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true" />
+        <e360-data-table [columns]="tableCols" [rows]="tableRows" [pageSize]="15" [stickyHeader]="true" />
       </div>
     </e360-module-shell>
   `,
@@ -94,19 +93,14 @@ export class TenantsComponent implements OnInit {
   error = '';
   wizardStep = 1;
   f: any = {
-    country: 'US',
-    operatingCountries: ['US'],
+    country: 'IN',
+    operatingCountries: ['IN'],
     tenantType: 'COMPANY' as TenantType,
     enabledPortals: [...TENANT_TYPE_DEFAULT_PORTALS.COMPANY],
   };
-  countries = [
-    { code: 'US', name: 'United States' }, { code: 'GB', name: 'United Kingdom' },
-    { code: 'CA', name: 'Canada' }, { code: 'AU', name: 'Australia' },
-    { code: 'NZ', name: 'New Zealand' }, { code: 'EU', name: 'European Union' },
-    { code: 'AE', name: 'United Arab Emirates' }, { code: 'SA', name: 'Saudi Arabia' },
-    { code: 'QA', name: 'Qatar' }, { code: 'BH', name: 'Bahrain' },
-    { code: 'KW', name: 'Kuwait' }, { code: 'OM', name: 'Oman' },
-  ];
+  // Loaded from the jurisdiction catalog API (single source of truth); the
+  // IN entry is only a bootstrap fallback while the request is in flight.
+  countries: Array<{ code: string; name: string }> = [{ code: 'IN', name: 'India' }];
 
   tenantTypes: TenantType[] = [
     'COMPANY',
@@ -154,6 +148,9 @@ export class TenantsComponent implements OnInit {
 
   async ngOnInit() {
     await this.load();
+    try {
+      this.countries = await this.api.get<any[]>('/jurisdictions/catalog');
+    } catch { /* keep the bootstrap fallback if the catalog is unavailable */ }
   }
 
   onTypeChange() {
@@ -195,8 +192,8 @@ export class TenantsComponent implements OnInit {
         onboardingQuestionnaire: { completedAt: new Date().toISOString(), step: 'wizard' },
       });
       this.f = {
-        country: 'US',
-        operatingCountries: ['US'],
+        country: 'IN',
+        operatingCountries: ['IN'],
         tenantType: 'COMPANY',
         enabledPortals: [...TENANT_TYPE_DEFAULT_PORTALS.COMPANY],
       };

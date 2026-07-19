@@ -20,6 +20,20 @@ export class UpsertJurisdictionProfileDto {
   @IsOptional() @IsIn(['DRAFT', 'READY_FOR_REVIEW', 'COMPLETE']) completionStatus?: string;
 }
 
+export class UpsertEmployerProfileDto {
+  @Transform(upper) @IsString() jurisdictionCode: string;
+  @IsOptional() @Transform(upper) @IsString() memberStateCode?: string;
+  @IsString() profileName: string;
+  @IsOptional() @IsUUID() legalEntityId?: string;
+  @IsOptional() @IsUUID() locationId?: string;
+  @IsOptional() @IsObject() data?: Record<string, unknown>;
+  @IsOptional() @IsObject() identifiers?: Record<string, unknown>;
+  @IsOptional() @IsObject() registrations?: Record<string, unknown>;
+  @IsOptional() @IsObject() contacts?: Record<string, unknown>;
+  @IsOptional() @IsIn(['DRAFT', 'READY_FOR_REVIEW', 'VERIFIED']) completionStatus?: string;
+  @IsOptional() @IsISO8601() reviewDueAt?: string;
+}
+
 export class CreateWorkAuthorizationDto {
   @IsUUID() candidateId: string;
   @Transform(upper) @IsString() jurisdictionCode: string;

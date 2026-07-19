@@ -17,7 +17,7 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
     >
 @if (error) { <div class="e360-error">{{ error }}</div> }
     <div class="card">
-      <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true">
+      <e360-data-table [columns]="tableCols" [rows]="tableRows" [pageSize]="15" [stickyHeader]="true">
         <ng-template #rowTemplate let-row>
           <td>{{ row.employee }}</td>
           <td>{{ row.status }}</td>

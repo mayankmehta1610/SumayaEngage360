@@ -1064,6 +1064,15 @@ input[type="radio"] {
   letter-spacing: -0.01em;
   font-weight: 800;
 }
+.e360-brand-logo {
+  height: 30px;
+  max-width: 132px;
+  flex-shrink: 0;
+  object-fit: contain;
+  border-radius: 6px;
+  background: #fff;
+  padding: 2px;
+}
 .e360-sidebar-toolbar {
   display: flex;
   align-items: center;

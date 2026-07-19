@@ -1,5 +1,4 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
@@ -10,7 +9,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent, SelectFieldComponent, DataTableComponent],
+  imports: [FormsModule, ExportBarComponent, ModuleShellComponent, SelectFieldComponent, DataTableComponent],
   template: `
     <e360-module-shell
       title="Appraisals"
@@ -114,7 +113,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
         <button style="margin-left:.5rem" (click)="createCycle()" [disabled]="!f.name || !f.startDate">Create cycle</button>
       </div>
       <div class="card">
-        <e360-data-table [columns]="cycleCols" [rows]="cycleRows" [paginated]="false" [stickyHeader]="true">
+        <e360-data-table [columns]="cycleCols" [rows]="cycleRows" [pageSize]="15" [stickyHeader]="true">
           <ng-template #rowTemplate let-row>
             <td>{{ row.name }}</td>
             <td>{{ row.frequency }}</td>

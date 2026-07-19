@@ -51,7 +51,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
       </div>
       @if (payslips.length) {
         <div class="card"><h2>Payslips</h2>
-          <e360-data-table [columns]="payslipCols" [rows]="payslipRows" [paginated]="false" [stickyHeader]="true" />
+          <e360-data-table [columns]="payslipCols" [rows]="payslipRows" [pageSize]="15" [stickyHeader]="true" />
         </div>
       }
 
@@ -91,7 +91,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
       </div>
     } @else {
       <div class="card"><h2>My payslips</h2>
-        <e360-data-table [columns]="mySlipCols" [rows]="mySlipRows" [paginated]="false" [stickyHeader]="true" />
+        <e360-data-table [columns]="mySlipCols" [rows]="mySlipRows" [pageSize]="15" [stickyHeader]="true" />
       </div>
       <div class="card"><h2>My payroll adjustments</h2>
         <table><tr><th>Type</th><th>Period</th><th>Amount</th><th>Outstanding</th></tr>

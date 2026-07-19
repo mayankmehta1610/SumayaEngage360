@@ -20,7 +20,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
 @if (error) { <div class="e360-error">{{ error }}</div> }
     <div class="card">
       <h2>Onboarding tasks</h2>
-      <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true">
+      <e360-data-table [columns]="tableCols" [rows]="tableRows" [pageSize]="15" [stickyHeader]="true">
         <ng-template #rowTemplate let-row>
           <td>{{ row.employee }}</td>
           <td>{{ row.type }}</td>

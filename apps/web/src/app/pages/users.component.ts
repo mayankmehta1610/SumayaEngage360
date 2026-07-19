@@ -5,6 +5,7 @@ import { tableListParams, TableSort } from '../core/table-query.util';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { AuthService } from '../core/auth.service';
+import { TENANT_ROLES } from '../core/rbac';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 
 @Component({
@@ -91,7 +92,9 @@ export class UsersComponent implements OnInit {
   total = 0;
   sort: TableSort | null = null;
   columnFilters: Record<string, string> = {};
-  allRoles = ['HR', 'MANAGER', 'INTERVIEWER', 'BGC_VENDOR', 'TENANT_ADMIN', 'EMPLOYEE'];
+  // Shared RBAC list (adds DEPARTMENT_HEAD, which the old inline list missed)
+  // plus the external BGV vendor role.
+  allRoles: string[] = [...TENANT_ROLES, 'BGC_VENDOR'];
   f: any = { roles: ['HR'] };
   exportCols = [
     { key: 'firstName', label: 'First name' },

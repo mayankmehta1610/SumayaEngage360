@@ -104,7 +104,7 @@ const emptyForm = (): ApplyForm => ({
                     <summary (click)="$event.preventDefault(); toggleSection(sec.key)">
                       <span class="e360-apply-section-num">{{ sec.num }}</span>
                       <span>{{ sec.label }}</span>
-                      @if (sectionErrors[sec.key]?.length) {
+                      @if (sectionErrors[sec.key].length) {
                         <span class="badge err e360-apply-section-badge">Needs attention</span>
                       }
                     </summary>

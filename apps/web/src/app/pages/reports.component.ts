@@ -87,7 +87,7 @@ interface ReportDef {
               }
               @if (tableRows.length) {
                 <export-bar [rows]="tableRows" [cols]="tableCols" [name]="selected.code" />
-                <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true" />
+                <e360-data-table [columns]="tableCols" [rows]="tableRows" [pageSize]="15" [stickyHeader]="true" />
               }
               <details style="margin-top:.75rem">
                 <summary class="muted">Raw JSON</summary>

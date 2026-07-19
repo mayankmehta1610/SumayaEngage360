@@ -36,7 +36,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
         <h2 style="margin:0">Module summary</h2>
         <export-bar [rows]="modules" [cols]="modCols" name="module-summary" />
       </div>
-      <e360-data-table [columns]="moduleCols" [rows]="moduleRows" [paginated]="false" [stickyHeader]="true" />
+      <e360-data-table [columns]="moduleCols" [rows]="moduleRows" [pageSize]="15" [stickyHeader]="true" />
     </div>
 
     <div class="card">
@@ -44,7 +44,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
         <h2 style="margin:0">Roles ({{ roles.length }})</h2>
         <export-bar [rows]="roles" [cols]="roleCols" name="roles" />
       </div>
-      <e360-data-table [columns]="roleTableCols" [rows]="roleRows" [paginated]="false" [stickyHeader]="true" />
+      <e360-data-table [columns]="roleTableCols" [rows]="roleRows" [pageSize]="15" [stickyHeader]="true" />
     </div>
 
     <div class="card">
@@ -52,7 +52,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
         <h2 style="margin:0">Workflows</h2>
         <export-bar [rows]="workflows" [cols]="wfCols" name="workflows" />
       </div>
-      <e360-data-table [columns]="wfCols2" [rows]="wfRows" [paginated]="false" [stickyHeader]="true" />
+      <e360-data-table [columns]="wfCols2" [rows]="wfRows" [pageSize]="15" [stickyHeader]="true" />
     </div>
 
     <div class="card">
@@ -73,7 +73,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
         [rows]="featRows"
         [page]="featMeta.page"
         [pageSize]="30"
-        [total]="featMeta.total ?? features.length"
+        [total]="featMeta.total"
         [paginated]="true"
         [stickyHeader]="true"
         (pageChange)="loadFeatures($event, featureStatusFilter)"

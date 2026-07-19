@@ -1,8 +1,12 @@
+import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { environment } from '../../environments/environment';
 import { ApiService, errMsg, unwrapPaginated } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
+import { BrandingService } from '../core/branding.service';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
@@ -24,6 +28,45 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
       <div class="card" style="margin-bottom:.75rem">
         <a routerLink="/tenant-onboarding">Tenant onboarding wizard</a>
         <span class="e360-muted"> — configure tenant type and portals</span>
+      </div>
+
+      <div class="card" style="margin-bottom:.75rem">
+        <h2 style="margin-top:0">🎨 Company branding</h2>
+        <p class="e360-muted">Your logo and colors — applied instantly across the workspace for everyone in your company.</p>
+        <div class="row" style="align-items:flex-end;gap:1rem;flex-wrap:wrap">
+          <div>
+            <label>Logo</label>
+            <div style="display:flex;align-items:center;gap:.6rem">
+              @if (brand.logoSrc()) {
+                <img [src]="brand.logoSrc()" alt="Current logo" style="height:40px;max-width:140px;object-fit:contain;border:1px solid var(--e360-border);border-radius:8px;padding:3px;background:#fff" />
+              }
+              <label class="secondary" style="display:inline-flex;align-items:center;gap:.35rem;cursor:pointer;border:1px dashed var(--e360-border);border-radius:8px;padding:.4rem .7rem">
+                Upload logo
+                <input type="file" accept="image/*" hidden (change)="uploadLogo($event)" />
+              </label>
+              @if (brand.logoSrc()) {
+                <button class="secondary sm" (click)="removeLogo()">Remove</button>
+              }
+            </div>
+          </div>
+          <div>
+            <label>Primary color</label>
+            <input type="color" [(ngModel)]="brandForm.brandPrimaryColor" style="width:56px;height:36px;padding:2px" />
+          </div>
+          <div>
+            <label>Accent color</label>
+            <input type="color" [(ngModel)]="brandForm.brandAccentColor" style="width:56px;height:36px;padding:2px" />
+          </div>
+          <div style="min-width:220px">
+            <label>Tagline</label>
+            <input [(ngModel)]="brandForm.brandTagline" placeholder="People first." />
+          </div>
+          <div style="flex:0;display:flex;gap:.4rem">
+            <button (click)="saveBranding()">Save branding</button>
+            <button class="secondary" (click)="resetBranding()">Reset colors</button>
+          </div>
+        </div>
+        @if (brandMsg) { <p class="e360-muted" style="margin:.5rem 0 0">{{ brandMsg }}</p> }
       </div>
     }
 @if (error) { <div class="e360-error">{{ error }}</div> }
@@ -70,7 +113,7 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
     <div class="card">
       <h2 style="margin-top:0">🧩 Custom field definitions</h2>
       <p class="e360-muted">Configure extra fields on applications and candidates.</p>
-      <e360-data-table [columns]="fieldCols" [rows]="fieldRows" [paginated]="false" [stickyHeader]="true">
+      <e360-data-table [columns]="fieldCols" [rows]="fieldRows" [pageSize]="15" [stickyHeader]="true">
         <ng-template #rowTemplate let-row>
           <td>{{ row.entity }}</td>
           <td>{{ row.key }}</td>
@@ -153,8 +196,12 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 })
 export class SettingsComponent implements OnInit {
   private api = inject(ApiService);
+  private http = inject(HttpClient);
   auth = inject(AuthService);
+  brand = inject(BrandingService);
   error = '';
+  brandMsg = '';
+  brandForm = { brandPrimaryColor: '#6d5cff', brandAccentColor: '#06b6d4', brandTagline: '' };
   branches: any[] = [];
   shifts: any[] = [];
   flags: any[] = [];
@@ -208,6 +255,58 @@ export class SettingsComponent implements OnInit {
   async ngOnInit() {
     if (!this.auth.hasRole('TENANT_ADMIN', 'HR')) return;
     await this.reload();
+    const b = this.brand.branding();
+    if (b) {
+      this.brandForm = {
+        brandPrimaryColor: b.brandPrimaryColor ?? '#6d5cff',
+        brandAccentColor: b.brandAccentColor ?? '#06b6d4',
+        brandTagline: b.brandTagline ?? '',
+      };
+    }
+  }
+
+  async uploadLogo(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await firstValueFrom(this.http.post<any>(`${environment.apiBase}/files`, fd));
+      await this.api.patch('/tenant/branding', { logoFileId: res.id });
+      await this.brand.load();
+      this.brandMsg = 'Logo updated.';
+    } catch (e) { this.brandMsg = errMsg(e); }
+    finally { input.value = ''; }
+  }
+
+  async removeLogo() {
+    try {
+      await this.api.patch('/tenant/branding', { logoFileId: '', logoUrl: '' });
+      await this.brand.load();
+      this.brandMsg = 'Logo removed.';
+    } catch (e) { this.brandMsg = errMsg(e); }
+  }
+
+  async saveBranding() {
+    try {
+      await this.api.patch('/tenant/branding', {
+        brandPrimaryColor: this.brandForm.brandPrimaryColor,
+        brandAccentColor: this.brandForm.brandAccentColor,
+        brandTagline: this.brandForm.brandTagline,
+      });
+      await this.brand.load();
+      this.brandMsg = 'Branding saved — theme applied.';
+    } catch (e) { this.brandMsg = errMsg(e); }
+  }
+
+  async resetBranding() {
+    try {
+      await this.api.patch('/tenant/branding', { brandPrimaryColor: '', brandAccentColor: '', brandTagline: '' });
+      await this.brand.load();
+      this.brandForm = { brandPrimaryColor: '#6d5cff', brandAccentColor: '#06b6d4', brandTagline: '' };
+      this.brandMsg = 'Branding reset to platform defaults.';
+    } catch (e) { this.brandMsg = errMsg(e); }
   }
 
   async reload() {

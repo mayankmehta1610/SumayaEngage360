@@ -5,6 +5,8 @@ import { RouterLink } from '@angular/router';
 import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { MODULE_REPORTS } from '../core/rbac';
+import { ExportColumn } from '../core/export.service';
+import { ExportBarComponent } from '../core/export-bar.component';
 import { IconComponent } from './icon.component';
 
 interface ReportDef {
@@ -16,7 +18,7 @@ interface ReportDef {
 @Component({
   selector: 'e360-module-reports',
   standalone: true,
-  imports: [FormsModule, DatePipe, JsonPipe, RouterLink, IconComponent],
+  imports: [FormsModule, DatePipe, JsonPipe, RouterLink, IconComponent, ExportBarComponent],
   template: `
     @if (!canRun) {
       <div class="card e360-muted">Reports require HR, Manager, or Tenant Admin role.</div>
@@ -58,7 +60,12 @@ interface ReportDef {
             </div>
             @if (error) { <div class="e360-error">{{ error }}</div> }
             @if (result) {
-              <p class="e360-muted" style="font-size:.8rem">Generated {{ result.generatedAt | date:'medium' }}</p>
+              <div class="e360-toolbar" style="margin:.5rem 0">
+                <p class="e360-muted" style="font-size:.8rem;margin:0">Generated {{ result.generatedAt | date:'medium' }}</p>
+                @if (exportRows.length) {
+                  <export-bar [rows]="exportRows" [cols]="exportCols" [name]="exportName" />
+                }
+              </div>
               @if (result.data?.kpis) {
                 <div class="e360-kpis">
                   @for (k of result.data.kpis; track k.label) {
@@ -95,6 +102,42 @@ export class ModuleReportsComponent implements OnInit {
 
   get reportCodes() { return MODULE_REPORTS[this.moduleKey] ?? []; }
   get canRun() { return this.auth.hasRole('TENANT_ADMIN', 'HR', 'MANAGER'); }
+  get exportName() { return `${this.moduleKey || 'module'}-${this.selected?.code ?? 'report'}`; }
+
+  get exportRows(): Record<string, unknown>[] {
+    const data = this.result?.data;
+    if (!data || typeof data !== 'object') return [];
+    const rows: Record<string, unknown>[] = [];
+    for (const [section, value] of Object.entries(data)) {
+      if (!Array.isArray(value)) continue;
+      for (const item of value) {
+        if (item && typeof item === 'object' && !Array.isArray(item)) {
+          rows.push({ section, ...(item as Record<string, unknown>) });
+        } else {
+          rows.push({ section, value: item });
+        }
+      }
+    }
+    if (rows.length) return rows;
+    return Object.entries(data)
+      .filter(([, value]) => ['string', 'number', 'boolean'].includes(typeof value))
+      .map(([metric, value]) => ({ metric, value }));
+  }
+
+  get exportCols(): ExportColumn[] {
+    const keys: string[] = [];
+    for (const row of this.exportRows) {
+      for (const key of Object.keys(row)) {
+        if (!keys.includes(key)) keys.push(key);
+      }
+    }
+    return keys.map((key) => ({
+      key,
+      label: key
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, (value) => value.toUpperCase()),
+    }));
+  }
 
   async ngOnInit() {
     if (!this.canRun || !this.reportCodes.length) return;

@@ -123,6 +123,9 @@ export class ReportsService {
       case 'RPT-025':
         result = await this.exitClearance(tenantId, dto);
         break;
+      case 'RPT-026':
+        result = await this.globalMobility(tenantId, dto);
+        break;
       default:
         throw new BadRequestException(`Report not implemented: ${code}`);
     }
@@ -145,6 +148,36 @@ export class ReportsService {
     if (dto.managerId) w.managerId = dto.managerId;
     if (dto.status) w.status = dto.status as any;
     return w;
+  }
+
+  private async globalMobility(tenantId: string, dto: ReportQueryDto) {
+    const now = new Date();
+    const in90Days = new Date(now.getTime() + 90 * 864e5);
+    const [employerProfiles, candidateProfiles, cases, byStatus, byJurisdiction] = await Promise.all([
+      this.prisma.jurisdictionEmployerProfile.findMany({ where: { tenantId }, orderBy: [{ jurisdictionCode: 'asc' }, { profileName: 'asc' }] }),
+      this.prisma.candidateJurisdictionProfile.findMany({ where: { tenantId }, select: { id: true, candidateId: true, jurisdictionCode: true, memberStateCode: true, completionStatus: true, updatedAt: true } }),
+      this.prisma.workAuthorizationCase.findMany({ where: { tenantId }, include: { candidate: { select: { firstName: true, lastName: true, email: true } } }, orderBy: [{ expiresAt: 'asc' }, { createdAt: 'desc' }] }),
+      this.prisma.workAuthorizationCase.groupBy({ by: ['status'], where: { tenantId }, _count: true }),
+      this.prisma.workAuthorizationCase.groupBy({ by: ['jurisdictionCode'], where: { tenantId }, _count: true }),
+    ]);
+    const expiring = cases.filter((item) => item.expiresAt && item.expiresAt >= now && item.expiresAt <= in90Days);
+    const expired = cases.filter((item) => item.expiresAt && item.expiresAt < now && item.status !== 'CLOSED');
+    return {
+      kpis: [
+        { label: 'Employer country profiles', value: employerProfiles.length },
+        { label: 'Candidate country profiles', value: candidateProfiles.length },
+        { label: 'Open authorization cases', value: cases.filter((item) => !['CLOSED', 'REJECTED'].includes(item.status)).length },
+        { label: 'Expiring in 90 days', value: expiring.length },
+        { label: 'Expired and open', value: expired.length },
+      ],
+      byStatus: byStatus.map((item) => ({ status: item.status, count: item._count })),
+      byJurisdiction: byJurisdiction.map((item) => ({ jurisdictionCode: item.jurisdictionCode, count: item._count })),
+      employerProfiles,
+      candidateProfiles,
+      cases: cases.map((item) => ({ id: item.id, caseNumber: item.caseNumber, candidate: `${item.candidate.firstName} ${item.candidate.lastName}`, email: item.candidate.email, jurisdictionCode: item.jurisdictionCode, memberStateCode: item.memberStateCode, authorizationType: item.authorizationType, status: item.status, sponsorshipRequired: item.sponsorshipRequired, employerSpecific: item.employerSpecific, expiresAt: item.expiresAt })),
+      expiringCases: expiring.map((item) => ({ caseNumber: item.caseNumber, candidate: `${item.candidate.firstName} ${item.candidate.lastName}`, jurisdictionCode: item.jurisdictionCode, status: item.status, expiresAt: item.expiresAt })),
+      expiredCases: expired.map((item) => ({ caseNumber: item.caseNumber, candidate: `${item.candidate.firstName} ${item.candidate.lastName}`, jurisdictionCode: item.jurisdictionCode, status: item.status, expiresAt: item.expiresAt })),
+    };
   }
 
   private async executiveDashboard(tenantId: string, dto: ReportQueryDto) {

@@ -4,6 +4,7 @@ import { roleGuard } from './core/role.guard';
 
 const shellChildren = [
   { path: 'dashboard', loadComponent: () => import('./pages/dashboard.component').then((m) => m.DashboardComponent) },
+  { path: 'intranet', loadComponent: () => import('./pages/intranet.component').then((m) => m.IntranetComponent) },
   { path: 'reports', loadComponent: () => import('./pages/reports.component').then((m) => m.ReportsComponent) },
   { path: 'settings', loadComponent: () => import('./pages/settings.component').then((m) => m.SettingsComponent) },
   { path: 'tenant-onboarding', loadComponent: () => import('./pages/tenant-onboarding.component').then((m) => m.TenantOnboardingComponent) },

@@ -83,6 +83,7 @@ Legend: **F** = Full parity (all web actions implemented)
 | Catalogues | F | Data entities, API catalogue |
 | Requirements | F | Modules, features, roles |
 | Clients | F | Hiring clients list |
+| Global mobility | F | India-first country configuration, work authorization creation, search, expiry ordering and pagination |
 
 ---
 
@@ -151,3 +152,7 @@ flutter build web
 
 Parity is evidence-based. A module is complete only when its actions and role
 restrictions have executable coverage; uncovered workflows remain listed as gaps.
+
+- **Intranet (2026-07-19):** the company intranet (`/intranet` on web — department
+  hubs, 3-level categories, publishing, banners, secured downloads) has no mobile
+  screen yet. See `docs/INTRANET-AND-BRANDING.md`.

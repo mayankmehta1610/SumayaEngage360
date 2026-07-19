@@ -53,7 +53,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
           <input type="date" [(ngModel)]="assignment.dueDate" />
           <button (click)="assignGoal()" [disabled]="!assignment.employeeId || !assignment.title">Assign</button>
         </div>
-        <e360-data-table [columns]="teamGoalCols" [rows]="teamGoalRows" [paginated]="false" [stickyHeader]="true" />
+        <e360-data-table [columns]="teamGoalCols" [rows]="teamGoalRows" [pageSize]="15" [stickyHeader]="true" />
       </div>
     }
     <div class="card">

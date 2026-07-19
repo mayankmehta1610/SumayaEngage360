@@ -7,6 +7,7 @@ import '../screens/attendance/attendance_screen.dart';
 import '../screens/dashboard/dashboard_screen.dart';
 import '../screens/modules/admin_screens.dart';
 import '../screens/modules/composite_screens.dart';
+import '../screens/modules/global_mobility_screen.dart';
 import '../screens/modules/operations_screens.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/timesheets/timesheets_screen.dart';
@@ -83,6 +84,8 @@ Widget? moduleScreenFor(String path) {
       return const UsersScreen();
     case '/clients':
       return const ClientsScreen();
+    case '/global-mobility':
+      return const GlobalMobilityScreen();
     case '/jobs':
       return const JobsScreen();
     case '/candidates':

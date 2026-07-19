@@ -51,6 +51,7 @@ import { AgencyModule } from './modules/agency/agency.module';
 import { StaffingModule } from './modules/staffing/staffing.module';
 import { JurisdictionsModule } from './modules/jurisdictions/jurisdictions.module';
 import { LifecyclesModule } from './modules/lifecycles/lifecycles.module';
+import { IntranetModule } from './modules/intranet/intranet.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -100,6 +101,7 @@ import { HealthController } from './health.controller';
     StaffingModule,
     JurisdictionsModule,
     LifecyclesModule,
+    IntranetModule,
   ],
   controllers: [HealthController],
   providers: [

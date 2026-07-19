@@ -7,6 +7,7 @@ import {
   CreateTenantDto,
   OnboardingWizardDto,
   PatchOnboardingDto,
+  UpdateBrandingDto,
   UpdateTenantDto,
 } from './tenants.dto';
 
@@ -91,6 +92,36 @@ export class TenantsService {
         ...(dto.primaryCountry ? { country: dto.primaryCountry.trim().toUpperCase() } : {}),
       },
     });
+  }
+
+  /** Tenant self-service branding (CMS): logo, colors, tagline. */
+  async branding(tenantId: string) {
+    const t = await this.findOne(tenantId);
+    return {
+      name: t.name,
+      logoUrl: t.logoUrl,
+      logoFileId: t.logoFileId,
+      brandPrimaryColor: t.brandPrimaryColor,
+      brandAccentColor: t.brandAccentColor,
+      brandTagline: t.brandTagline,
+    };
+  }
+
+  async updateBranding(tenantId: string, dto: UpdateBrandingDto) {
+    await this.findOne(tenantId);
+    // Empty string clears a value (removes logo / resets a color).
+    const nullable = (v?: string) => (v === '' ? null : v);
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        ...(dto.logoFileId !== undefined ? { logoFileId: nullable(dto.logoFileId) } : {}),
+        ...(dto.logoUrl !== undefined ? { logoUrl: nullable(dto.logoUrl) } : {}),
+        ...(dto.brandPrimaryColor !== undefined ? { brandPrimaryColor: nullable(dto.brandPrimaryColor) } : {}),
+        ...(dto.brandAccentColor !== undefined ? { brandAccentColor: nullable(dto.brandAccentColor) } : {}),
+        ...(dto.brandTagline !== undefined ? { brandTagline: nullable(dto.brandTagline) } : {}),
+      },
+    });
+    return this.branding(tenantId);
   }
 
   async patchOnboarding(tenantId: string, dto: PatchOnboardingDto) {

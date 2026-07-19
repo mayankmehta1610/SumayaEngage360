@@ -65,6 +65,8 @@ export class AuditComponent implements OnInit {
     { key: 'actor', label: 'Actor', sortable: true },
     { key: 'action', label: 'Action', sortable: true },
     { key: 'entity', label: 'Entity', sortable: true },
+    { key: 'device', label: 'Device', sortable: false },
+    { key: 'source', label: 'Source IP', sortable: false, filterable: false },
     { key: 'details', label: 'Details' },
   ];
 
@@ -74,6 +76,8 @@ export class AuditComponent implements OnInit {
       actor: r.actorEmail ?? r.actorId ?? '—',
       action: r.action,
       entity: `${r.entityType}${r.entityId ? ' #' + String(r.entityId).slice(0, 8) : ''}`,
+      device: r.deviceType ?? '—',
+      source: r.ipAddress ?? '—',
       details: r.details ? JSON.stringify(r.details) : (r.metadata ? JSON.stringify(r.metadata) : '—'),
     }));
   }

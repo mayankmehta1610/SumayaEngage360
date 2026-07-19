@@ -15,6 +15,16 @@ export type AppRole =
   | 'BGC_VENDOR'
   | 'DEPARTMENT_HEAD';
 
+/** Roles that exist inside a tenant (i.e. assignable to company users). */
+export const TENANT_ROLES: AppRole[] = [
+  'TENANT_ADMIN',
+  'HR',
+  'MANAGER',
+  'EMPLOYEE',
+  'INTERVIEWER',
+  'DEPARTMENT_HEAD',
+];
+
 export type TenantType =
   | 'COMPANY'
   | 'RECRUITMENT_AGENCY'
@@ -178,6 +188,7 @@ export const NAV_GROUPS: Record<string, { label: string; order: number }> = {
 /** Route-level access — used by roleGuard and shell navigation */
 export const ROUTE_ACCESS: RouteAccess[] = [
   { path: '/dashboard', label: 'Dashboard', roles: ['TENANT_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE', 'INTERVIEWER', 'DEPARTMENT_HEAD'], icon: 'layout-dashboard', group: 'platform' },
+  { path: '/intranet', label: 'Intranet', roles: ['TENANT_ADMIN', 'HR', 'MANAGER', 'EMPLOYEE', 'INTERVIEWER', 'DEPARTMENT_HEAD'], icon: 'newspaper', group: 'platform' },
   { path: '/reports', label: 'Reports', roles: ['TENANT_ADMIN', 'HR', 'MANAGER'], icon: 'bar-chart-3', group: 'platform' },
   { path: '/settings', label: 'Settings', roles: ['TENANT_ADMIN', 'HR'], icon: 'settings', group: 'platform' },
   { path: '/catalogues', label: 'Catalogues', roles: ['TENANT_ADMIN', 'HR'], icon: 'book-open', group: 'platform' },
@@ -239,6 +250,9 @@ export const MODULE_REPORTS: Record<string, string[]> = {
   jobs: ['RPT-002', 'RPT-003', 'RPT-004', 'RPT-005'],
   applications: ['RPT-002', 'RPT-003', 'RPT-004'],
   candidates: ['RPT-002', 'RPT-004'],
+  'global-mobility': ['RPT-026'],
+  'agency-submissions': ['RPT-002', 'RPT-003', 'RPT-004', 'RPT-005'],
+  'agency-contacts': ['RPT-002', 'RPT-004'],
   onboarding: ['RPT-006', 'RPT-023'],
   employees: ['RPT-007', 'RPT-008', 'RPT-009'],
   org: ['RPT-007', 'RPT-008'],
@@ -246,6 +260,8 @@ export const MODULE_REPORTS: Record<string, string[]> = {
   timesheets: ['RPT-012', 'RPT-013'],
   projects: ['RPT-013', 'RPT-014'],
   manpower: ['RPT-014', 'RPT-013'],
+  contracts: ['RPT-012', 'RPT-013', 'RPT-014'],
+  contractors: ['RPT-012', 'RPT-013', 'RPT-014'],
   payroll: ['RPT-015', 'RPT-016'],
   benefits: ['RPT-016'],
   expenses: ['RPT-015'],
@@ -253,6 +269,8 @@ export const MODULE_REPORTS: Record<string, string[]> = {
   appraisals: ['RPT-017', 'RPT-018'],
   trainings: ['RPT-019'],
   recognition: ['RPT-020', 'RPT-021'],
+  surveys: ['RPT-020'],
+  compliance: ['RPT-019', 'RPT-023', 'RPT-024'],
   assets: ['RPT-022'],
   exit: ['RPT-025'],
   audit: ['RPT-024'],

@@ -28,7 +28,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
       <button (click)="create()">Add</button>
     </div>
     <div class="card">
-      <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true">
+      <e360-data-table [columns]="tableCols" [rows]="tableRows" [pageSize]="15" [stickyHeader]="true">
         <ng-template #rowTemplate let-row>
           <td>{{ row.tag }}</td>
           <td>{{ row.category }}</td>

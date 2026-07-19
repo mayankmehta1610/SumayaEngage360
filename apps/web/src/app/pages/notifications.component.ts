@@ -28,7 +28,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
       <input [(ngModel)]="tpl.subject" placeholder="Subject" />
       <textarea [(ngModel)]="tpl.body" placeholder="Body with {{'{{name}}'}}"></textarea>
       <button (click)="create()">Create template</button>
-      <e360-data-table [columns]="tableCols" [rows]="tableRows" [paginated]="false" [stickyHeader]="true" />
+      <e360-data-table [columns]="tableCols" [rows]="tableRows" [pageSize]="15" [stickyHeader]="true" />
     </div>
     <div class="card"><h2>Recent deliveries</h2>
       <ul>@for (d of deliveries; track d.id) { <li>{{ d.channel }} → {{ d.recipient }} ({{ d.status }})</li> }</ul>

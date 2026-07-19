@@ -1,6 +1,6 @@
 # Global Jurisdiction and Mobility Flow
 
-SumayaEngage360 supports country-aware recruitment and workforce mobility for the United States, United Kingdom, Canada, Australia, New Zealand, the European Union, the United Arab Emirates, Saudi Arabia, Qatar, Bahrain, Kuwait, and Oman.
+SumayaEngage360 is India-first and supports country-aware recruitment and workforce mobility for India, the United States, United Kingdom, Canada, Australia, New Zealand, the European Union, the United Arab Emirates, Saudi Arabia, Qatar, Bahrain, Kuwait, and Oman.
 
 This module is an operational workflow and evidence register. Immigration, employment, privacy, sponsorship, and tax rules change frequently; customers must validate decisions against the relevant authority and qualified local advisers.
 
@@ -22,6 +22,7 @@ This module is an operational workflow and evidence register. Immigration, emplo
 
 | Jurisdiction | Candidate profile and evidence | Authorization/sponsorship examples | Operational lifecycle |
 | --- | --- | --- | --- |
+| India | State of employment, identity and address evidence, PAN, UAN/EPFO, ESIC, bank verification, tax declaration and employment terms | Indian citizen, OCI, employment visa, project visa, intern visa and other authority-approved work status | Entity/state registrations → requisition and state terms → identity/work-right review → offer → BGV → payroll/statutory enrolment → attendance/leave compliance → transfer, renewal or exit |
 | United States | Citizenship/immigration attestation, I-9 workflow, document verification method, SSN last four only where justified, worksite, SOC and wage context | U.S. citizen, permanent resident, EAD, H-1B/H-1B1, H-2A/H-2B, L-1A/L-1B, O-1, TN, E-3, E-1/E-2, F-1 CPT/OPT, J-1 | Requisition and worksite → candidate consent → offer → sponsorship/filing where required → I-9/E-Verify where applicable → onboarding → reverification/extension → transfer or separation |
 | United Kingdom | Right-to-work share code, IDVT/ECS evidence and check date | Skilled Worker, Health and Care Worker, Global Business Mobility, Scale-up, Global Talent, Graduate, HPI, Youth Mobility, Temporary Worker, dependant routes | Sponsor/client requirement → offer and CoS where required → application → right-to-work check → start → repeat check/extension → change of employment or exit |
 | Canada | Province, NOC/TEER, permit conditions and expiry | Citizen/PR, employer-specific permit, open permit, PGWP, IEC, study-linked work; LMIA and LMIA-exempt IMP pathways | Employer and province requirement → LMIA/offer submission where applicable → permit → SIN/payroll onboarding → condition/expiry monitoring → extension or change of employer |
@@ -52,7 +53,7 @@ This module is an operational workflow and evidence register. Immigration, emplo
 | Authorization case API | `GET/POST /api/jurisdictions/work-authorizations` and `PATCH /api/jurisdictions/work-authorizations/:id` | Create, review, verify, renew, transfer, close, or cancel authorization cases. |
 | Expiry API | `GET /api/jurisdictions/expiry-dashboard` | Surface expiring authorizations and follow-up dates. |
 
-`XX` is the selected country code, for example `US`, `GB`, `CA`, `AU`, `NZ`, `EU`, `AE`, `SA`, `QA`, `BH`, `KW`, or `OM`.
+`XX` is the selected country code, for example `IN`, `US`, `GB`, `CA`, `AU`, `NZ`, `EU`, `AE`, `SA`, `QA`, `BH`, `KW`, or `OM`.
 
 ## Roles and controls
 
@@ -65,6 +66,7 @@ This module is an operational workflow and evidence register. Immigration, emplo
 
 ## Authoritative references
 
+- India: Ministry of Labour & Employment, EPFO, ESIC, and India Visa Online / Bureau of Immigration.
 - United States: USCIS Form I-9 and temporary worker classifications.
 - United Kingdom: GOV.UK right-to-work checks and work visa guidance.
 - Canada: IRCC work permits, employer-specific permits, LMIA and LMIA-exempt employer processes.

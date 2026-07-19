@@ -11,6 +11,8 @@ export interface AuditEntry {
   entityId?: string | null;
   metadata?: Record<string, unknown>;
   ipAddress?: string | null;
+  userAgent?: string | null;
+  deviceType?: string | null;
 }
 
 @Injectable()
@@ -27,6 +29,8 @@ export class AuditService {
         entityId: entry.entityId ?? undefined,
         metadata: entry.metadata as Prisma.InputJsonValue | undefined,
         ipAddress: entry.ipAddress ?? undefined,
+        userAgent: entry.userAgent ?? undefined,
+        deviceType: entry.deviceType ?? undefined,
       },
     });
   }
@@ -60,6 +64,7 @@ export class AuditService {
     }
     if (filters.action) where.action = contains(filters.action);
     if (filters.entity) where.entityType = contains(filters.entity);
+    if (filters.device) where.deviceType = contains(filters.device);
     if (filters.actor) {
       const actorIds = await this.userIdsByEmail(tenantId, filters.actor);
       where.userId = actorIds.length ? { in: actorIds } : { in: ['__none__'] };

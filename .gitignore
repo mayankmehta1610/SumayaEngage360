@@ -20,3 +20,4 @@ apps/web/playwright-report/
 
 # Generated professional walkthrough assets are local deliverables, not source.
 docs/video-walkthrough/
+.claude/settings.local.json

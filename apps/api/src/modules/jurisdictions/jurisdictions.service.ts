@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { JURISDICTIONS, SUPPORTED_JURISDICTION_CODES, jurisdiction } from './jurisdiction.catalog';
-import { ConfigureJurisdictionsDto, CreateWorkAuthorizationDto, UpdateWorkAuthorizationDto, UpsertJurisdictionProfileDto } from './jurisdictions.dto';
+import { JURISDICTIONS, JurisdictionField, SUPPORTED_JURISDICTION_CODES, jurisdiction } from './jurisdiction.catalog';
+import { ConfigureJurisdictionsDto, CreateWorkAuthorizationDto, UpdateWorkAuthorizationDto, UpsertEmployerProfileDto, UpsertJurisdictionProfileDto } from './jurisdictions.dto';
 
 const CASE_TRANSITIONS: Record<string, string[]> = {
   DRAFT: ['ASSESSMENT', 'REJECTED', 'CLOSED'],
@@ -68,9 +68,34 @@ export class JurisdictionsService {
     return { profiles, authorizations };
   }
 
+  async listEmployerProfiles(tenantId: string, jurisdictionCode?: string) {
+    return this.prisma.jurisdictionEmployerProfile.findMany({
+      where: { tenantId, ...(jurisdictionCode ? { jurisdictionCode: jurisdictionCode.trim().toUpperCase() } : {}) },
+      orderBy: [{ jurisdictionCode: 'asc' }, { profileName: 'asc' }],
+    });
+  }
+
+  async upsertEmployerProfile(tenantId: string, actorId: string, dto: UpsertEmployerProfileDto) {
+    const definition = await this.requireEnabled(tenantId, dto.jurisdictionCode, dto.memberStateCode);
+    this.validateRequiredFields(definition.employerFields, {
+      ...(dto.data ?? {}), ...(dto.identifiers ?? {}), ...(dto.registrations ?? {}), ...(dto.contacts ?? {}),
+    }, dto.completionStatus, `${definition.name} employer`);
+    const jurisdictionCode = definition.code;
+    const memberStateCode = dto.memberStateCode?.trim().toUpperCase() ?? '';
+    const profileName = dto.profileName.trim();
+    if (!profileName) throw new BadRequestException('Employer profile name is required');
+    const verified = dto.completionStatus === 'VERIFIED';
+    return this.prisma.jurisdictionEmployerProfile.upsert({
+      where: { tenantId_jurisdictionCode_memberStateCode_profileName: { tenantId, jurisdictionCode, memberStateCode, profileName } },
+      create: { tenantId, jurisdictionCode, memberStateCode, profileName, legalEntityId: dto.legalEntityId, locationId: dto.locationId, data: dto.data as any, identifiers: dto.identifiers as any, registrations: dto.registrations as any, contacts: dto.contacts as any, completionStatus: dto.completionStatus ?? 'DRAFT', verifiedBy: verified ? actorId : undefined, verifiedAt: verified ? new Date() : undefined, reviewDueAt: dto.reviewDueAt ? new Date(dto.reviewDueAt) : undefined },
+      update: { legalEntityId: dto.legalEntityId, locationId: dto.locationId, data: dto.data as any, identifiers: dto.identifiers as any, registrations: dto.registrations as any, contacts: dto.contacts as any, completionStatus: dto.completionStatus ?? 'DRAFT', verifiedBy: verified ? actorId : undefined, verifiedAt: verified ? new Date() : undefined, reviewDueAt: dto.reviewDueAt ? new Date(dto.reviewDueAt) : undefined },
+    });
+  }
+
   async upsertProfile(tenantId: string, candidateId: string, dto: UpsertJurisdictionProfileDto) {
     await this.requireCandidate(tenantId, candidateId);
-    await this.requireEnabled(tenantId, dto.jurisdictionCode, dto.memberStateCode);
+    const definition = await this.requireEnabled(tenantId, dto.jurisdictionCode, dto.memberStateCode);
+    this.validateProfileCompletion(definition.candidateFields, dto);
     const memberStateCode = dto.memberStateCode?.trim().toUpperCase() ?? '';
     const completedAt = dto.completionStatus === 'COMPLETE' ? new Date() : undefined;
     return this.prisma.candidateJurisdictionProfile.upsert({
@@ -140,6 +165,34 @@ export class JurisdictionsService {
     const candidate = await this.prisma.candidate.findFirst({ where: { id: candidateId, tenantId } });
     if (!candidate) throw new NotFoundException('Candidate not found');
     return candidate;
+  }
+
+  private validateProfileCompletion(fields: JurisdictionField[], dto: UpsertJurisdictionProfileDto) {
+    const values: Record<string, unknown> = {
+      ...(dto.personalData ?? {}),
+      ...(dto.identifiers ?? {}),
+      ...(dto.nationality ? { nationality: dto.nationality } : {}),
+      ...(dto.residenceCountry ? { residenceCountry: dto.residenceCountry } : {}),
+    };
+    this.validateRequiredFields(fields, values, dto.completionStatus, `${dto.jurisdictionCode} candidate`);
+  }
+
+  private validateRequiredFields(fields: JurisdictionField[], values: Record<string, unknown>, status: string | undefined, label: string) {
+    if (!status || status === 'DRAFT') return;
+    const missing = fields
+      .filter((field) => field.required)
+      .filter((field) => {
+        const value = values[field.key];
+        if (field.type === 'BOOLEAN') return value !== true;
+        if (Array.isArray(value)) return value.length === 0;
+        return value === undefined || value === null || String(value).trim() === '';
+      })
+      .map((field) => field.label);
+    if (missing.length) {
+      throw new BadRequestException(
+        `Complete required ${label} profile fields before review: ${missing.join(', ')}`,
+      );
+    }
   }
 
   private codes(value: unknown, primary: string) {

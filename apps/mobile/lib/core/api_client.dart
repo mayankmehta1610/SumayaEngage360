@@ -70,6 +70,8 @@ class ApiClient {
       _send('GET', path, query: query);
   static Future<dynamic> post(String path, [Map<String, dynamic>? body]) =>
       _send('POST', path, body: body ?? {});
+  static Future<dynamic> put(String path, [Map<String, dynamic>? body]) =>
+      _send('PUT', path, body: body ?? {});
   static Future<dynamic> patch(String path, [Map<String, dynamic>? body]) =>
       _send('PATCH', path, body: body ?? {});
   static Future<dynamic> delete(String path) => _send('DELETE', path);
@@ -114,6 +116,8 @@ class ApiClient {
     switch (method) {
       case 'GET':
         r = await http.get(uri, headers: headers);
+      case 'PUT':
+        r = await http.put(uri, headers: headers, body: jsonEncode(body));
       case 'PATCH':
         r = await http.patch(uri, headers: headers, body: jsonEncode(body));
       case 'DELETE':
