@@ -11,10 +11,11 @@ import { ModuleShellComponent } from '../ui/module-shell.component';
 import { ExportBarComponent } from '../core/export-bar.component';
 import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
+import { GeoPickerComponent, GeoValue } from '../ui/geo-picker.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, RouterLink, ExportBarComponent, ModuleShellComponent, SelectFieldComponent, DataTableComponent],
+  imports: [FormsModule, RouterLink, ExportBarComponent, ModuleShellComponent, SelectFieldComponent, DataTableComponent, GeoPickerComponent],
   template: `
     <e360-module-shell
       title="Settings & configuration"
@@ -111,6 +112,34 @@ import { DataTableComponent, TableColumn } from '../ui/data-table.component';
     </div>
 
     <div class="card">
+      <h2 style="margin-top:0">📍 Operating cities</h2>
+      <p class="e360-muted">
+        Your country comes from workspace provisioning (it's part of your address, e.g. /in).
+        Provision the cities you operate in — location pickers across jobs, employees and
+        candidates offer exactly these cities.
+      </p>
+      <table>
+        <tr><th>City</th><th>State</th><th>Country</th><th></th></tr>
+        @for (tc of tenantCities; track tc.id) {
+          <tr>
+            <td>{{ tc.city?.name }}</td>
+            <td>{{ tc.city?.state?.name }}</td>
+            <td>{{ tc.city?.state?.countryCode }}</td>
+            <td><button class="secondary sm" (click)="removeCity(tc.city?.id)">Remove</button></td>
+          </tr>
+        } @empty {
+          <tr><td colspan="4" class="muted">No cities provisioned yet — pickers fall back to the full master list.</td></tr>
+        }
+      </table>
+      <div class="row" style="align-items:flex-end;margin-top:.6rem">
+        <e360-geo-picker [model]="cityProv" [allCities]="true" />
+        <div style="flex:0">
+          <button (click)="provisionCity()" [disabled]="!cityProv.cityId">Provision city</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
       <h2 style="margin-top:0">🧩 Custom field definitions</h2>
       <p class="e360-muted">Configure extra fields on applications and candidates.</p>
       <e360-data-table [columns]="fieldCols" [rows]="fieldRows" [pageSize]="15" [stickyHeader]="true">
@@ -202,6 +231,29 @@ export class SettingsComponent implements OnInit {
   error = '';
   brandMsg = '';
   brandForm = { brandPrimaryColor: '#6d5cff', brandAccentColor: '#06b6d4', brandTagline: '' };
+  tenantCities: any[] = [];
+  cityProv: GeoValue = {};
+
+  async loadTenantCities() {
+    this.tenantCities = await this.api.get<any[]>('/geo/tenant-cities').catch(() => []);
+  }
+
+  async provisionCity() {
+    if (!this.cityProv.cityId) return;
+    try {
+      await this.api.post('/geo/tenant-cities', { cityId: this.cityProv.cityId });
+      this.cityProv.cityId = null;
+      this.cityProv.cityName = null;
+      await this.loadTenantCities();
+    } catch (e) { this.error = errMsg(e); }
+  }
+
+  async removeCity(cityId: string) {
+    try {
+      await this.api.delete(`/geo/tenant-cities/${cityId}`);
+      await this.loadTenantCities();
+    } catch (e) { this.error = errMsg(e); }
+  }
   branches: any[] = [];
   shifts: any[] = [];
   flags: any[] = [];
@@ -255,6 +307,7 @@ export class SettingsComponent implements OnInit {
   async ngOnInit() {
     if (!this.auth.hasRole('TENANT_ADMIN', 'HR')) return;
     await this.reload();
+    await this.loadTenantCities();
     const b = this.brand.branding();
     if (b) {
       this.brandForm = {

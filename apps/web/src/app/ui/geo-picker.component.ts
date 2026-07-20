@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
+import { TenantContextService } from '../core/tenant-context.service';
 import { SelectFieldComponent, SelectOption } from './select-field.component';
 
 export interface GeoValue {
@@ -27,13 +28,20 @@ export interface GeoValue {
   imports: [FormsModule, SelectFieldComponent],
   template: `
     <div class="geo-picker" [class.row]="inline">
-      <e360-select-field
-        [label]="labels ? 'Country' : ''"
-        placeholder="Country"
-        [options]="countryOptions"
-        [ngModel]="model.countryCode ?? null"
-        (ngModelChange)="onCountry($event)"
-      />
+      @if (showCountrySelect) {
+        <e360-select-field
+          [label]="labels ? 'Country' : ''"
+          placeholder="Country"
+          [options]="countryOptions"
+          [ngModel]="model.countryCode ?? null"
+          (ngModelChange)="onCountry($event)"
+        />
+      } @else if (model.countryCode) {
+        <div class="geo-fixed-country" [title]="'Country comes from your workspace (' + model.countryCode + ')'">
+          @if (labels) { <label>Country</label> }
+          <span class="geo-country-chip">{{ fixedCountryName || model.countryCode }}</span>
+        </div>
+      }
       <e360-select-field
         [label]="labels ? 'State / province' : ''"
         placeholder="State / province"
@@ -71,11 +79,14 @@ export interface GeoValue {
     .geo-add { flex: 0; padding: .3rem .55rem; }
     .geo-add-row { display: flex; gap: .3rem; align-items: center; width: 100%; }
     .geo-add-row input { max-width: 220px; }
+    .geo-fixed-country { display: flex; flex-direction: column; gap: .25rem; min-width: auto; }
+    .geo-country-chip { display: inline-block; padding: .35rem .7rem; border-radius: 999px; background: var(--e360-surface-2, rgba(125,125,125,.1)); border: 1px solid var(--e360-border); font-size: .85rem; }
   `],
 })
 export class GeoPickerComponent implements OnInit {
   private api = inject(ApiService);
   private auth = inject(AuthService);
+  private tenantCtx = inject(TenantContextService);
 
   /** Object whose countryCode / stateId / cityId this picker manages. */
   @Input({ required: true }) model!: GeoValue;
@@ -83,6 +94,11 @@ export class GeoPickerComponent implements OnInit {
   @Input() inline = false;
   /** Set for public pages (careers) where no auth roles exist. */
   @Input() allowAddCity: boolean | null = null;
+  /** Pin the country (e.g. the job's country on a careers page). */
+  @Input() fixedCountry: string | null = null;
+  /** Offer the full master city list (used by the city-provisioning UI);
+   *  by default city lookups scope to the tenant's provisioned cities. */
+  @Input() allCities = false;
   @Output() changed = new EventEmitter<GeoValue>();
 
   countries: any[] = [];
@@ -90,13 +106,39 @@ export class GeoPickerComponent implements OnInit {
   cities: any[] = [];
   addingCity = false;
   newCity = '';
+  fixedCountryName = '';
 
   get canAddCity(): boolean {
     return this.allowAddCity ?? this.auth.hasRole('TENANT_ADMIN', 'HR');
   }
 
+  /**
+   * Countries the picker may offer. Country is never a free global dropdown
+   * inside a workspace: it is pinned by input, or restricted to the tenant's
+   * provisioned countries (primary + operating). Null = no context (public
+   * page without a pinned country) → full list fallback.
+   */
+  get allowedCountries(): string[] | null {
+    if (this.fixedCountry) return [this.fixedCountry.toUpperCase()];
+    const t = this.tenantCtx.tenant();
+    if (t?.country) {
+      const ops = (t.operatingCountries ?? []).map((c) => c.toUpperCase());
+      return [...new Set([t.country.toUpperCase(), ...ops])];
+    }
+    return null;
+  }
+
+  get showCountrySelect(): boolean {
+    const allowed = this.allowedCountries;
+    return allowed === null || allowed.length > 1;
+  }
+
   get countryOptions(): SelectOption[] {
-    return this.countries.map((c) => ({ value: c.code, label: c.name }));
+    const allowed = this.allowedCountries;
+    const list = allowed
+      ? this.countries.filter((c) => allowed.includes(c.code))
+      : this.countries;
+    return list.map((c) => ({ value: c.code, label: c.name }));
   }
   get stateOptions(): SelectOption[] {
     return this.states.map((s) => ({ value: s.id, label: s.name }));
@@ -107,6 +149,14 @@ export class GeoPickerComponent implements OnInit {
 
   async ngOnInit() {
     this.countries = await this.api.get<any[]>('/geo/countries').catch(() => []);
+    // Single-country context: pin it and go straight to states.
+    const allowed = this.allowedCountries;
+    if (allowed?.length === 1 && !this.model.countryCode) {
+      this.model.countryCode = allowed[0];
+      this.model.countryName = this.countries.find((c) => c.code === allowed[0])?.name ?? null;
+    }
+    this.fixedCountryName =
+      this.countries.find((c) => c.code === this.model.countryCode)?.name ?? '';
     if (this.model.countryCode) await this.loadStates(this.model.countryCode);
     if (this.model.stateId) await this.loadCities(this.model.stateId);
   }
@@ -120,7 +170,7 @@ export class GeoPickerComponent implements OnInit {
 
   private loadCities(stateId: string) {
     return this.api
-      .get<any[]>('/geo/cities', { stateId })
+      .get<any[]>('/geo/cities', { stateId, ...(this.allCities ? { all: 'true' } : {}) })
       .then((c) => (this.cities = c))
       .catch(() => (this.cities = []));
   }

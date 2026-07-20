@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, Input, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../core/api.service';
@@ -46,7 +46,11 @@ import { ThemeToggleComponent } from '../ui/theme-toggle.component';
     .hero h1 em { font-style: normal; background: linear-gradient(90deg, var(--e360-primary), var(--e360-accent)); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .hero p { color: var(--e360-text-secondary); font-size: 1.05rem; line-height: 1.65; max-width: 640px; margin: 0 auto; }
     .country-picker { max-width: 720px; margin: 1.5rem auto 0; padding: 1rem; background: var(--e360-surface); border: 1px solid var(--e360-border); border-radius: var(--e360-radius-lg); text-align:left; box-shadow:var(--e360-shadow-sm); }
-    .country-picker select { width:100%; margin-top:.35rem; }
+    .country-links { display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.5rem; }
+    .country-chip { padding:.3rem .7rem; border:1px solid var(--e360-border); border-radius:999px; font-size:.82rem; text-decoration:none; color:var(--e360-text); }
+    .country-chip:hover { border-color: var(--e360-primary); }
+    .country-chip.active { background: var(--e360-primary); color:#fff; border-color:transparent; }
+    .country-uri { color:var(--e360-text-muted); font-weight:400; font-size:.78rem; }
     .country-flow { color:var(--e360-text-muted); font-size:.82rem; margin:.55rem 0 0; }
 
     .segments {
@@ -158,10 +162,15 @@ import { ThemeToggleComponent } from '../ui/theme-toggle.component';
         SaaS where every organization gets its own branded, workflow-driven workspace.
       </p>
       <div class="country-picker">
-        <label for="country">Where will you recruit or deploy talent?</label>
-        <select id="country" [(ngModel)]="selectedCountry" (ngModelChange)="selectCountry($event)">
-          @for (j of jurisdictions; track j.code) { <option [value]="j.code">{{ j.name }}</option> }
-        </select>
+        <label>Where will you recruit or deploy talent?
+          <span class="country-uri">— each country has its own address, e.g. /in for India</span>
+        </label>
+        <div class="country-links">
+          @for (j of jurisdictions; track j.code) {
+            <a class="country-chip" [class.active]="selectedCountry === j.code"
+               [routerLink]="['/', j.code.toLowerCase()]">{{ j.name }}</a>
+          }
+        </div>
         <p class="country-flow">{{ selectedJurisdiction?.lifecycle?.join(' → ') }}</p>
       </div>
     </section>
@@ -180,7 +189,7 @@ import { ThemeToggleComponent } from '../ui/theme-toggle.component';
             <ul>
               @for (step of s.workflow; track step) { <li>{{ step }}</li> }
             </ul>
-            <a class="btn" [routerLink]="['/login', s.key]" [queryParams]="{ country: selectedCountry }">
+            <a class="btn" [routerLink]="['/', selectedCountry.toLowerCase(), s.key]">
               <e360-icon name="log-in" [size]="15" />
               {{ s.shortLabel }} sign in
             </a>
@@ -238,6 +247,8 @@ import { ThemeToggleComponent } from '../ui/theme-toggle.component';
 })
 export class LandingComponent implements OnInit {
   private api = inject(ApiService);
+  /** Country from the URI (e.g. /in) — wins over the stored preference. */
+  @Input() country = '';
   year = new Date().getFullYear();
   // Business segments (exclude platform ops from the main grid — linked in footer)
   segments = SEGMENTS.filter((s) => s.tenantType !== null);
@@ -254,6 +265,10 @@ export class LandingComponent implements OnInit {
   get selectedJurisdiction() { return this.jurisdictions.find((j) => j.code === this.selectedCountry); }
 
   async ngOnInit() {
+    if (/^[a-z]{2}$/i.test(this.country)) {
+      this.selectedCountry = this.country.toUpperCase();
+      this.selectCountry(this.selectedCountry);
+    }
     try { this.jurisdictions = await this.api.get<any[]>('/jurisdictions/catalog'); }
     catch { /* Keep the built-in country list if the public catalogue is temporarily unavailable. */ }
   }

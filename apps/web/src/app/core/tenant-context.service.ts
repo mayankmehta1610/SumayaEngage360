@@ -15,6 +15,8 @@ export interface TenantContext {
   tenantType: TenantType;
   enabledPortals?: string[];
   onboardingQuestionnaire?: Record<string, unknown>;
+  country?: string; // primary country (drives URI + location pickers)
+  operatingCountries?: string[];
 }
 
 @Injectable({ providedIn: 'root' })

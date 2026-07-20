@@ -75,32 +75,91 @@ export class GeoService implements OnModuleInit {
     });
   }
 
-  cities(opts: { stateId?: string; countryCode?: string; q?: string }) {
+  /**
+   * City lookup. When `tenantId` is set and the tenant has provisioned
+   * operating cities within the requested scope, only those are returned —
+   * so in-tenant pickers offer exactly the cities the company operates in.
+   * Falls back to the full master list when nothing is provisioned there.
+   */
+  async cities(opts: {
+    stateId?: string;
+    countryCode?: string;
+    q?: string;
+    tenantId?: string | null;
+  }) {
+    const where = {
+      ...(opts.stateId ? { stateId: opts.stateId } : {}),
+      ...(opts.countryCode
+        ? { state: { countryCode: opts.countryCode.toUpperCase() } }
+        : {}),
+      ...(opts.q ? { name: { contains: opts.q, mode: 'insensitive' as const } } : {}),
+    };
+    if (opts.tenantId) {
+      const provisioned = await this.prisma.geoCity.findMany({
+        where: {
+          ...where,
+          tenants: { some: { tenantId: opts.tenantId, isActive: true } },
+        },
+        include: { state: { select: { name: true, countryCode: true } } },
+        orderBy: [{ isMajor: 'desc' }, { name: 'asc' }],
+        take: 100,
+      });
+      if (provisioned.length) return provisioned;
+    }
     return this.prisma.geoCity.findMany({
-      where: {
-        ...(opts.stateId ? { stateId: opts.stateId } : {}),
-        ...(opts.countryCode
-          ? { state: { countryCode: opts.countryCode.toUpperCase() } }
-          : {}),
-        ...(opts.q ? { name: { contains: opts.q, mode: 'insensitive' } } : {}),
-      },
+      where,
       include: { state: { select: { name: true, countryCode: true } } },
       orderBy: [{ isMajor: 'desc' }, { name: 'asc' }],
       take: 100,
     });
   }
 
-  /** Tenant admins can add a missing city under an existing state. */
+  /**
+   * Tenant admins can add a missing city under an existing state; it is
+   * auto-provisioned as one of the tenant's operating cities.
+   */
   async addCity(tenantId: string, stateId: string, name: string) {
     const state = await this.prisma.geoState.findUnique({ where: { id: stateId } });
     if (!state) throw new NotFoundException('State not found');
     const trimmed = name.trim();
     if (!trimmed) throw new BadRequestException('City name is required');
-    return this.prisma.geoCity.upsert({
+    const city = await this.prisma.geoCity.upsert({
       where: { stateId_name: { stateId, name: trimmed } },
       create: { stateId, name: trimmed, addedByTenantId: tenantId },
       update: {},
     });
+    await this.provisionCity(tenantId, city.id);
+    return city;
+  }
+
+  // ── tenant operating cities ─────────────────────────────────────
+
+  tenantCities(tenantId: string) {
+    return this.prisma.tenantCity.findMany({
+      where: { tenantId, isActive: true },
+      include: {
+        city: { include: { state: { select: { name: true, countryCode: true } } } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async provisionCity(tenantId: string, cityId: string) {
+    const city = await this.prisma.geoCity.findUnique({ where: { id: cityId } });
+    if (!city) throw new NotFoundException('City not found');
+    return this.prisma.tenantCity.upsert({
+      where: { tenantId_cityId: { tenantId, cityId } },
+      create: { tenantId, cityId },
+      update: { isActive: true },
+    });
+  }
+
+  async removeTenantCity(tenantId: string, cityId: string) {
+    await this.prisma.tenantCity.updateMany({
+      where: { tenantId, cityId },
+      data: { isActive: false },
+    });
+    return { removed: true };
   }
 
   /**

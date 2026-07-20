@@ -122,6 +122,11 @@ export class LoginComponent {
   constructor() {
     this.route.paramMap.subscribe((params) => {
       this.segment = segmentByKey(params.get('segment')) ?? segmentByKey('company');
+      // Country-scoped URI (/in/company): remember the country context.
+      const country = params.get('country');
+      if (country && /^[a-z]{2}$/i.test(country)) {
+        localStorage.setItem('e360_country', country.toUpperCase());
+      }
       this.error = '';
     });
   }

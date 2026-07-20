@@ -241,6 +241,15 @@ all of them.
   picker on the job, employee, candidate and public careers-apply forms, and
   location shows on application lists and careers job cards. The employee's
   structured state also drives India professional-tax selection in payroll.
+- **Country in the URI, cities provisioned per tenant (2026-07-20)**: country
+  is never a global dropdown. Public URLs carry it — `/in` (India landing),
+  `/in/company` (Company sign-in for India) — and inside a workspace the
+  pickers scope to the tenant's provisioned countries (primary + operating;
+  a single-country tenant sees a fixed chip, no selector). Tenants provision
+  their **operating cities** in Settings → Operating cities (`tenant_cities`);
+  in-tenant city lookups then offer exactly those (master list is the
+  fallback until any city is provisioned; admin-added custom cities
+  auto-provision).
 - Role lists in the UI now derive from the shared RBAC module (`TENANT_ROLES`) —
   this also fixed User accounts missing the DEPARTMENT_HEAD role.
 - Tenant defaults (`IN`, `INR`, `Asia/Kolkata`) are **intentional India-first

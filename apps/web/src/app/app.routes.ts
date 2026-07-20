@@ -66,5 +66,9 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/shell.component').then((m) => m.ShellComponent),
     children: shellChildren,
   },
+  // Country-scoped public URIs — the country is part of the address, never a
+  // dropdown: /in → India landing, /in/company → Company sign-in for India.
+  { path: ':country/:segment', loadComponent: () => import('./pages/login.component').then((m) => m.LoginComponent) },
+  { path: ':country', loadComponent: () => import('./pages/landing.component').then((m) => m.LandingComponent) },
   { path: '**', redirectTo: '' },
 ];

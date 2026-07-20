@@ -136,7 +136,7 @@ const emptyForm = (): ApplyForm => ({
                           </div>
                           <div class="e360-form-grid-span">
                             <label>Current location *</label>
-                            <e360-geo-picker [model]="geo" [labels]="false" [allowAddCity]="false" (changed)="onGeoPicked()" />
+                            <e360-geo-picker [model]="geo" [labels]="false" [allowAddCity]="false" [fixedCountry]="applyJobCountry" (changed)="onGeoPicked()" />
                           </div>
                           <div>
                             <label>City *</label>
@@ -329,6 +329,11 @@ export class CareersComponent implements OnInit {
   busy = false;
   form: ApplyForm = emptyForm();
   geo: GeoValue = {};
+
+  /** Pin the applicant location picker to the job's country when it has one. */
+  get applyJobCountry(): string | null {
+    return this.jobs.find((j) => j.id === this.applyingTo)?.countryCode ?? null;
+  }
 
   /** Structured pick fills the required free-text city/country fields. */
   onGeoPicked() {

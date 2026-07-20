@@ -2678,9 +2678,28 @@ model GeoCity {
   addedByTenantId String? // provenance when a tenant admin added it
   createdAt       DateTime @default(now())
 
+  tenants TenantCity[]
+
   @@unique([stateId, name])
   @@index([name])
   @@map("geo_cities")
+}
+
+// Cities a tenant is provisioned to operate in. Country comes from the tenant
+// itself (primary country + operatingCountries — surfaced in the URI, e.g.
+// /in/company), so in-app pickers never offer a global country dropdown:
+// they scope to the tenant's countries and its provisioned cities.
+model TenantCity {
+  id        String   @id @default(uuid())
+  tenantId  String
+  cityId    String
+  city      GeoCity  @relation(fields: [cityId], references: [id])
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, cityId])
+  @@index([tenantId, isActive])
+  @@map("tenant_cities")
 }
 
 // ─────────────────────────────── Intranet (company portal / publishing) ───────────────────────────────
