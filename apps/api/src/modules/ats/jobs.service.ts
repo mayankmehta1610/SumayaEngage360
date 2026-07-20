@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { JobStatus, Prisma } from '@prisma/client';
 import { contains, paginatedResponse, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import { PrismaService } from '../../prisma/prisma.service';
+import { GeoService } from '../geo/geo.service';
 import { MatchingService } from '../matching/matching.service';
 import { CreateJobDto, UpdateJobDto } from './ats.dto';
 
@@ -10,14 +11,22 @@ export class JobsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly matching: MatchingService,
+    private readonly geo: GeoService,
   ) {}
 
   async create(tenantId: string, dto: CreateJobDto) {
-    const { skills = [], interviewPlan, ...data } = dto;
+    const { skills = [], interviewPlan, countryCode, stateId, cityId, ...data } = dto;
+    const geoFields = await this.geo.locationFields({ countryCode, stateId, cityId }, 'location');
+    const location =
+      dto.location ??
+      (geoFields.location as string | undefined) ??
+      (dto.workMode === 'REMOTE' ? 'Remote' : 'Not specified');
     return this.prisma.job.create({
       data: {
         tenantId,
         ...data,
+        ...geoFields,
+        location,
         interviewPlan: interviewPlan as any,
         skills: {
           create: await Promise.all(
@@ -114,7 +123,12 @@ export class JobsService {
 
   async update(tenantId: string, id: string, dto: UpdateJobDto) {
     await this.findOne(tenantId, id);
-    return this.prisma.job.update({ where: { id }, data: dto });
+    const { countryCode, stateId, cityId, ...data } = dto;
+    const geoFields = await this.geo.locationFields({ countryCode, stateId, cityId }, 'location');
+    return this.prisma.job.update({
+      where: { id },
+      data: { ...data, ...geoFields, ...(dto.location ? { location: dto.location } : {}) },
+    });
   }
 
   async publish(tenantId: string, id: string) {

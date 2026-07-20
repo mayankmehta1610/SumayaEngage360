@@ -232,6 +232,15 @@ all of them.
   served by `GET /jurisdictions/catalog`; the landing page and the tenant
   provisioning wizard both consume the API (inline lists removed — only a
   1-entry bootstrap fallback remains for when the API is unreachable).
+- **Geographic master data (2026-07-20)**: countries → states/provinces →
+  cities live in the database (`geo_countries/geo_states/geo_cities`, seeded at
+  boot — 12 countries, full state lists, major cities incl. deep India
+  coverage; tenant admins can add cities). Jobs, candidates and employees
+  carry structured `countryCode/stateId/cityId` (hierarchy-validated, display
+  strings auto-composed); the web app uses a cascading Country→State→City
+  picker on the job, employee, candidate and public careers-apply forms, and
+  location shows on application lists and careers job cards. The employee's
+  structured state also drives India professional-tax selection in payroll.
 - Role lists in the UI now derive from the shared RBAC module (`TENANT_ROLES`) —
   this also fixed User accounts missing the DEPARTMENT_HEAD role.
 - Tenant defaults (`IN`, `INR`, `Asia/Kolkata`) are **intentional India-first

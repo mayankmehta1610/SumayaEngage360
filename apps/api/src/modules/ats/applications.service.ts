@@ -7,6 +7,7 @@ import {
 import { ApplicationStatus, JobStatus, Prisma } from '@prisma/client';
 import { contains, paginatedResponse, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import { PrismaService } from '../../prisma/prisma.service';
+import { GeoService } from '../geo/geo.service';
 import { ResumeParserService } from '../integrations/resume-parser.service';
 import { MatchingService } from '../matching/matching.service';
 import { ApplyDto, UpdateApplicationStatusDto } from './ats.dto';
@@ -17,6 +18,7 @@ export class ApplicationsService {
     private readonly prisma: PrismaService,
     private readonly resumeParser: ResumeParserService,
     private readonly matching: MatchingService,
+    private readonly geo: GeoService,
   ) {}
 
   // Public apply flow: creates/updates the candidate profile, tags skills
@@ -38,6 +40,15 @@ export class ApplicationsService {
       ...(dto.dateOfBirth ? { dateOfBirth: dto.dateOfBirth } : {}),
     };
 
+    // Structured geo (validated against the geo master); free-text fallback.
+    const geoFields = await this.geo.locationFields(
+      { countryCode: dto.countryCode, stateId: dto.stateId, cityId: dto.cityId },
+      'currentLocation',
+    );
+    const currentLocation =
+      (geoFields.currentLocation as string | undefined) ??
+      [dto.city, dto.country].filter(Boolean).join(', ');
+
     const application = await this.prisma.$transaction(async (tx) => {
       const email = dto.email.toLowerCase();
       const candidate = await tx.candidate.upsert({
@@ -50,6 +61,8 @@ export class ApplicationsService {
           phone: dto.phone,
           demographics: demographics as any,
           resumeFileId: dto.resumeFileId,
+          ...geoFields,
+          currentLocation,
         },
         update: {
           firstName: dto.firstName,
@@ -57,6 +70,8 @@ export class ApplicationsService {
           phone: dto.phone,
           demographics: demographics as any,
           resumeFileId: dto.resumeFileId,
+          ...geoFields,
+          currentLocation,
         },
       });
 
@@ -206,15 +221,15 @@ export class ApplicationsService {
     const include = paginated
       ? {
           candidate: {
-            select: { id: true, firstName: true, lastName: true, email: true },
+            select: { id: true, firstName: true, lastName: true, email: true, currentLocation: true },
           },
-          job: { select: { id: true, title: true } },
+          job: { select: { id: true, title: true, location: true } },
         }
       : {
           candidate: {
-            select: { id: true, firstName: true, lastName: true, email: true },
+            select: { id: true, firstName: true, lastName: true, email: true, currentLocation: true },
           },
-          job: { select: { id: true, title: true } },
+          job: { select: { id: true, title: true, location: true } },
           interviews: { orderBy: { level: 'asc' as const } },
           offer: true,
         };

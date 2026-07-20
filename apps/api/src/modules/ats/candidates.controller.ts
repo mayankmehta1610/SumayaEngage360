@@ -8,18 +8,34 @@ import { CurrentUser } from '../../common/auth/current-user.decorator';
 import { JwtPayload } from '../../common/auth/jwt-auth.guard';
 import { TenantId } from '../../common/tenant/tenant.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
+import { GeoService } from '../geo/geo.service';
 
 class PatchCandidateDto {
   @IsOptional()
   @IsString()
   resumeFileId?: string;
+
+  @IsOptional()
+  @IsString()
+  countryCode?: string;
+
+  @IsOptional()
+  @IsString()
+  stateId?: string;
+
+  @IsOptional()
+  @IsString()
+  cityId?: string;
 }
 
 // Talent pool: every candidate ever captured, with parse status and history.
 @Controller('candidates')
 @Roles(Role.TENANT_ADMIN, Role.HR, Role.INTERVIEWER)
 export class CandidatesController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly geo: GeoService,
+  ) {}
 
   @Get()
   async list(
@@ -102,10 +118,15 @@ export class CandidatesController {
   ) {
     const existing = await this.prisma.candidate.findFirst({ where: { id, tenantId } });
     if (!existing) throw new NotFoundException('Candidate not found');
+    const geoFields = await this.geo.locationFields(
+      { countryCode: dto.countryCode, stateId: dto.stateId, cityId: dto.cityId },
+      'currentLocation',
+    );
     return this.prisma.candidate.update({
       where: { id },
       data: {
         ...(dto.resumeFileId !== undefined ? { resumeFileId: dto.resumeFileId } : {}),
+        ...geoFields,
       },
     });
   }

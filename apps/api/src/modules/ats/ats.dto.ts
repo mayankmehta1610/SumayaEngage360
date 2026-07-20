@@ -7,6 +7,7 @@ import {
   IsObject,
   IsDateString,
   IsEnum,
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -89,8 +90,26 @@ export class CreateJobDto {
   @Min(1)
   vacancies: number;
 
+  // Display location; auto-composed from the structured geo below when omitted.
+  @IsOptional()
   @IsString()
-  location: string;
+  location?: string;
+
+  @IsOptional()
+  @IsString()
+  countryCode?: string;
+
+  @IsOptional()
+  @IsString()
+  stateId?: string;
+
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @IsOptional()
+  @IsIn(['ONSITE', 'HYBRID', 'REMOTE'])
+  workMode?: string;
 
   @IsOptional()
   @IsString()
@@ -133,6 +152,22 @@ export class UpdateJobDto {
   @IsOptional()
   @IsString()
   location?: string;
+
+  @IsOptional()
+  @IsString()
+  countryCode?: string;
+
+  @IsOptional()
+  @IsString()
+  stateId?: string;
+
+  @IsOptional()
+  @IsString()
+  cityId?: string;
+
+  @IsOptional()
+  @IsIn(['ONSITE', 'HYBRID', 'REMOTE'])
+  workMode?: string;
 
   @IsOptional()
   @IsEnum(JobStatus)
@@ -208,6 +243,20 @@ export class ApplyDto {
 
   @IsString()
   country: string;
+
+  // Structured geo (optional — sent when the applicant picks from the
+  // country/state/city selectors instead of free text).
+  @IsOptional()
+  @IsString()
+  countryCode?: string;
+
+  @IsOptional()
+  @IsString()
+  stateId?: string;
+
+  @IsOptional()
+  @IsString()
+  cityId?: string;
 
   @IsString()
   linkedIn: string;

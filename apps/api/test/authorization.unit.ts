@@ -17,6 +17,7 @@ async function applicationsAreScopedToAssignedInterviewer() {
     prisma as any,
     { enabled: false } as any,
     {} as any,
+    {} as any,
   );
 
   await service.findAll('tenant-a', undefined, undefined, 'interviewer-1');

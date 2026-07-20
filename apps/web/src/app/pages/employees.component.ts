@@ -7,6 +7,7 @@ import { HasRoleDirective } from '../core/has-role.directive';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { IconComponent } from '../ui/icon.component';
+import { GeoPickerComponent } from '../ui/geo-picker.component';
 import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
 
@@ -21,6 +22,7 @@ import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
     IconComponent,
     SelectFieldComponent,
     LifecycleWizardComponent,
+    GeoPickerComponent,
   ],
   template: `
     <e360-module-shell
@@ -48,7 +50,8 @@ import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
           <e360-select-field label="Designation" placeholder="Select designation" [options]="designationOptions" [(ngModel)]="f.designation" />
           <e360-select-field label="Department" placeholder="Select department" [options]="departmentOptions" [(ngModel)]="f.departmentId" />
           <e360-select-field label="Reporting manager" placeholder="Select manager" [options]="managerOptions" [(ngModel)]="f.managerId" />
-          <div><label>Work location</label><input [(ngModel)]="f.location" placeholder="New York, NY or Remote" /></div>
+          <e360-geo-picker [model]="f" (changed)="f.location = ''" />
+          <div><label>Work location display (auto from selection)</label><input [(ngModel)]="f.location" placeholder="e.g. Pune, Maharashtra, India" /></div>
           <div><label>Join date</label><input type="date" [(ngModel)]="f.joinDate" /></div>
           <e360-select-field
             label="Status filter"
@@ -240,6 +243,10 @@ export class EmployeesComponent implements OnInit, OnChanges {
       }
       await this.api.post('/employees', {
         ...this.f,
+        location: this.f.location || undefined,
+        countryCode: this.f.countryCode || undefined,
+        stateId: this.f.stateId || undefined,
+        cityId: this.f.cityId || undefined,
         joinDate: this.f.joinDate ? new Date(this.f.joinDate).toISOString() : undefined,
       });
       this.f = {};

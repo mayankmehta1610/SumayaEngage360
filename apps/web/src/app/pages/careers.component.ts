@@ -1,6 +1,7 @@
 import { Component, Input, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, errMsg } from '../core/api.service';
+import { GeoPickerComponent, GeoValue } from '../ui/geo-picker.component';
 import { environment } from '../../environments/environment';
 
 interface ExperienceRow {
@@ -70,7 +71,7 @@ const emptyForm = (): ApplyForm => ({
 // Public client-branded careers page: /careers/:slug
 @Component({
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, GeoPickerComponent],
   template: `
     <div class="e360-careers-page">
       @if (error) { <div class="e360-card e360-error">{{ error }}</div> }
@@ -85,7 +86,9 @@ const emptyForm = (): ApplyForm => ({
               <h2>{{ j.title }}</h2>
               <span class="badge ok">{{ j.vacancies }} vacanc{{ j.vacancies === 1 ? 'y' : 'ies' }}</span>
             </div>
-            <p class="muted">{{ j.location }} · {{ j.employmentType }}
+            <p class="muted">{{ j.location }}
+              @if (j.workMode && j.workMode !== 'ONSITE') { · {{ j.workMode === 'REMOTE' ? 'Remote' : 'Hybrid' }} }
+              · {{ j.employmentType }}
               @if (j.minExperience != null) { · {{ j.minExperience }}–{{ j.maxExperience ?? '+' }} yrs }
             </p>
             <p class="e360-job-desc">{{ j.description }}</p>
@@ -131,14 +134,18 @@ const emptyForm = (): ApplyForm => ({
                             <input type="tel" [(ngModel)]="form.phone" name="phone" required />
                             @if (fieldErr('phone')) { <span class="e360-field-error">{{ fieldErr('phone') }}</span> }
                           </div>
+                          <div class="e360-form-grid-span">
+                            <label>Current location *</label>
+                            <e360-geo-picker [model]="geo" [labels]="false" [allowAddCity]="false" (changed)="onGeoPicked()" />
+                          </div>
                           <div>
                             <label>City *</label>
-                            <input [(ngModel)]="form.city" name="city" required />
+                            <input [(ngModel)]="form.city" name="city" required placeholder="Pick above or type" />
                             @if (fieldErr('city')) { <span class="e360-field-error">{{ fieldErr('city') }}</span> }
                           </div>
                           <div>
                             <label>Country *</label>
-                            <input [(ngModel)]="form.country" name="country" required />
+                            <input [(ngModel)]="form.country" name="country" required placeholder="Pick above or type" />
                             @if (fieldErr('country')) { <span class="e360-field-error">{{ fieldErr('country') }}</span> }
                           </div>
                           <div class="e360-form-grid-span">
@@ -321,6 +328,13 @@ export class CareersComponent implements OnInit {
   applyError = '';
   busy = false;
   form: ApplyForm = emptyForm();
+  geo: GeoValue = {};
+
+  /** Structured pick fills the required free-text city/country fields. */
+  onGeoPicked() {
+    if (this.geo.cityName) this.form.city = this.geo.cityName;
+    if (this.geo.countryName) this.form.country = this.geo.countryName;
+  }
   resume: File | null = null;
   coverLetter: File | null = null;
   fieldDefs: any[] = [];
@@ -553,6 +567,9 @@ export class CareersComponent implements OnInit {
         phone: this.form.phone.trim(),
         city: this.form.city.trim(),
         country: this.form.country.trim(),
+        countryCode: this.geo.countryCode || undefined,
+        stateId: this.geo.stateId || undefined,
+        cityId: this.geo.cityId || undefined,
         linkedIn: this.form.linkedIn.trim(),
         dateOfBirth: this.form.dateOfBirth || undefined,
         professionalSummary: this.form.professionalSummary.trim(),

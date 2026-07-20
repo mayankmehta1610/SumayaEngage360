@@ -7,6 +7,7 @@ import { HasRoleDirective } from '../core/has-role.directive';
 import { ModuleShellComponent } from '../ui/module-shell.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { IconComponent } from '../ui/icon.component';
+import { GeoPickerComponent } from '../ui/geo-picker.component';
 import { SelectFieldComponent, SelectOption } from '../ui/select-field.component';
 
 @Component({
@@ -19,6 +20,7 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
     DataTableComponent,
     IconComponent,
     SelectFieldComponent,
+    GeoPickerComponent,
   ],
   template: `
     <e360-module-shell
@@ -44,7 +46,17 @@ import { SelectFieldComponent, SelectOption } from '../ui/select-field.component
             [options]="clientOptions"
             [(ngModel)]="f.hiringClientId"
           />
-          <div><label for="job-location">Location</label><input id="job-location" [(ngModel)]="f.location" /></div>
+          <e360-geo-picker [model]="f" (changed)="onGeoChanged()" />
+          <div>
+            <label for="job-location">Location display (auto from selection)</label>
+            <input id="job-location" [(ngModel)]="f.location" placeholder="e.g. Pune, Maharashtra, India" />
+          </div>
+          <e360-select-field
+            label="Work mode"
+            [options]="workModeOptions"
+            [(ngModel)]="f.workMode"
+            [clearable]="false"
+          />
           <div><label>Vacancies</label><input type="number" [(ngModel)]="f.vacancies" min="1" /></div>
           <e360-select-field
             label="Employment type"
@@ -178,9 +190,19 @@ export class JobsComponent implements OnInit, OnChanges {
     { key: 'status', label: 'Status' },
     { key: 'actions', label: '', sortable: false, filterable: false },
   ];
-  f: any = { vacancies: 1 };
+  f: any = { vacancies: 1, workMode: 'ONSITE' };
   skills = '';
   rounds = '';
+  workModeOptions: SelectOption[] = [
+    { value: 'ONSITE', label: 'On-site' },
+    { value: 'HYBRID', label: 'Hybrid' },
+    { value: 'REMOTE', label: 'Remote' },
+  ];
+
+  /** Clear the manual display string so the server recomposes it from the selection. */
+  onGeoChanged() {
+    this.f.location = '';
+  }
   matchesFor: string | null = null;
   matches: any[] = [];
   matching = false;
@@ -281,13 +303,17 @@ export class JobsComponent implements OnInit, OnChanges {
     try {
       const body = {
         ...this.f,
+        location: this.f.location || undefined,
+        countryCode: this.f.countryCode || undefined,
+        stateId: this.f.stateId || undefined,
+        cityId: this.f.cityId || undefined,
         hiringClientId: this.f.hiringClientId || undefined,
         skills: this.skills.split(',').map((s) => s.trim()).filter(Boolean),
         interviewPlan: this.rounds.split(',').map((s) => s.trim()).filter(Boolean)
           .map((name, i) => ({ level: i + 1, name })),
       };
       await this.api.post('/jobs', body);
-      this.f = { vacancies: 1, employmentType: this.employmentTypes[0]?.code };
+      this.f = { vacancies: 1, workMode: 'ONSITE', employmentType: this.employmentTypes[0]?.code };
       this.skills = this.rounds = '';
       await this.load();
     } catch (e) { this.error = errMsg(e); }

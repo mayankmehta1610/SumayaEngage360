@@ -161,7 +161,11 @@ model Job {
   recruiterIds    String[]      @default([])
   hiringTeamIds   String[]      @default([])
   jobFamilyId     String?
-  location        String
+  location        String // display string, kept in sync with structured geo below
+  countryCode     String?
+  stateId         String?
+  cityId          String?
+  workMode        String        @default("ONSITE") // ONSITE | HYBRID | REMOTE
   employmentType  String        @default("FULL_TIME") // FULL_TIME | PART_TIME | CONTRACT
   minExperience   Float?
   maxExperience   Float?
@@ -235,6 +239,10 @@ model Candidate {
   lastName     String
   phone        String?
   demographics Json? // dob, gender, address, nationality…
+  countryCode  String?
+  stateId      String?
+  cityId       String?
+  currentLocation String? // display string, kept in sync with structured geo
   resumeFileId String? // FileObject id; LLM parsing planned
   parsedResume Json? // filled by ResumeParser when enabled
   createdAt    DateTime @default(now())
@@ -877,7 +885,10 @@ model Employee {
   manager      Employee?      @relation("Reporting", fields: [managerId], references: [id])
   reports      Employee[]     @relation("Reporting")
   joinDate     DateTime?
-  location     String?
+  location     String? // display string, kept in sync with structured geo
+  countryCode  String?
+  stateId      String?
+  cityId       String?
   status       EmployeeStatus @default(ONBOARDING)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
@@ -2624,6 +2635,52 @@ model ScheduledJobDef {
   isActive Boolean @default(true)
 
   @@map("scheduled_job_defs")
+}
+
+// ─────────────────────────────── Geographic master data ───────────────────────────────
+// Global (not tenant-scoped) country → state/province → city reference data,
+// seeded from the geo catalog at boot and extensible by tenant admins (cities).
+// Modules attach structured location via countryCode/stateId/cityId while
+// keeping their legacy display strings in sync.
+
+model GeoCountry {
+  code      String  @id // ISO 3166-1 alpha-2
+  name      String
+  isActive  Boolean @default(true)
+
+  states GeoState[]
+
+  @@map("geo_countries")
+}
+
+model GeoState {
+  id          String     @id @default(uuid())
+  countryCode String
+  country     GeoCountry @relation(fields: [countryCode], references: [code])
+  code        String // e.g. MH, TX, ON
+  name        String
+  type        String     @default("STATE") // STATE | UNION_TERRITORY | PROVINCE | TERRITORY | REGION | EMIRATE | NATION | GOVERNORATE
+  isActive    Boolean    @default(true)
+
+  cities GeoCity[]
+
+  @@unique([countryCode, code])
+  @@index([countryCode, name])
+  @@map("geo_states")
+}
+
+model GeoCity {
+  id              String   @id @default(uuid())
+  stateId         String
+  state           GeoState @relation(fields: [stateId], references: [id])
+  name            String
+  isMajor         Boolean  @default(false)
+  addedByTenantId String? // provenance when a tenant admin added it
+  createdAt       DateTime @default(now())
+
+  @@unique([stateId, name])
+  @@index([name])
+  @@map("geo_cities")
 }
 
 // ─────────────────────────────── Intranet (company portal / publishing) ───────────────────────────────

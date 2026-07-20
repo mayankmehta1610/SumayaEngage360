@@ -63,6 +63,18 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsString()
   location?: string;
+
+  @IsOptional()
+  @IsString()
+  countryCode?: string;
+
+  @IsOptional()
+  @IsString()
+  stateId?: string;
+
+  @IsOptional()
+  @IsString()
+  cityId?: string;
 }
 
 export class UpdateEmployeeDto {
@@ -85,6 +97,18 @@ export class UpdateEmployeeDto {
   @IsOptional()
   @IsString()
   location?: string;
+
+  @IsOptional()
+  @IsString()
+  countryCode?: string;
+
+  @IsOptional()
+  @IsString()
+  stateId?: string;
+
+  @IsOptional()
+  @IsString()
+  cityId?: string;
 }
 
 export class AddSkillsDto {

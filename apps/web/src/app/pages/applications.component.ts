@@ -74,6 +74,7 @@ import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
           <ng-template #rowTemplate let-row>
             <td><strong>{{ row.name }}</strong></td>
             <td>{{ row.email }}</td>
+            <td>{{ row.location }}</td>
             <td>{{ row.job }}</td>
             <td>
               <span class="badge" [class.ok]="row.status === 'HIRED' || row.status === 'OFFER_ACCEPTED'"
@@ -401,6 +402,7 @@ export class ApplicationsComponent implements OnInit, OnChanges {
       id: a.id,
       name: `${a.candidate.firstName} ${a.candidate.lastName}`,
       email: a.candidate.email,
+      location: a.candidate.currentLocation || '—',
       job: a.job.title,
       status: a.status,
       applied: a.createdAt ? new Date(a.createdAt).toLocaleDateString() : '—',
@@ -432,6 +434,7 @@ export class ApplicationsComponent implements OnInit, OnChanges {
   tableCols: TableColumn[] = [
     { key: 'name', label: 'Candidate' },
     { key: 'email', label: 'Email' },
+    { key: 'location', label: 'Location' },
     { key: 'job', label: 'Job' },
     { key: 'status', label: 'Status' },
     { key: 'applied', label: 'Applied' },

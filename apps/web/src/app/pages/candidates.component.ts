@@ -8,10 +8,11 @@ import { ExportBarComponent } from '../core/export-bar.component';
 import { DataTableComponent, TableColumn } from '../ui/data-table.component';
 import { AuthService } from '../core/auth.service';
 import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
+import { GeoPickerComponent, GeoValue } from '../ui/geo-picker.component';
 
 @Component({
   standalone: true,
-  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent, DataTableComponent, LifecycleWizardComponent],
+  imports: [FormsModule, DatePipe, ExportBarComponent, ModuleShellComponent, DataTableComponent, LifecycleWizardComponent, GeoPickerComponent],
   template: `
     <e360-module-shell
       title="Talent pool"
@@ -78,6 +79,16 @@ import { LifecycleWizardComponent } from '../ui/lifecycle-wizard.component';
         }
         <div class="card">
           <h2 style="margin-top:0">{{ detail.firstName }} {{ detail.lastName }} — profile</h2>
+          <div class="row" style="align-items:flex-end">
+            <div>
+              <label>Current location</label>
+              <div>{{ detail.currentLocation || detail.demographics?.city || '—' }}</div>
+            </div>
+            <e360-geo-picker [model]="detailGeo" [labels]="false" />
+            <div style="flex:0">
+              <button class="secondary sm" (click)="saveLocation()" [disabled]="!detailGeo.countryCode">Update location</button>
+            </div>
+          </div>
           @if (detail.parsedResume) {
             <div class="row">
               <div><label>Parsed by</label><div>{{ detail.parsedResume.method }}</div></div>
@@ -107,6 +118,7 @@ export class CandidatesComponent implements OnInit {
   candidates: any[] = [];
   detail: any = null;
   detailFor: string | null = null;
+  detailGeo: GeoValue = {};
   error = '';
   parseInfo = '';
   busy = false;
@@ -130,6 +142,7 @@ export class CandidatesComponent implements OnInit {
   tableCols: TableColumn[] = [
     { key: 'name', label: 'Name', sortable: true },
     { key: 'email', label: 'Email', sortable: true },
+    { key: 'location', label: 'Location' },
     { key: 'skills', label: 'Skills' },
     { key: 'resume', label: 'Resume' },
     { key: 'parsed', label: 'Parsed' },
@@ -176,6 +189,7 @@ export class CandidatesComponent implements OnInit {
       id: c.id,
       name: `${c.firstName} ${c.lastName}`,
       email: c.email,
+      location: c.currentLocation || c.demographics?.city || '—',
       skills: (c.skills ?? []).map((s: any) => s.skill?.name).filter(Boolean).join(', ') || '—',
       resume: c.resumeFileId ? 'Yes' : '—',
       parsed: c.parsedResume
@@ -248,8 +262,26 @@ export class CandidatesComponent implements OnInit {
   }
 
   async loadDetail(id: string) {
-    try { this.detail = await this.api.get<any>(`/candidates/${id}`); }
-    catch (e) { this.error = errMsg(e); }
+    try {
+      this.detail = await this.api.get<any>(`/candidates/${id}`);
+      this.detailGeo = {
+        countryCode: this.detail?.countryCode ?? null,
+        stateId: this.detail?.stateId ?? null,
+        cityId: this.detail?.cityId ?? null,
+      };
+    } catch (e) { this.error = errMsg(e); }
+  }
+
+  async saveLocation() {
+    if (!this.detail) return;
+    try {
+      await this.api.patch(`/candidates/${this.detail.id}`, {
+        countryCode: this.detailGeo.countryCode || undefined,
+        stateId: this.detailGeo.stateId || undefined,
+        cityId: this.detailGeo.cityId || undefined,
+      });
+      await Promise.all([this.loadDetail(this.detail.id), this.load()]);
+    } catch (e) { this.error = errMsg(e); }
   }
 
   async parseNow() {

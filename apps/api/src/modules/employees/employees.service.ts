@@ -9,6 +9,7 @@ import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { contains, paginatedResponse, parseFilterJson, parseSortDir } from '../../common/http/list-sort-filter';
 import { PrismaService } from '../../prisma/prisma.service';
+import { GeoService } from '../geo/geo.service';
 import {
   AddSkillsDto,
   CreateEmployeeDto,
@@ -18,7 +19,10 @@ import {
 
 @Injectable()
 export class EmployeesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly geo: GeoService,
+  ) {}
 
   async nextEmployeeCode(tenantId: string) {
     const count = await this.prisma.employee.count({ where: { tenantId } });
@@ -54,6 +58,10 @@ export class EmployeesService {
         manager: dto.managerId ? { connect: { id: dto.managerId } } : undefined,
         joinDate: dto.joinDate ? new Date(dto.joinDate) : null,
         location: dto.location,
+        ...(await this.geo.locationFields(
+          { countryCode: dto.countryCode, stateId: dto.stateId, cityId: dto.cityId },
+          'location',
+        )),
         status: EmployeeStatus.ONBOARDING,
         user: {
           create: {
@@ -188,7 +196,12 @@ export class EmployeesService {
       const manager = await this.prisma.employee.findFirst({ where: { id: dto.managerId, tenantId } });
       if (!manager) throw new BadRequestException('Manager does not belong to this organization');
     }
-    return this.prisma.employee.update({ where: { id }, data: dto });
+    const { countryCode, stateId, cityId, ...data } = dto;
+    const geoFields = await this.geo.locationFields({ countryCode, stateId, cityId }, 'location');
+    return this.prisma.employee.update({
+      where: { id },
+      data: { ...data, ...geoFields, ...(dto.location ? { location: dto.location } : {}) },
+    });
   }
 
   async addSkills(tenantId: string, id: string, dto: AddSkillsDto) {
