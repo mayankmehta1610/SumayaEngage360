@@ -69,6 +69,38 @@ export class IntranetService {
     }
   }
 
+  /** Any employee may contribute content within their own department. */
+  private async assertCanContribute(tenantId: string, user: JwtPayload, departmentId: string) {
+    if (this.isPublisher(user)) return;
+    const deptId = await this.actorDepartmentId(tenantId, user.sub);
+    if (deptId !== departmentId) {
+      throw new ForbiddenException('You can only add content to your own department');
+    }
+  }
+
+  /**
+   * Can this user moderate (approve/reject) the given content? The category's
+   * reviewerRole decides who reviews: a role (e.g. HR for talent content) means
+   * users with that role review; otherwise the department head — and tenant
+   * admins/HR can always moderate.
+   */
+  private async canReview(
+    tenantId: string,
+    user: JwtPayload,
+    item: { departmentId: string; categoryId: string | null },
+  ): Promise<boolean> {
+    if (user.roles.some((r) => ['TENANT_ADMIN', 'HR'].includes(r))) return true;
+    const reviewerRole = item.categoryId
+      ? (await this.prisma.intranetCategory.findUnique({
+          where: { id: item.categoryId },
+          select: { reviewerRole: true },
+        }))?.reviewerRole ?? null
+      : null;
+    if (reviewerRole) return user.roles.includes(reviewerRole);
+    // Default reviewer: the head of the content's department.
+    return this.canManageDepartment(tenantId, user, item.departmentId);
+  }
+
   private canView(item: Secured, user: JwtPayload, actorDeptId: string | null): boolean {
     if (this.isPublisher(user)) return true;
     if (item.createdBy === user.sub) return true;
@@ -156,6 +188,7 @@ export class IntranetService {
         bannerFileId: dto.bannerFileId,
         accessLevel: dto.accessLevel ?? 'COMPANY',
         allowedRoles: dto.allowedRoles as Prisma.InputJsonValue | undefined,
+        reviewerRole: dto.reviewerRole,
         sortOrder: dto.sortOrder ?? 0,
         createdBy: user.sub,
       },
@@ -234,7 +267,7 @@ export class IntranetService {
   }
 
   async createContent(tenantId: string, user: JwtPayload, dto: CreateContentDto) {
-    await this.assertCanManage(tenantId, user, dto.departmentId);
+    await this.assertCanContribute(tenantId, user, dto.departmentId);
     await this.assertValidCategory(tenantId, dto.departmentId, dto.categoryId);
     if (dto.type === 'LINK' && !dto.externalUrl) {
       throw new BadRequestException('Link content needs an externalUrl');
@@ -268,7 +301,9 @@ export class IntranetService {
   async updateContent(tenantId: string, user: JwtPayload, id: string, dto: UpdateContentDto) {
     const item = await this.prisma.intranetContent.findFirst({ where: { id, tenantId } });
     if (!item) throw new NotFoundException('Content not found');
-    await this.assertCanManage(tenantId, user, item.departmentId);
+    // The author may edit their own not-yet-published content; managers anytime.
+    const isOwnerDraft = item.createdBy === user.sub && item.status !== 'PUBLISHED';
+    if (!isOwnerDraft) await this.assertCanManage(tenantId, user, item.departmentId);
     if (dto.categoryId) await this.assertValidCategory(tenantId, item.departmentId, dto.categoryId);
     return this.prisma.intranetContent.update({
       where: { id },
@@ -290,7 +325,14 @@ export class IntranetService {
   ) {
     const item = await this.prisma.intranetContent.findFirst({ where: { id, tenantId } });
     if (!item) throw new NotFoundException('Content not found');
-    await this.assertCanManage(tenantId, user, item.departmentId);
+    // Authors may submit their own draft for review; publish/unpublish/archive
+    // require management rights on the department.
+    if (action === 'submit') {
+      const isOwner = item.createdBy === user.sub;
+      if (!isOwner) await this.assertCanContribute(tenantId, user, item.departmentId);
+    } else {
+      await this.assertCanManage(tenantId, user, item.departmentId);
+    }
 
     const transitions: Record<string, { from: IntranetContentStatus[]; to: IntranetContentStatus }> = {
       submit: { from: ['DRAFT'], to: 'PENDING_REVIEW' },
@@ -327,8 +369,71 @@ export class IntranetService {
   async deleteContent(tenantId: string, user: JwtPayload, id: string) {
     const item = await this.prisma.intranetContent.findFirst({ where: { id, tenantId } });
     if (!item) throw new NotFoundException('Content not found');
-    await this.assertCanManage(tenantId, user, item.departmentId);
+    // Authors may remove their own not-yet-published content; managers anything.
+    const isOwnerDraft = item.createdBy === user.sub && item.status !== 'PUBLISHED';
+    if (!isOwnerDraft) await this.assertCanManage(tenantId, user, item.departmentId);
     return this.prisma.intranetContent.delete({ where: { id } });
+  }
+
+  // ── moderation ──────────────────────────────────────────────────
+
+  /** Content awaiting review that the current user is entitled to moderate. */
+  async reviewQueue(tenantId: string, user: JwtPayload) {
+    const pending = await this.prisma.intranetContent.findMany({
+      where: { tenantId, status: 'PENDING_REVIEW' },
+      include: { category: { select: { id: true, name: true, reviewerRole: true } } },
+      orderBy: { updatedAt: 'asc' },
+      take: 200,
+    });
+    const mine = [];
+    for (const item of pending) {
+      if (await this.canReview(tenantId, user, item)) mine.push(item);
+    }
+    return mine;
+  }
+
+  /** Approve (→ published) or reject (→ draft with a reason) a submission. */
+  async reviewContent(
+    tenantId: string,
+    user: JwtPayload,
+    id: string,
+    decision: 'approve' | 'reject',
+    note?: string,
+  ) {
+    const item = await this.prisma.intranetContent.findFirst({ where: { id, tenantId } });
+    if (!item) throw new NotFoundException('Content not found');
+    if (item.status !== 'PENDING_REVIEW') {
+      throw new BadRequestException('Only content pending review can be moderated');
+    }
+    if (!(await this.canReview(tenantId, user, item))) {
+      throw new ForbiddenException('You are not a reviewer for this content');
+    }
+    if (decision === 'reject') {
+      return this.prisma.intranetContent.update({
+        where: { id },
+        data: {
+          status: 'DRAFT',
+          reviewNote: note ?? 'Returned for changes',
+          reviewedBy: user.sub,
+          reviewedAt: new Date(),
+          updatedBy: user.sub,
+        },
+      });
+    }
+    const updated = await this.prisma.intranetContent.update({
+      where: { id },
+      data: {
+        status: 'PUBLISHED',
+        publishedAt: new Date(),
+        publishedBy: user.sub,
+        reviewNote: note ?? null,
+        reviewedBy: user.sub,
+        reviewedAt: new Date(),
+        updatedBy: user.sub,
+      },
+    });
+    void this.notifications.notifyIntranetPublished(tenantId, updated).catch(() => undefined);
+    return updated;
   }
 
   async listContent(tenantId: string, user: JwtPayload, query: ListContentQuery) {
@@ -537,6 +642,7 @@ export class IntranetService {
     const countMap = new Map(deptCounts.map((d) => [d.departmentId, d._count._all]));
     const pinned = pinnedRaw.filter((c) => this.canView(c, user, actorDeptId)).slice(0, 6);
     const recent = recentRaw.filter((c) => this.canView(c, user, actorDeptId)).slice(0, 12);
+    const reviewPending = (await this.reviewQueue(tenantId, user)).length;
     return {
       banners,
       departments: departments.map((d) => ({
@@ -548,6 +654,9 @@ export class IntranetService {
       recent,
       myDepartmentId: actorDeptId,
       canPublish: this.isPublisher(user) || user.roles.includes('DEPARTMENT_HEAD'),
+      // Any employee assigned to a department can contribute content there.
+      canContribute: this.isPublisher(user) || actorDeptId !== null,
+      reviewPending,
     };
   }
 }

@@ -48,6 +48,10 @@ export class CreateCategoryDto {
   allowedRoles?: string[];
 
   @IsOptional()
+  @IsString()
+  reviewerRole?: string;
+
+  @IsOptional()
   @IsInt()
   sortOrder?: number;
 }
@@ -78,6 +82,10 @@ export class UpdateCategoryDto {
   @IsArray()
   @IsString({ each: true })
   allowedRoles?: string[];
+
+  @IsOptional()
+  @IsString()
+  reviewerRole?: string;
 
   @IsOptional()
   @IsInt()

@@ -94,6 +94,26 @@ export class TenantsService {
     });
   }
 
+  /** Public company profile resolved by Organization ID (subdomain). */
+  async publicProfile(orgId: string) {
+    const t = await this.prisma.tenant.findFirst({
+      where: { OR: [{ id: orgId }, { subdomain: orgId }], isActive: true },
+      select: {
+        name: true,
+        subdomain: true,
+        tenantType: true,
+        country: true,
+        logoUrl: true,
+        logoFileId: true,
+        brandPrimaryColor: true,
+        brandAccentColor: true,
+        brandTagline: true,
+      },
+    });
+    if (!t) throw new NotFoundException('No organization with that ID');
+    return t;
+  }
+
   /** Tenant self-service branding (CMS): logo, colors, tagline. */
   async branding(tenantId: string) {
     const t = await this.findOne(tenantId);

@@ -1,6 +1,7 @@
-import { Body, Controller, Get, NotFoundException, Patch, Res } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Patch, Res } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { Response } from 'express';
+import { Public } from '../../common/auth/public.decorator';
 import { Roles } from '../../common/auth/roles.decorator';
 import { TenantId } from '../../common/tenant/tenant.decorator';
 import { FilesService } from '../files/files.service';
@@ -17,6 +18,15 @@ export class TenantBrandingController {
     private readonly tenants: TenantsService,
     private readonly files: FilesService,
   ) {}
+
+  // Public: the login page resolves a company's real name / type / branding by
+  // its Organization ID (subdomain) so it can show "Meridian Infotech" instead
+  // of a generic "Company workspace".
+  @Public()
+  @Get('public-profile/:orgId')
+  publicProfile(@Param('orgId') orgId: string) {
+    return this.tenants.publicProfile(orgId);
+  }
 
   @Get('branding')
   branding(@TenantId() tenantId: string) {

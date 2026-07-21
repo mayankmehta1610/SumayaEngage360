@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { errMsg } from '../core/api.service';
+import { ApiService, errMsg } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
 import { SEGMENTS, Segment, homeForRoles, segmentByKey } from '../core/rbac';
 import { IconComponent } from '../ui/icon.component';
@@ -28,8 +28,8 @@ import { ThemeToggleComponent } from '../ui/theme-toggle.component';
             <div class="seg-icon" aria-hidden="true">
               <e360-icon [name]="segment?.icon ?? 'building-2'" [size]="26" />
             </div>
-            <h2>{{ segment?.label ?? 'Enterprise workspace' }}</h2>
-            <p class="tagline">{{ segment?.tagline ?? 'Sign in to your workspace.' }}</p>
+            <h2>{{ company?.name ?? segment?.label ?? 'Enterprise workspace' }}</h2>
+            <p class="tagline">{{ company?.brandTagline ?? segment?.tagline ?? 'Sign in to your workspace.' }}</p>
 
             @if (segment) {
               <ul class="workflow">
@@ -48,9 +48,9 @@ import { ThemeToggleComponent } from '../ui/theme-toggle.component';
         <!-- Form panel -->
         <div class="e360-login-card">
           <div class="e360-login-brand">
-            <h1>Sign in</h1>
+            <h1>{{ company ? 'Sign in to ' + company.name : 'Sign in' }}</h1>
             <p>
-              {{ segment ? segment.label : 'Choose your workspace type below' }}
+              {{ company ? 'Your organization workspace' : segment ? segment.label : 'Choose your workspace type below' }}
             </p>
           </div>
 
@@ -75,7 +75,15 @@ import { ThemeToggleComponent } from '../ui/theme-toggle.component';
               [(ngModel)]="tenant"
               [placeholder]="tenantPlaceholder"
               autocomplete="organization"
+              [readonly]="orgLocked"
+              (blur)="resolveCompany()"
+              (keyup.enter)="resolveCompany()"
             />
+            @if (company) {
+              <p class="e360-login-company">Signing in to <strong>{{ company.name }}</strong></p>
+            } @else if (companyError) {
+              <p class="e360-field-error">{{ companyError }}</p>
+            }
           }
           <label class="e360-label">Work email</label>
           <input [(ngModel)]="email" type="email" autocomplete="username" placeholder="you@company.com" />
@@ -109,6 +117,7 @@ export class LoginComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private api = inject(ApiService);
 
   segments = SEGMENTS;
   segment: Segment | null = null;
@@ -119,6 +128,11 @@ export class LoginComponent {
   error = '';
   busy = false;
 
+  /** Resolved company profile (name/branding) once an Organization ID is known. */
+  company: { name: string; brandTagline?: string | null; tenantType?: string } | null = null;
+  companyError = '';
+  orgLocked = false;
+
   constructor() {
     this.route.paramMap.subscribe((params) => {
       this.segment = segmentByKey(params.get('segment')) ?? segmentByKey('company');
@@ -127,8 +141,32 @@ export class LoginComponent {
       if (country && /^[a-z]{2}$/i.test(country)) {
         localStorage.setItem('e360_country', country.toUpperCase());
       }
+      // Company-scoped URI (/in/company/meridian-in): lock to that organization.
+      const org = params.get('org');
+      if (org) {
+        this.tenant = org;
+        this.orgLocked = true;
+        void this.resolveCompany();
+      }
       this.error = '';
     });
+  }
+
+  /** Look up the real company name/branding for the entered Organization ID. */
+  async resolveCompany() {
+    const org = this.tenant?.trim();
+    this.company = null;
+    this.companyError = '';
+    if (!org) return;
+    try {
+      const p = await this.api.get<any>(`/tenant/public-profile/${encodeURIComponent(org)}`);
+      this.company = p;
+      // Align the segment styling to the resolved company's type when sensible.
+      const byType = SEGMENTS.find((s) => s.tenantType === p.tenantType);
+      if (byType && this.segment?.key !== 'platform') this.segment = byType;
+    } catch {
+      this.companyError = 'No organization found with that ID.';
+    }
   }
 
   get isPlatform(): boolean {

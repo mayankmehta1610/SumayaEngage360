@@ -175,6 +175,11 @@ export class OffersService {
           designation: offer.designation,
           joinDate: offer.joiningDate,
           location: offer.location,
+          // Carry the candidate's structured location into the employee record
+          // so geo-driven features (e.g. India professional tax) work on day one.
+          countryCode: candidate.countryCode,
+          stateId: candidate.stateId,
+          cityId: candidate.cityId,
         },
       });
 

@@ -124,7 +124,7 @@ const SECTION_STORAGE_KEY = 'e360-nav-sections';
             @if (auth.tenant && !isCompact) {
               <div class="e360-profile-tenant">
                 <e360-icon name="building-2" [size]="12" />
-                <span class="e360-tenant-badge">{{ auth.tenant }}</span>
+                <span class="e360-tenant-badge">{{ companyName }}</span>
               </div>
             }
             <div class="e360-profile-main">
@@ -217,7 +217,7 @@ const SECTION_STORAGE_KEY = 'e360-nav-sections';
           <div class="e360-mobile-header-actions">
             <e360-theme-toggle [iconSize]="20" />
             @if (auth.tenant) {
-              <span class="e360-mobile-tenant">{{ auth.tenant }}</span>
+              <span class="e360-mobile-tenant">{{ companyName }}</span>
             }
           </div>
         </header>
@@ -238,6 +238,16 @@ export class ShellComponent implements OnInit {
   isCompact = false;
   userMenuOpen = false;
   private sectionState: Record<string, boolean> = {};
+
+  /** Real company name (from branding / tenant context), never the raw org-id slug. */
+  get companyName(): string {
+    return (
+      this.brand.branding()?.name ||
+      this.tenantCtx.tenant()?.name ||
+      this.auth.tenant ||
+      'Workspace'
+    );
+  }
 
   ngOnInit() {
     void this.tenantCtx.load();

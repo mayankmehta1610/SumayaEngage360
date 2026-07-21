@@ -2745,6 +2745,7 @@ model IntranetCategory {
   bannerFileId String? // category banner image (FileObject id)
   accessLevel  IntranetAccessLevel @default(COMPANY)
   allowedRoles Json? // when accessLevel = ROLES
+  reviewerRole String? // who moderates submissions here: null = department head, else a role (e.g. HR for talent content)
   sortOrder    Int                 @default(0)
   isActive     Boolean             @default(true)
   createdBy    String? // user id
@@ -2776,6 +2777,9 @@ model IntranetContent {
   downloadable Boolean               @default(true) // false = view online only
   pinned       Boolean               @default(false) // featured on home page
   tags         String[]
+  reviewNote   String? // reviewer's reason on reject / note on approve
+  reviewedBy   String? // user id of the moderator
+  reviewedAt   DateTime?
   publishedAt  DateTime?
   publishedBy  String?
   expiresAt    DateTime? // auto-hide after this date

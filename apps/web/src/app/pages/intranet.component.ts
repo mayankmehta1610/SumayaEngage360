@@ -70,13 +70,50 @@ const STATUS_LABEL: Record<string, string> = {
             placeholder="Search news, documents, videos…"
           />
         </div>
+        @if (reviewPending > 0) {
+          <button class="in-btn" (click)="openReview()">
+            <e360-icon name="check-square" [size]="15" /> Review queue ({{ reviewPending }})
+          </button>
+        }
         @if (canPublish) {
           <button class="in-btn primary" (click)="toggleManage()">
             <e360-icon [name]="manageOpen ? 'x' : 'pencil'" [size]="15" />
             {{ manageOpen ? 'Close manage' : 'Manage & publish' }}
           </button>
+        } @else if (canContribute) {
+          <button class="in-btn primary" (click)="toggleManage()">
+            <e360-icon [name]="manageOpen ? 'x' : 'pencil'" [size]="15" />
+            {{ manageOpen ? 'Close' : 'Contribute content' }}
+          </button>
         }
       </div>
+
+      <!-- ── review queue (moderation) ─────────────────────────── -->
+      @if (reviewOpen) {
+        <div class="in-manage">
+          <div class="in-manage-head">
+            <h3><e360-icon name="check-square" [size]="16" /> Content awaiting your review</h3>
+            <button class="in-btn" (click)="reviewOpen = false"><e360-icon name="x" [size]="14" /> Close</button>
+          </div>
+          @if (reviewItems.length === 0) {
+            <p class="in-muted">Nothing is waiting for your review right now.</p>
+          }
+          @for (r of reviewItems; track r.id) {
+            <div class="in-review-row">
+              <div>
+                <strong>{{ r.title }}</strong>
+                <span class="in-card-type inline">{{ r.type }}</span>
+                <div class="in-muted">{{ r.category?.name || 'General' }} · submitted by author</div>
+                @if (r.summary) { <div class="in-muted">{{ r.summary }}</div> }
+              </div>
+              <div class="in-review-actions">
+                <button class="in-btn primary" (click)="reviewDecide(r, 'approve')">Approve &amp; publish</button>
+                <button class="in-btn" (click)="reviewDecide(r, 'reject')">Return for changes</button>
+              </div>
+            </div>
+          }
+        </div>
+      }
 
       <!-- ── manage / publishing studio ──────────────────────── -->
       @if (manageOpen) {
@@ -209,6 +246,7 @@ const STATUS_LABEL: Record<string, string> = {
                 <div><label>Description</label><input [(ngModel)]="catForm.description" /></div>
                 <div class="in-form-row">
                   <e360-select-field label="Who can see it" [options]="accessOptions" [(ngModel)]="catForm.accessLevel" [clearable]="false" />
+                  <e360-select-field label="Who reviews submissions" [options]="reviewerOptions" [(ngModel)]="catForm.reviewerRole" placeholder="Department head (default)" />
                   <div><label>Sort order</label><input type="number" [(ngModel)]="catForm.sortOrder" /></div>
                 </div>
                 <div class="in-upload-row">
@@ -505,6 +543,11 @@ const STATUS_LABEL: Record<string, string> = {
     `
       .in-wrap { max-width: 1180px; margin: 0 auto; }
       .sm { font-size: .78rem; }
+      .in-review-row { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; padding: .7rem 0; border-bottom: 1px solid var(--e360-border); }
+      .in-review-actions { display: flex; gap: .4rem; flex-shrink: 0; }
+      .in-manage-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .6rem; }
+      .in-manage-head h3 { margin: 0; display: flex; align-items: center; gap: .4rem; font-size: 1rem; }
+      .in-muted { color: var(--e360-text-muted, #6b7280); font-size: .82rem; }
 
       /* command bar */
       .in-cmdbar { display: flex; align-items: center; gap: .5rem; margin-bottom: 1rem; flex-wrap: wrap; }
@@ -653,6 +696,10 @@ export class IntranetComponent implements OnInit, OnDestroy {
   view: 'home' | 'department' | 'search' = 'home';
   home: any = null;
   canPublish = false;
+  canContribute = false;
+  reviewPending = 0;
+  reviewOpen = false;
+  reviewItems: any[] = [];
 
   dept: any = null;
   tree: CategoryNode[] = [];
@@ -736,6 +783,12 @@ export class IntranetComponent implements OnInit, OnDestroy {
     { value: 'ROLES', label: 'Specific roles' },
     { value: 'PRIVATE', label: 'Private (author + HR/admin)' },
   ];
+  // Who moderates submissions in a category (blank = the department head).
+  reviewerOptions: SelectOption[] = [
+    { value: 'HR', label: 'HR (e.g. talent / people content)' },
+    { value: 'DEPARTMENT_HEAD', label: 'Department head' },
+    { value: 'TENANT_ADMIN', label: 'Tenant admin' },
+  ];
   bannerScopeOptions: SelectOption[] = [
     { value: 'company', label: 'Company-wide (home hero)' },
     { value: 'department', label: 'Department hub' },
@@ -779,6 +832,8 @@ export class IntranetComponent implements OnInit, OnDestroy {
     try {
       this.home = await this.api.get<any>('/intranet/home');
       this.canPublish = this.home.canPublish;
+      this.canContribute = this.home.canContribute;
+      this.reviewPending = this.home.reviewPending ?? 0;
       this.bannerIdx = 0;
       for (const b of this.home.banners) void this.loadBannerImg(b);
       for (const c of [...this.home.pinned, ...this.home.recent]) void this.loadCover(c);
@@ -902,6 +957,29 @@ export class IntranetComponent implements OnInit, OnDestroy {
     } catch (e) {
       this.error = errMsg(e);
     }
+  }
+
+  // ── moderation ───────────────────────────────────────────────
+
+  async openReview() {
+    this.reviewOpen = !this.reviewOpen;
+    if (this.reviewOpen) {
+      try {
+        this.reviewItems = await this.api.get<any[]>('/intranet/review-queue');
+      } catch (e) { this.error = errMsg(e); }
+    }
+  }
+
+  async reviewDecide(item: any, decision: 'approve' | 'reject') {
+    let note: string | undefined;
+    if (decision === 'reject') {
+      note = window.prompt('Reason for returning this content to the author (optional):') ?? undefined;
+    }
+    try {
+      await this.api.post(`/intranet/content/${item.id}/review`, { decision, note });
+      this.reviewItems = await this.api.get<any[]>('/intranet/review-queue');
+      await this.loadHome();
+    } catch (e) { this.error = errMsg(e); }
   }
 
   // ── manage: shared ───────────────────────────────────────────
@@ -1099,6 +1177,7 @@ export class IntranetComponent implements OnInit, OnDestroy {
       name: '',
       description: '',
       accessLevel: 'COMPANY',
+      reviewerRole: '',
       sortOrder: 0,
       bannerFileId: '',
     };
@@ -1114,6 +1193,7 @@ export class IntranetComponent implements OnInit, OnDestroy {
         name: f.name,
         description: f.description || undefined,
         accessLevel: f.accessLevel,
+        reviewerRole: f.reviewerRole || undefined,
         sortOrder: Number(f.sortOrder) || 0,
         bannerFileId: f.bannerFileId || undefined,
       });

@@ -405,9 +405,11 @@ async function main() {
     }
   }
 
-  console.log('\nDone. Workspace logins (all passwords Demo@12345):');
+  console.log('\nDone. Company-branded logins (all passwords Demo@12345):');
   for (const c of COMPANIES) {
-    console.log(`  /${c.cc.toLowerCase()}/company  ${c.sub.padEnd(16)} admin@${c.sub}.demo`);
+    // Company-specific URL: /<country>/company/<org-id> pre-fills and locks the
+    // organization and shows the real company name.
+    console.log(`  /${c.cc.toLowerCase()}/company/${c.sub.padEnd(18)} ${c.name}  (admin@${c.sub}.demo)`);
   }
 }
 

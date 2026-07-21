@@ -739,6 +739,11 @@ input[type="radio"] {
   color: var(--e360-text-muted);
   text-align: center;
 }
+.e360-login-company {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: var(--e360-primary);
+}
 @media (max-width: 900px) {
   .e360-login-shell { grid-template-columns: 1fr; max-width: 460px; }
   .e360-login-aside { display: none; }

@@ -150,6 +150,23 @@ export class IntranetController {
     return this.intranet.transitionContent(tenantId, user, id, 'archive');
   }
 
+  // ── moderation ──────────────────────────────────────────────────
+
+  @Get('review-queue')
+  reviewQueue(@TenantId() tenantId: string, @CurrentUser() user: JwtPayload) {
+    return this.intranet.reviewQueue(tenantId, user);
+  }
+
+  @Post('content/:id/review')
+  review(
+    @TenantId() tenantId: string,
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: { decision: 'approve' | 'reject'; note?: string },
+  ) {
+    return this.intranet.reviewContent(tenantId, user, id, dto.decision, dto.note);
+  }
+
   @Delete('content/:id')
   deleteContent(
     @TenantId() tenantId: string,

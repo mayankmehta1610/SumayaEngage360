@@ -67,7 +67,9 @@ export const routes: Routes = [
     children: shellChildren,
   },
   // Country-scoped public URIs — the country is part of the address, never a
-  // dropdown: /in → India landing, /in/company → Company sign-in for India.
+  // dropdown: /in → India landing, /in/company → Company sign-in for India,
+  // /in/company/meridian-in → sign-in locked to that specific company.
+  { path: ':country/:segment/:org', loadComponent: () => import('./pages/login.component').then((m) => m.LoginComponent) },
   { path: ':country/:segment', loadComponent: () => import('./pages/login.component').then((m) => m.LoginComponent) },
   { path: ':country', loadComponent: () => import('./pages/landing.component').then((m) => m.LandingComponent) },
   { path: '**', redirectTo: '' },

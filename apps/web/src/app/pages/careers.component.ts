@@ -230,8 +230,10 @@ const emptyForm = (): ApplyForm => ({
                       @if (sec.key === 'documents') {
                         <label>Resume (PDF/DOCX) *</label>
                         <input class="e360-file-input" type="file" accept=".pdf,.doc,.docx"
-                               (change)="resume = fileOf($event)" />
+                               (change)="onResumeSelected($event)" />
                         @if (resume) { <p class="muted" style="margin:0 0 .5rem">Selected: {{ resume.name }}</p> }
+                        @if (parsing) { <p class="muted" style="margin:0 0 .5rem">⏳ Reading your resume to pre-fill the form…</p> }
+                        @if (parseNote) { <p style="margin:0 0 .5rem;color:var(--e360-primary)">✓ {{ parseNote }} Review the pre-filled details below.</p> }
                         @if (fieldErr('resume')) { <span class="e360-field-error">{{ fieldErr('resume') }}</span> }
                         <label style="margin-top:.75rem">Cover letter (optional)</label>
                         <input class="e360-file-input" type="file" accept=".pdf,.doc,.docx"
@@ -516,6 +518,89 @@ export class CareersComponent implements OnInit {
     return up.id;
   }
 
+  parsing = false;
+  parseNote = '';
+  private uploadedResumeId: string | null = null;
+
+  /** On resume select: upload, run the in-house parser, and pre-fill the form. */
+  async onResumeSelected(ev: Event) {
+    this.resume = this.fileOf(ev);
+    this.parseNote = '';
+    this.uploadedResumeId = null;
+    if (!this.resume) return;
+    this.parsing = true;
+    try {
+      const id = await this.uploadFile(this.resume);
+      this.uploadedResumeId = id;
+      const res = await this.api.post<any>('/public/careers/parse-resume', { resumeFileId: id }, this.tenant || undefined);
+      if (res?.parsed && res.fields) this.applyParsed(res.fields, res.geo);
+    } catch {
+      /* parsing is best-effort — the applicant can still fill the form manually */
+    } finally {
+      this.parsing = false;
+    }
+  }
+
+  /** Fill only empty fields, so anything the applicant already typed is kept. */
+  private applyParsed(f: any, geo: any) {
+    const set = (key: keyof typeof this.form, val: any) => {
+      if (val && (!this.form[key] || String(this.form[key]).trim() === '')) {
+        (this.form as any)[key] = val;
+      }
+    };
+    set('firstName', f.firstName);
+    set('lastName', f.lastName);
+    set('email', f.email);
+    set('phone', f.phone);
+    set('linkedIn', f.linkedIn);
+    set('city', f.city ?? (f.location ? String(f.location).split(',')[0].trim() : ''));
+    set('professionalSummary', f.summary);
+    if (f.totalYearsExperience != null && !this.form.yearsExperience) {
+      this.form.yearsExperience = String(f.totalYearsExperience);
+    }
+    if (Array.isArray(f.skills) && f.skills.length && !this.form.skillsText) {
+      this.form.skillsText = f.skills.join(', ');
+    }
+    if (Array.isArray(f.skills) && f.skills.length && !this.form.domainExpertiseText) {
+      this.form.domainExpertiseText = f.skills.slice(0, 3).join(', ');
+    }
+    if (Array.isArray(f.experiences) && f.experiences.length) {
+      const mapped = f.experiences
+        .filter((e: any) => e.company || e.title)
+        .map((e: any) => ({
+          company: e.company ?? '',
+          title: e.title ?? '',
+          startDate: e.startDate ? `${e.startDate}-01`.slice(0, 10) : '',
+          endDate: e.endDate ? `${e.endDate}-01`.slice(0, 10) : '',
+          description: '',
+        }));
+      if (mapped.length) this.form.experiences = mapped;
+    }
+    if (Array.isArray(f.education) && f.education.length) {
+      const mapped = f.education
+        .filter((e: any) => e.institution)
+        .map((e: any) => ({
+          institution: e.institution ?? '',
+          degree: e.degree ?? '',
+          field: e.field ?? '',
+          year: e.year ? String(e.year) : '',
+        }));
+      if (mapped.length) this.form.education = mapped;
+    }
+    // Structured location resolved to the geo master.
+    if (geo?.cityId) {
+      this.geo = {
+        countryCode: geo.countryCode,
+        stateId: geo.stateId,
+        cityId: geo.cityId,
+        cityName: (geo.label ?? '').split(',')[0].trim(),
+      };
+      if (!this.form.country) this.form.country = geo.countryCode;
+    }
+    const filled = [f.firstName, f.email, f.phone, (f.skills ?? []).length].filter(Boolean).length;
+    this.parseNote = `Read ${filled} detail${filled === 1 ? '' : 's'} from your resume.`;
+  }
+
   async apply(job: any) {
     this.applyError = '';
     this.applied = false;
@@ -525,7 +610,8 @@ export class CareersComponent implements OnInit {
     }
     this.busy = true;
     try {
-      const resumeFileId = await this.uploadFile(this.resume!);
+      // Reuse the file already uploaded during auto-fill, if present.
+      const resumeFileId = this.uploadedResumeId ?? (await this.uploadFile(this.resume!));
       let coverLetterFileId: string | undefined;
       if (this.coverLetter) coverLetterFileId = await this.uploadFile(this.coverLetter);
 
